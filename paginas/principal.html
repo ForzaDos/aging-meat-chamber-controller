@@ -37,11 +37,11 @@ h1{font-size:28px;font-weight:700;letter-spacing:.01em;line-height:1.05}
   border:1px solid var(--borde);border-radius:2px;font:inherit;font-size:18px;font-weight:700;cursor:pointer}
 .btnPausa.pausado{background:var(--laton);border-color:var(--laton);color:#1b1a14}
 .btnPausa:disabled{opacity:.5;cursor:default}
-.paradaCaja{margin:0 0 14px}
-/* Pulsador de emergencia: rectangular, rojo, con borde de franjas amarillas y negras. Está debajo de las lecturas y se ve en todas las pestañas. */
-.btnParada{display:block;width:100%;min-height:78px;padding:10px 12px;color:#fff;font:inherit;font-size:25px;font-weight:900;letter-spacing:.09em;
-  text-align:center;cursor:pointer;border:9px solid #f2c400;border-image:repeating-linear-gradient(-45deg,#f2c400 0 13px,#161616 13px 26px) 9;
+/* Pulsador de emergencia: rectangular, rojo, con borde de franjas amarillas y negras. Va en la barra de pestañas (siempre visible, también al bajar la página). */
+.btnParada{display:block;width:100%;min-height:58px;padding:4px 8px;color:#fff;font:inherit;font-size:21px;font-weight:900;letter-spacing:.07em;
+  text-align:center;cursor:pointer;border:7px solid #f2c400;border-image:repeating-linear-gradient(-45deg,#f2c400 0 11px,#161616 11px 22px) 7;
   background:linear-gradient(#ee2b1f,#b3140c);text-shadow:0 2px 0 rgba(0,0,0,.45)}
+.pestanas .btnParada{grid-column:1/-1}
 .btnParada:active{filter:brightness(.85)}
 /* Con la parada activa se ve oscuro y el resplandor parpadea. */
 .btnParada.activa{background:linear-gradient(#5e0b07,#3a0705);color:#ffdede;animation:aroParada 1s ease-in-out infinite}
@@ -54,6 +54,9 @@ h1{font-size:28px;font-weight:700;letter-spacing:.01em;line-height:1.05}
 .pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1a14;pointer-events:none}
 @media (max-width:420px){.pestanas a{font-size:15px;padding:4px 4px}}
 body.sinBal .pestanas{grid-template-columns:repeat(3,1fr)}
+/* En pantallas anchas (la tablet) el botón es una quinta pestaña. Va después de las reglas de .pestanas para que mande. */
+@media (min-width:760px){.pestanas{grid-template-columns:repeat(4,1fr) 1.7fr}.pestanas .btnParada{grid-column:auto}
+  body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) 1.7fr}}
 .aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#3a1e1b;font-weight:600}
 .aviso.pausa{border-color:var(--laton);background:#352d18}
 details.test{margin-top:18px;border:1px solid var(--alarma)}
@@ -229,7 +232,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 </style>
 </head>
 <body>
-<nav class="pestanas"><a href="#secadero" data-v="sec" class="act">Secadero</a><a href="#ajustes" data-v="aju">Ajustes</a><a href="#balanza" data-v="bal">Balanza</a><a href="/bitacora">Diario de secado</a></nav>
+<nav class="pestanas"><a href="#secadero" data-v="sec" class="act">Secadero</a><a href="#ajustes" data-v="aju">Ajustes</a><a href="#balanza" data-v="bal">Balanza</a><a href="/bitacora">Diario de secado</a><button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button></nav>
 
 <header>
   <div>
@@ -265,7 +268,6 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
   </details>
 </section>
 
-<div class="paradaCaja"><button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button></div>
 <section class="placa" id="s_bal">
   <details class="panel" id="p_bal" open>
   <summary><span class="tit">Pieza testigo (balanza)</span><span class="res" id="r_bal"></span></summary>
@@ -650,7 +652,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.8 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.10 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');

@@ -7,10 +7,10 @@
 
 // ---------- Software (se ve al arrancar, en el menu "Acerca de" y en la web) ----------
 #define SOFTWARE_AUTOR    "ForzaDos"
-#define SOFTWARE_VERSION  "v1.0.8 OTA"   // cambiala aca cuando hagas una version nueva
+#define SOFTWARE_VERSION  "v1.0.10 OTA"   // cambiala aca cuando hagas una version nueva
 // Versión interna del programa (se ve en la web, Diagnóstico). paginas/generar.py la copia a la
 // página principal: si el navegador muestra una página vieja guardada, Diagnóstico lo avisa.
-#define VERSION_PROGRAMA  "v1.0.8 OTA"
+#define VERSION_PROGRAMA  "v1.0.10 OTA"
 
 // ---------- Red ----------
 #define WIFI_SSID  "TU_RED_WIFI"
