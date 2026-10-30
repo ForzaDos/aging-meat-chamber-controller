@@ -9,15 +9,19 @@
   <img src="docs/img/web-historial.jpg" width="300" alt="Historial de temperatura y humedad en el celular">
 </p>
 
-Soy aficionado a la charcutería. Curar en casa es cuestión de paciencia y de clima: temperatura baja y estable, humedad alta
-pero controlada, aire que se renueva. Una heladera familiar sola enfría de más y reseca todo, y yo no encontraba nada que me
+Soy aficionado a la charcutería de precision.
+Curar carnes en casa siempre fue cuestión de paciencia y de clima: temperatura baja y estable, humedad alta
+pero controlada, aire que se renueva: digamos que solo se podia curar en otoño/invierno. 
+Una heladera familiar sola enfría de más y reseca todo por su bajisima humedad relativa, y yo no encontraba nada que me
 sirviera, así que armé esto.
 
-Le pone un **cerebro** a la heladera: elegís cuánta temperatura y cuánta humedad querés, y la cámara las sostiene sola,
-semanas y semanas, mientras vos mirás cómo va el salame desde el sillón.
+Le pone un **cerebro** a la heladera: elegís que temperatura y cuánta humedad querés, y la cámara las sostiene sola.
+Hay un humificador y un deshumidificador (este ultimo mucho mas importante) ademas de un cooler de PC de 12v para ventilacion.
 
 Lo comparto **gratis y con el código abierto (licencia MIT)** por si a otros aficionados les sirve: bajalo, armalo, cambiale lo
-que quieras. No lo vendo ni lo voy a vender. Si lo armás, contame cómo te fue (abrí un *Issue*).
+que quieras. Este softeare NO SE VENDE ni se va a vender. 
+Si lo armás, contame cómo te fue o que cambios le hiciste.
+BUENOS SALAMES!!!
 
 ## Qué controla
 
