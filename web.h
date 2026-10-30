@@ -25,6 +25,7 @@
 //   GET  /api/balanza/hist  -> registro del peso del seguimiento
 //   POST /api/ota        -> archivo .bin (multipart): actualiza el programa por Wi-Fi y reinicia
 //   POST /api/parada     -> accion=on|off: PARADA DE EMERGENCIA (apaga los 6 relés y suspende el control; sobrevive a reinicios)
+//   GET  /api/coredump   -> volcado binario del último cuelgue (404 si no hay); /api/diag trae "volcado":true/false
 //   POST /api/reiniciar  -> reinicia la ESP32 (409 si está cargando un programa o no confirmó el último)
 void webInit();
 

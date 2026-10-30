@@ -104,7 +104,7 @@ void loop() {
 
       controlActualizar(t, h, ok);
       if (ok && !controlTestActivo() && !calibActivo()) historialMuestra(t, h, (est.releHum ? 1 : 0) | (est.releDesh ? 2 : 0) | (est.releFrio ? 4 : 0) |
-                                     (est.releVent ? 8 : 0) | (est.releOtros ? 16 : 0) | (est.releLuz ? 32 : 0));
+                                     (est.releVent ? 8 : 0) | (est.releOtros ? 16 : 0) | (est.releLuz ? 32 : 0) | (controlParadaActiva() ? 64 : 0));
 
       if (ok) Serial.printf("T=%.1f C (obj %.1f)  HR=%.1f %% (obj %.1f) | hum:%s des:%s frio:%s vent:%s aux1:%s aux2:%s\n",
                             t, cfg.tempSP, h, cfg.humSP,

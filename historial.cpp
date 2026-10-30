@@ -15,7 +15,7 @@ struct __attribute__((packed)) Registro {
   uint32_t ts;       // epoch UTC del inicio del intervalo
   int16_t  temp10;   // °C x 10
   int16_t  hum10;    // %HR x 10
-  uint8_t  flags;    // bit0 hum, bit1 deshum, bit2 frío, bit3 ventilador, bit4 otros, bit5 luz (OR dentro del intervalo)
+  uint8_t  flags;    // bit0 hum, bit1 deshum, bit2 frío, bit3 ventilador, bit4 otros, bit5 luz, bit6 parada de emergencia (OR dentro del intervalo)
   uint8_t  pad;
 };
 

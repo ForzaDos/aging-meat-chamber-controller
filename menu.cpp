@@ -469,14 +469,7 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
         if (boton == BTN_CLICK) {
           if (!confSi) { estado = M_LISTA; break; }
           if (testPaso == 1) { testPaso = 2; confSi = false; break; }
-          const uint32_t espera = controlTestPedirModo(testModoMenu);
-          if (espera) {                                // la heladera estuvo apagada poco tiempo
-            char b[21];
-            snprintf(b, sizeof(b), "esperar %lu:%02lu", (unsigned long)(espera / 60), (unsigned long)(espera % 60));
-            volverOff = false;
-            mostrarMensaje("Heladera: proteccion", b, ahora, 3000);
-            break;
-          }
+          controlTestPedirModo(testModoMenu);
           testPaso = 3;
           testVisto = false;
         }

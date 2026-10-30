@@ -472,14 +472,8 @@ static void testTodoApagado() {
   testMask = 0;
 }
 
-// Segundos hasta que el test pueda prender el compresor sin dañarlo (0 = ya se puede).
-static uint32_t testEspera() {
-  return est.releFrio ? FRIO_MIN_OFF_S : esperaEncender(R_FRIO);
-}
-
 static void testIniciar(uint8_t modo) {
   if (testOn || otaOn || paradaOn) return;
-  if (testEspera()) { Serial.println("TEST DE RELES: no inicia, la heladera estuvo apagada poco tiempo"); return; }
   // Los forzados manuales se cancelan y el clima y el ventilador se apagan con su evento normal.
   for (uint8_t i = 0; i < 3; i++) { est.manual[i] = MAN_AUTO; est.manualSeg[i] = 0; }
   aplicar(est.releHum,  PIN_RELE_HUM,  EV_HUM,  false, cambioHum,  true);
@@ -513,10 +507,6 @@ static void testTerminar() {
 uint32_t controlTestPedirModo(uint8_t modo) {
   if (modo == TEST_NINGUNO) { testPedido = -1; return 0; }
   if (modo > TEST_TODOS || (!TEST_AVANZADO && modo != TEST_UNO)) return 0;
-  if (!testOn) {
-    const uint32_t esp = testEspera();
-    if (esp) return esp;
-  }
   testPedido = (int8_t)modo;
   return 0;
 }

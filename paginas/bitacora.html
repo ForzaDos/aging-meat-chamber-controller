@@ -20,15 +20,31 @@ body{font:16px/1.35 var(--f);font-stretch:condensed;color:var(--texto);backgroun
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:6px 2px 10px;border-bottom:2px solid var(--laton);margin-bottom:12px}
 h1{font-size:28px;font-weight:700;line-height:1.05}
 /* Pestañas: Secadero (mirar), Ajustes (configurar) y Diario de secado. Siempre visibles arriba. */
-.pestanas{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-12px -12px 14px;padding:10px 12px;background:var(--acero);border-bottom:1px solid var(--borde)}
+.pestanas{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr) .85fr;gap:6px;margin:-12px -12px 14px;padding:10px 12px;background:var(--acero);border-bottom:1px solid var(--borde)}
 .pestanas a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:4px 8px;border:1px solid var(--borde);background:var(--placa);color:var(--tenue);font-weight:700;font-size:18px;line-height:1.1;text-align:center;text-decoration:none;letter-spacing:.02em}
 .pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1a14;pointer-events:none}
 @media (max-width:420px){.pestanas a{font-size:15px;padding:4px 4px}}
-body.sinBal .pestanas{grid-template-columns:repeat(3,1fr)}
+body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .85fr}
+.btnParada{min-height:50px;padding:2px;border:2px solid #f2c400;border-radius:2px;color:#fff;font:inherit;font-size:10px;font-weight:900;line-height:1.1;
+  letter-spacing:.03em;text-transform:uppercase;text-align:center;cursor:pointer;background:linear-gradient(#ee2b1f,#b3140c);text-shadow:0 1px 0 rgba(0,0,0,.45)}
+.btnParada:active{filter:brightness(.85)}
+/* Con la parada activa se ve oscuro y el resplandor parpadea. */
+.btnParada.activa{background:linear-gradient(#5e0b07,#3a0705);color:#ffdede;font-size:9px;animation:aroParada 1s ease-in-out infinite}
+@keyframes aroParada{50%{box-shadow:0 0 12px 3px rgba(242,196,0,.8)}}
+@media (prefers-reduced-motion:reduce){.btnParada.activa{animation:none}}
+.btnParada:disabled{opacity:.5;cursor:default}
+@media (min-width:760px){.pestanas{grid-template-columns:repeat(4,1fr) .55fr}body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .55fr}
+  .btnParada{font-size:13px}.btnParada.activa{font-size:12px}}
 body.sinBal [data-v=bal]{display:none!important}
 .tag.bal{border-color:var(--pimenton);color:var(--pimenton)}
 .aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#3a1e1b;font-weight:600}
 .aviso.ok{border-color:var(--ok);background:#1f3022}
+.aviso.parada{border-color:#ff3b30;background:#5a1410;font-size:17px}
+/* Pausar / reanudar el control: botón discreto, de menor jerarquía que APAGAR TODO, en verde claro. Va en la barra de pestañas (siempre visible), abajo a la derecha. */
+.btnPausa{grid-column:1/-1;justify-self:end;min-height:32px;padding:0 14px;border:1px solid rgba(159,205,187,.6);border-radius:2px;background:rgba(159,205,187,.1);
+  color:#9fcdbb;font:inherit;font-size:13px;font-weight:700;line-height:1.1;cursor:pointer}
+.btnPausa.pausado{border-color:var(--laton);background:rgba(200,170,80,.14);color:var(--laton)}
+.btnPausa:disabled{opacity:.5;cursor:default}
 .placa{background:var(--placa);border:1px solid var(--borde);box-shadow:inset 0 1px 0 #ffffff0d;padding:14px}
 .placa+.placa{margin-top:12px}
 details.panel>summary{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;cursor:pointer;min-height:30px;color:var(--tenue)}
@@ -97,12 +113,13 @@ ul.lista>li:first-child{border-top:0}
 </style>
 </head>
 <body class="sinBal">
-<nav class="pestanas"><a href="/#secadero">Secadero</a><a href="/#ajustes">Ajustes</a><a href="/#balanza" data-v="bal">Balanza</a><a href="/bitacora" class="act">Diario de secado</a></nav>
+<nav class="pestanas"><a href="/#secadero">Secadero</a><a href="/#ajustes">Ajustes</a><a href="/#balanza" data-v="bal">Balanza</a><a href="/bitacora" class="act">Diario de secado</a><button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button><button type="button" class="btnPausa" id="btnPausa" disabled>Pausar control</button></nav>
 
 <header>
   <h1>Diario de secado</h1>
 </header>
 
+<div class="aviso parada" id="avisoParada" hidden>PARADA DE EMERGENCIA: los 6 relés están apagados y el control está suspendido, SIN protección de temperatura. Tocá REANUDAR TODO (arriba a la derecha) cuando el problema esté resuelto.</div>
 <div class="aviso" id="aviso" hidden></div>
 
 <section class="placa">
@@ -701,6 +718,54 @@ async function sincronizarSeg() {
   setInterval(async () => { if (!document.hidden && $('#fT').hidden && $('#fP').hidden && !$('#fR').contains(document.activeElement) && await leerSeg()) { sincronizarSeg(); dibujar(); } }, 60000);
   setInterval(() => { HISTB = null; }, 1800000);   // el registro suma un punto cada 30 min
 })();
+
+/* Parada de emergencia: el mismo botón que en la página principal, para tenerlo en todas las pestañas. */
+const TITULO_BASE = document.title;
+let activoCtl = true;
+async function leerParada() {
+  try {
+    const e = await (await fetch('/api/estado', { cache: 'no-store' })).json();
+    const p = !!e.parada, b = $('#btnParada');
+    b.disabled = false;
+    b.textContent = p ? 'REANUDAR TODO' : 'APAGAR TODO';
+    b.classList.toggle('activa', p);
+    $('#avisoParada').hidden = !p;
+    activoCtl = !!e.activo;
+    const bp = $('#btnPausa');
+    bp.disabled = false;
+    bp.textContent = activoCtl ? 'Pausar control' : 'Reanudar control';
+    bp.classList.toggle('pausado', !activoCtl);
+    document.title = (p ? 'PARADA · ' : '') + TITULO_BASE;
+  } catch (_) {}
+}
+$('#btnParada').addEventListener('click', async () => {
+  const quiere = $('#btnParada').classList.contains('activa') ? 'off' : 'on';
+  const ok = quiere === 'on'
+    ? confirm('¿APAGAR TODO?\n\nSe apagan los 6 relés (clima, ventilador y salidas auxiliares) y se suspende el control, incluida la protección de temperatura. Sigue así, también si se reinicia, hasta que toques "REANUDAR TODO".')
+    : confirm('¿Reanudar todo?\n\nEl control vuelve a funcionar solo. El clima espera el tiempo mínimo apagado antes de encender.');
+  if (!ok) return;
+  $('#btnParada').disabled = true;
+  try {
+    const r = await fetch('/api/parada', { method: 'POST', headers: HX, body: new URLSearchParams({ accion: quiere }) });
+    if (!r.ok) throw 0;
+  } catch (_) {
+    alert('No se pudo cambiar. Revisá la conexión; si hace falta, cortá la corriente.');
+  }
+  leerParada();
+});
+$('#btnPausa').addEventListener('click', async () => {
+  if (activoCtl && !confirm('¿Pausar el control? Se apagan humidificador, deshumidificador, refrigeración y ventilador. Las salidas auxiliares siguen igual.')) return;
+  $('#btnPausa').disabled = true;
+  try {
+    const r = await fetch('/api/config', { method: 'POST', headers: HX, body: new URLSearchParams({ activo: activoCtl ? '0' : '1' }) });
+    if (!r.ok) throw 0;
+  } catch (_) {
+    alert('No se pudo cambiar. Revisá la conexión.');
+  }
+  leerParada();
+});
+leerParada();
+setInterval(leerParada, 5000);
 </script>
 <footer id="acerca" style="text-align:center;font-size:13px;color:var(--tenue);margin:28px 0 14px;white-space:pre-line;line-height:1.5">Cámara de curado</footer>
 <script>fetch('/api/acerca',{cache:'no-store'}).then(r=>r.json()).then(d=>{document.getElementById('acerca').textContent='Cámara de curado · '+d.version+'\nSoftware hecho por '+d.autor;}).catch(()=>{});</script>

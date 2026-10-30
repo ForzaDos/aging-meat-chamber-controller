@@ -33,30 +33,30 @@ h1{font-size:28px;font-weight:700;letter-spacing:.01em;line-height:1.05}
 .led.otr.on{background:#d9d4c7;box-shadow:0 0 9px 1px #d9d4c788}
 .led.mal{background:var(--alarma);box-shadow:0 0 9px 1px #ff6b5788}
 
-.btnPausa{display:block;width:100%;height:50px;margin-bottom:12px;background:var(--placa2);color:var(--texto);
-  border:1px solid var(--borde);border-radius:2px;font:inherit;font-size:18px;font-weight:700;cursor:pointer}
-.btnPausa.pausado{background:var(--laton);border-color:var(--laton);color:#1b1a14}
+/* Pausar / reanudar el control: botón discreto, de menor jerarquía que APAGAR TODO, en verde claro. Va en la barra de pestañas (siempre visible), abajo a la derecha. */
+.btnPausa{grid-column:1/-1;justify-self:end;min-height:32px;padding:0 14px;border:1px solid rgba(159,205,187,.6);border-radius:2px;background:rgba(159,205,187,.1);
+  color:#9fcdbb;font:inherit;font-size:13px;font-weight:700;line-height:1.1;cursor:pointer}
+.btnPausa.pausado{border-color:var(--laton);background:rgba(200,170,80,.14);color:var(--laton)}
 .btnPausa:disabled{opacity:.5;cursor:default}
-/* Pulsador de emergencia: rectangular, rojo, con borde de franjas amarillas y negras. Va en la barra de pestañas (siempre visible, también al bajar la página). */
-.btnParada{display:block;width:100%;min-height:58px;padding:4px 8px;color:#fff;font:inherit;font-size:21px;font-weight:900;letter-spacing:.07em;
-  text-align:center;cursor:pointer;border:7px solid #f2c400;border-image:repeating-linear-gradient(-45deg,#f2c400 0 11px,#161616 11px 22px) 7;
-  background:linear-gradient(#ee2b1f,#b3140c);text-shadow:0 2px 0 rgba(0,0,0,.45)}
-.pestanas .btnParada{grid-column:1/-1}
-.btnParada:active{filter:brightness(.85)}
-/* Con la parada activa se ve oscuro y el resplandor parpadea. */
-.btnParada.activa{background:linear-gradient(#5e0b07,#3a0705);color:#ffdede;animation:aroParada 1s ease-in-out infinite}
-@keyframes aroParada{50%{box-shadow:0 0 22px 6px rgba(242,196,0,.75)}}
-@media (prefers-reduced-motion:reduce){.btnParada.activa{animation:none}}
-.btnParada:disabled{opacity:.5;cursor:default}
 /* Pestañas: Secadero (mirar), Ajustes (configurar) y Diario de secado. Siempre visibles arriba. */
 .pestanas{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-12px -12px 14px;padding:10px 12px;background:var(--acero);border-bottom:1px solid var(--borde)}
 .pestanas a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:4px 8px;border:1px solid var(--borde);background:var(--placa);color:var(--tenue);font-weight:700;font-size:18px;line-height:1.1;text-align:center;text-decoration:none;letter-spacing:.02em}
 .pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1a14;pointer-events:none}
 @media (max-width:420px){.pestanas a{font-size:15px;padding:4px 4px}}
 body.sinBal .pestanas{grid-template-columns:repeat(3,1fr)}
-/* En pantallas anchas (la tablet) el botón es una quinta pestaña. Va después de las reglas de .pestanas para que mande. */
-@media (min-width:760px){.pestanas{grid-template-columns:repeat(4,1fr) 1.7fr}.pestanas .btnParada{grid-column:auto}
-  body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) 1.7fr}}
+/* Pulsador de emergencia: chico (media pestaña), rojo, el último de la barra de pestañas. Siempre visible, en todas las páginas. */
+.pestanas{grid-template-columns:repeat(4,1fr) .85fr}
+body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .85fr}
+.btnParada{min-height:50px;padding:2px;border:2px solid #f2c400;border-radius:2px;color:#fff;font:inherit;font-size:10px;font-weight:900;line-height:1.1;
+  letter-spacing:.03em;text-transform:uppercase;text-align:center;cursor:pointer;background:linear-gradient(#ee2b1f,#b3140c);text-shadow:0 1px 0 rgba(0,0,0,.45)}
+.btnParada:active{filter:brightness(.85)}
+/* Con la parada activa se ve oscuro y el resplandor parpadea. */
+.btnParada.activa{background:linear-gradient(#5e0b07,#3a0705);color:#ffdede;font-size:9px;animation:aroParada 1s ease-in-out infinite}
+@keyframes aroParada{50%{box-shadow:0 0 12px 3px rgba(242,196,0,.8)}}
+@media (prefers-reduced-motion:reduce){.btnParada.activa{animation:none}}
+.btnParada:disabled{opacity:.5;cursor:default}
+@media (min-width:760px){.pestanas{grid-template-columns:repeat(4,1fr) .55fr}body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .55fr}
+  .btnParada{font-size:13px}.btnParada.activa{font-size:12px}}
 .aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#3a1e1b;font-weight:600}
 .aviso.pausa{border-color:var(--laton);background:#352d18}
 details.test{margin-top:18px;border:1px solid var(--alarma)}
@@ -148,7 +148,7 @@ h3{font-size:15px;font-weight:600;color:var(--tenue);margin:4px 0 8px}
 .stats b{font-weight:600}
 .stats .tt{color:var(--pimenton)} .stats .hh{color:var(--moho)}
 .subt{font-size:14px;color:var(--tenue);margin:16px 0 6px}
-.actividad{position:relative;height:180px}
+.actividad{position:relative;height:200px}
 .registro{list-style:none}
 .registro li{display:grid;grid-template-columns:96px 14px 1fr auto;align-items:center;gap:10px;padding:8px 0;font-size:15px}
 .registro li+li{border-top:1px solid var(--borde)}
@@ -156,6 +156,11 @@ h3{font-size:15px;font-weight:600;color:var(--tenue);margin:4px 0 8px}
 .registro .dur{color:var(--tenue);font-size:14px;text-align:right}
 .registro .led{width:10px;height:10px}
 .registro li.sis .que{color:var(--laton)}
+.registro li.parada{background:#5a1410;border-left:6px solid #ff3b30;padding:12px 8px;margin:4px 0}
+.registro li.parada .que{color:#fff;font-weight:900;font-size:17px;letter-spacing:.03em;text-transform:uppercase}
+.registro li.parada.fin{background:#3b3114;border-left-color:#f2c400}
+.registro li.parada.fin .que{color:#ffe27a}
+.registro li.parada .cuando,.registro li.parada .dur{color:#ffd7d2;font-weight:700}
 #masEv{margin-top:12px}
 #registro{margin-top:8px}
 
@@ -183,6 +188,10 @@ details .ctl{margin-top:10px}
 .guardar{background:var(--laton);color:#1b1a14;border:0;border-radius:2px;height:48px;padding:0 26px;font:inherit;font-size:17px;font-weight:700;cursor:pointer}
 .sec:disabled,.guardar:disabled{opacity:.5;cursor:default}
 .peligro{color:var(--alarma)}
+.cuidado{color:#f0a030}
+button.sec.cuidado{border-color:#f0a030;color:#f0a030}
+button.sec.cuidado:not(:disabled):hover{background:rgba(240,160,48,.12)}
+input[type=file]::file-selector-button{margin-right:12px;padding:8px 14px;border:1px solid var(--borde);border-radius:2px;background:var(--placa2);color:var(--texto);font:inherit;font-weight:700;cursor:pointer}
 .confTxt{width:100%;height:44px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);padding:0 10px;font:inherit;font-size:17px}
 .msg{color:var(--ok);font-size:15px}
 .msg.err{color:var(--alarma)}
@@ -232,7 +241,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 </style>
 </head>
 <body>
-<nav class="pestanas"><a href="#secadero" data-v="sec" class="act">Secadero</a><a href="#ajustes" data-v="aju">Ajustes</a><a href="#balanza" data-v="bal">Balanza</a><a href="/bitacora">Diario de secado</a><button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button></nav>
+<nav class="pestanas"><a href="#secadero" data-v="sec" class="act">Secadero</a><a href="#ajustes" data-v="aju">Ajustes</a><a href="#balanza" data-v="bal">Balanza</a><a href="/bitacora">Diario de secado</a><button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button><button type="button" class="btnPausa" id="btnPausa" disabled>Pausar control</button></nav>
 
 <header>
   <div>
@@ -242,7 +251,6 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
   <div class="red"><span class="led" id="conn"></span><span id="rssi">sin conexión</span></div>
 </header>
 
-<button type="button" class="btnPausa" id="btnPausa" disabled>Pausar control</button>
 
 <div class="aviso" id="aviso" hidden></div>
 
@@ -622,26 +630,28 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
       </form>
     </details>
     <details style="margin-top:12px">
-      <summary>Reiniciar la cámara</summary>
+      <summary class="cuidado">Reiniciar la cámara</summary>
       <p class="ayuda">Reinicia la placa (como apretar el botón EN). Los relés se apagan unos segundos, el historial se guarda antes y el clima espera el tiempo mínimo apagado para volver a encender. Si había una parada de emergencia, sigue activa.</p>
-      <div class="acciones"><button type="button" class="sec" id="reiniciarBtn">Reiniciar ahora</button><span class="msg" id="reiniciarMsg"></span></div>
+      <div class="ctl"><div class="ctl-top"><span>Para confirmar escribí REINICIAR</span></div>
+        <input type="text" id="reiniciarTxt" autocomplete="off" autocapitalize="characters" class="confTxt"></div>
+      <div class="acciones"><button type="button" class="sec cuidado" id="reiniciarBtn" disabled>Reiniciar ahora</button><span class="msg" id="reiniciarMsg"></span></div>
     </details>
     <details style="margin-top:12px" id="otaDet">
-      <summary>Actualizar el programa por Wi-Fi</summary>
+      <summary>Actualizar el programa (OTA, por Wi-Fi)</summary>
       <p class="ayuda">Elegí el archivo <b>camara_curado.ino.bin</b> que genera la compilación. Mientras se graba (menos de un minuto) el clima queda apagado; después el equipo se reinicia solo y el clima espera el tiempo mínimo apagado. Si el programa nuevo no arranca bien o no se conecta al Wi-Fi, el equipo vuelve solo al anterior.</p>
       <div class="ctl"><input type="file" id="otaArch" accept=".bin" class="confTxt"></div>
       <progress id="otaProg" max="100" value="0" hidden style="width:100%;margin-top:8px"></progress>
       <div class="acciones"><button type="button" class="guardar" id="otaBtn" disabled>Actualizar</button><span class="msg" id="otaMsg"></span></div>
     </details>
     <details style="margin-top:12px">
-      <summary class="peligro">Borrar datos guardados</summary>
-      <p class="ayuda">Borra el historial de temperatura y humedad y el registro de relés. No se puede deshacer. El diario de secado y los ajustes se conservan.</p>
+      <summary class="peligro">Borrar historial de temperatura, humedad y relés</summary>
+      <p class="ayuda">Borra los gráficos de temperatura y humedad (todo el historial) y el registro de qué relé trabajó y cuándo. No se puede deshacer. No toca el diario de secado ni los ajustes.</p>
       <div class="ctl"><div class="ctl-top"><span>Para confirmar escribí BORRAR</span></div>
         <input type="text" id="borrarTxt" autocomplete="off" autocapitalize="characters" class="confTxt"></div>
-      <div class="acciones"><button type="button" class="sec peligro" id="borrarBtn" disabled>Borrar todo</button><span class="msg" id="borrarMsg"></span></div>
+      <div class="acciones"><button type="button" class="sec peligro" id="borrarBtn" disabled>Borrar historial y registro</button><span class="msg" id="borrarMsg"></span></div>
     </details>
     <details style="margin-top:12px">
-      <summary class="peligro">Borrar el diario de secado</summary>
+      <summary class="peligro">Borrar el diario de secado (tandas, piezas y anotaciones)</summary>
       <p class="ayuda">Borra todas las tandas, piezas y registros del diario. No se puede deshacer. Antes conviene bajar una copia desde la página del diario. El historial y los ajustes se conservan.</p>
       <div class="ctl"><div class="ctl-top"><span>Para confirmar escribí BORRAR</span></div>
         <input type="text" id="borrarBitTxt" autocomplete="off" autocapitalize="characters" class="confTxt"></div>
@@ -652,7 +662,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.10 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.15 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
@@ -796,6 +806,8 @@ function pintar(e) {
   bpa.disabled = false;
   bpa.textContent = parada ? 'REANUDAR TODO' : 'APAGAR TODO';
   bpa.classList.toggle('activa', parada);
+  if (!window.__tituloBase) window.__tituloBase = document.title;
+  document.title = (parada ? 'PARADA · ' : '') + window.__tituloBase;
   rele('luz', e.releLuz);
   rele('otr', e.releOtros);
   if (!enTest) {                       // durante el test los relés 5 y 6 los mueve el test, no la persona
@@ -1064,10 +1076,13 @@ function limpiarNombre(s) {
           .replace(/[^A-Za-z0-9 \-.\/()+#]/g, '').replace(/\s+/g, ' ').trimStart().slice(0, 12);
 }
 let chartR = null;
+// Filas del gráfico de actividad: los 6 relés y una franja roja PARADA (bit 64 de cada punto del historial).
+const PARADA_FILA = { nombre: 'PARADA', corto: 'PARADA', color: '#ff3b30', bit: 64 };
+const filasAct = () => RELES.concat([PARADA_FILA]);
 
 // Convierte las marcas de cada punto del historial en tramos "encendido" por relé.
 function franjas(d, paso) {
-  return RELES.map((r, fila) => {
+  return filasAct().map((r, fila) => {
     const pts = [];
     let enTramo = false, ultX = 0;
     for (let i = 0; i < d.k.length; i++) {
@@ -1091,7 +1106,7 @@ function dibujarActividad(d, paso, ini, fin) {
   if (!chartR) {
     chartR = new Chart($('#cvR'), {
       type: 'line',
-      data: { datasets: RELES.map((r, i) => ({ label: r.nombre, data: series[i], borderColor: r.color, backgroundColor: r.color,
+      data: { datasets: filasAct().map((r, i) => ({ label: r.nombre, data: series[i], borderColor: r.color, backgroundColor: r.color,
         borderWidth: 10, borderCapStyle: 'butt', pointRadius: 0, spanGaps: false, tension: 0 })) },
       options: {
         parsing: false, animation: false, maintainAspectRatio: false,
@@ -1100,9 +1115,9 @@ function dibujarActividad(d, paso, ini, fin) {
           x: { type: 'linear', grid: { color: rejilla },
                ticks: { color: '#9a968c', maxRotation: 0, callback: v => etiqueta(v) },
                afterBuildTicks: s => { const n = 5; s.ticks = Array.from({ length: n + 1 }, (_, i) => ({ value: s.min + (s.max - s.min) * i / n })); } },
-          y: { min: -0.5, max: RELES.length - 0.5, reverse: true, grid: { color: rejilla },
-               afterBuildTicks: s => { s.ticks = RELES.map((_, i) => ({ value: i })); },
-               ticks: { color: '#9a968c', callback: v => (RELES[v] ? RELES[v].corto : '') } }
+          y: { min: -0.5, max: filasAct().length - 0.5, reverse: true, grid: { color: rejilla },
+               afterBuildTicks: s => { s.ticks = filasAct().map((_, i) => ({ value: i })); },
+               ticks: { color: '#9a968c', callback: v => (filasAct()[v] ? filasAct()[v].corto : '') } }
         }
       }
     });
@@ -1242,7 +1257,7 @@ function textoEvento(cod, on, man) {
   if (cod === 6) return 'Equipo encendido (arranque)';
   if (cod === 7) return on ? 'Control pausado' : 'Control reanudado';
   if (cod === 8) return on ? 'Test de relés iniciado' : 'Test de relés terminado';
-  if (cod === 9) return on ? 'PARADA DE EMERGENCIA (todo apagado)' : 'Parada de emergencia levantada';
+  if (cod === 9) return on ? 'PARADA DE EMERGENCIA: TODO APAGADO' : 'Parada de emergencia levantada';
   return RELES[cod] ? (on ? RELES[cod].on : RELES[cod].off) + (man && cod < 3 ? ' (manual)' : '') : 'Evento desconocido';
 }
 
@@ -1253,12 +1268,13 @@ function pintarEventos(r) {
   lista.forEach(([ts, cod, on, man], i) => {
     // Duración: si es un apagado, se busca el encendido anterior del mismo relé.
     let dur = '';
-    if (cod < 6 && !on && ts) {
+    if ((cod < 6 || cod === 9) && !on && ts) {
       const prev = lista.slice(i + 1).find(e => e[1] === cod);
       if (prev && prev[2] === 1 && prev[0]) dur = 'duró ' + tiempo(ts - prev[0]);
     }
     const li = document.createElement('li');
     if (cod >= 6) li.className = 'sis';
+    if (cod === 9) li.className = on ? 'sis parada' : 'sis parada fin';
     const led = cod < 6 ? `<span class="led${on ? ' on' : ''}" style="${on ? 'background:' + RELES[cod].color + ';box-shadow:none' : ''}"></span>` : '<span></span>';
     li.innerHTML = `<span class="cuando">${cuando(ts)}</span>${led}<span class="que"></span><span class="dur">${dur}</span>`;
     li.querySelector('.que').textContent = textoEvento(cod, on, man);
@@ -1414,7 +1430,7 @@ $('#testBtn').addEventListener('click', async () => {
       const j = await r.json();
       m.className = 'msg err';
       if (j.motivo === 'parada') { m.textContent = 'Hay una parada de emergencia: reanudá antes de hacer el test.'; return; }
-      m.textContent = `Protección de la heladera: el test arranca cuando lleve 3 min apagada. Esperá ${mmss(j.espera)}.`;
+      m.textContent = 'No se pudo iniciar el test.';
       return;
     }
     if (!r.ok) throw 0;
@@ -1868,10 +1884,11 @@ $('#fk').addEventListener('submit', async ev => {
 });
 
 // Actualización del programa por Wi-Fi (POST /api/ota con el .bin).
+$('#reiniciarTxt').addEventListener('input', () => { $('#reiniciarBtn').disabled = $('#reiniciarTxt').value.trim().toUpperCase() !== 'REINICIAR'; });
 $('#reiniciarBtn').addEventListener('click', async () => {
   const btn = $('#reiniciarBtn'), m = $('#reiniciarMsg');
   const error = t => { m.className = 'msg err'; m.textContent = t; btn.disabled = false; };
-  if (!confirm('¿Reiniciar la cámara ahora? Los relés se apagan unos segundos.')) return;
+  if ($('#reiniciarTxt').value.trim().toUpperCase() !== 'REINICIAR') return;
   btn.disabled = true; m.className = 'msg'; m.textContent = 'Reiniciando...';
   try {
     const r = await fetch('/api/reiniciar', { method: 'POST', headers: HX });

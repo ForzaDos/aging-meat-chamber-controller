@@ -25,6 +25,8 @@
 #include <esp_system.h>
 #include <esp_timer.h>
 #include <esp_ota_ops.h>
+#include <esp_core_dump.h>
+#include <esp_partition.h>
 #include <Update.h>
 
 static AsyncWebServer server(80);
@@ -105,9 +107,9 @@ static const char* motivoReinicio() {
     case ESP_RST_EXT:       return "boton de reinicio";
     case ESP_RST_SW:        return "reinicio por software";
     case ESP_RST_PANIC:     return "error del programa (panic)";
-    case ESP_RST_INT_WDT:
-    case ESP_RST_TASK_WDT:
-    case ESP_RST_WDT:       return "watchdog (programa trabado)";
+    case ESP_RST_INT_WDT:   return "watchdog de interrupciones (algo las bloqueó)";
+    case ESP_RST_TASK_WDT:  return "watchdog de tarea (una tarea no respondió)";
+    case ESP_RST_WDT:       return "watchdog del sistema (RTC)";
     case ESP_RST_BROWNOUT:  return "caida de tension (brownout)";
     default:                return "otro";
   }
@@ -185,15 +187,8 @@ static void ordenTest(AsyncWebServerRequest* r) {
   if (a == "iniciar" && r->hasParam("confirmar", true) && r->getParam("confirmar", true)->value() == "SIN220") {
     const String m = r->hasParam("modo", true) ? r->getParam("modo", true)->value() : "uno";
     const uint8_t modo = m == "suma" ? TEST_SUMA : m == "todos" ? TEST_TODOS : TEST_UNO;
-    uint32_t espera;
-    { ControlCandado c; espera = controlTestPedirModo(modo); }   // sin TEST_AVANZADO solo acepta TEST_UNO
-    if (espera) {
-      char b[64];
-      snprintf(b, sizeof(b), "{\"ok\":false,\"espera\":%lu}", (unsigned long)espera);
-      r->send(409, "application/json", b);
-    } else {
-      r->send(200, "application/json", "{\"ok\":true}");
-    }
+    { ControlCandado c; controlTestPedirModo(modo); }   // sin TEST_AVANZADO solo acepta TEST_UNO
+    r->send(200, "application/json", "{\"ok\":true}");
     return;
   }
   r->send(400, "application/json", "{\"ok\":false}");
@@ -394,6 +389,7 @@ static void enviarDiag(AsyncWebServerRequest* r) {
   d["reinicio"]        = motivoReinicio();
   d["ip"]              = WiFi.localIP().toString();
   d["sinClave"]        = (bool)WEB_SIN_CLAVE;
+  d["volcado"]         = (esp_core_dump_image_check() == ESP_OK);   // hay un volcado del último cuelgue en la flash (GET /api/coredump)
   d["particion"]       = esp_ota_get_running_partition()->label;   // app0 / app1
   d["ota"]             = esp_ota_get_next_update_partition(nullptr) != nullptr;
   JsonArray h = d["historial"].to<JsonArray>();
@@ -661,6 +657,24 @@ static void finOta(AsyncWebServerRequest* r) {
   r->send(200, "application/json", "{\"ok\":true}");
 }
 
+// GET /api/coredump  Entrega el volcado del último cuelgue (binario) si hay uno guardado; 404 si no.
+// Se decodifica en la PC con esp-coredump y el .elf del programa que estaba corriendo.
+static void enviarCoredump(AsyncWebServerRequest* r) {
+  size_t dir = 0, tam = 0;
+  const esp_partition_t* p = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_COREDUMP, nullptr);
+  if (!p || esp_core_dump_image_check() != ESP_OK || esp_core_dump_image_get(&dir, &tam) != ESP_OK || !tam || dir < p->address) {
+    r->send(404, "text/plain", "no hay volcado guardado");
+    return;
+  }
+  AsyncWebServerResponse* res = r->beginResponse("application/octet-stream", tam, [p, dir, tam](uint8_t* buf, size_t max, size_t index) -> size_t {
+    if (index >= tam) return 0;
+    const size_t n = (tam - index < max) ? (tam - index) : max;
+    return esp_partition_read(p, dir - p->address + index, buf, n) == ESP_OK ? n : 0;
+  });
+  res->addHeader("Content-Disposition", "attachment; filename=coredump.bin");
+  r->send(res);
+}
+
 // POST /api/parada  accion=on|off   PARADA DE EMERGENCIA: apaga los 6 relés y suspende el control (se guarda: un
 // reinicio no la levanta). "off" la levanta. No depende de la pausa del control.
 static void ordenParada(AsyncWebServerRequest* r) {
@@ -813,6 +827,7 @@ void webInit() {
   server.on(RUTA("/api/clave"),     HTTP_POST, cambiarClave);
   server.on(RUTA("/api/ota"),       HTTP_POST, finOta, subidaOta);
   server.on(RUTA("/api/parada"),    HTTP_POST, ordenParada);
+  server.on(RUTA("/api/coredump"),  HTTP_GET,  enviarCoredump);
   server.on(RUTA("/api/reiniciar"), HTTP_POST, ordenReiniciar);
 #if USAR_BALANZA
   server.on(RUTA("/api/balanza"),   HTTP_GET,  enviarBalanza);

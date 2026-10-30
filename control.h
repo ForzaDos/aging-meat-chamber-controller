@@ -107,7 +107,7 @@ extern const uint8_t PERIODOS_VENT[8];                   // esos períodos, en h
 #define TEST_LARGO_MS  120000UL
 enum : uint8_t { TEST_NINGUNO = 0, TEST_UNO = 1, TEST_SUMA = 2, TEST_TODOS = 3 };
 // TEST_UNO / TEST_SUMA / TEST_TODOS; TEST_NINGUNO = detener. Lo ejecuta controlTestLoop(); desde la web, llamar con ControlCandado.
-// Devuelve 0 si se aceptó, o los segundos que faltan para que la heladera lleve FRIO_MIN_OFF_S apagada.
+// Devuelve siempre 0. El test se hace con los 220 V desconectados: no espera ningún tiempo del compresor.
 uint32_t    controlTestPedirModo(uint8_t modo);
 void        controlTestLoop();                // llamar en cada vuelta del loop()
 bool        controlTestActivo();

@@ -1,7 +1,7 @@
 # Plan — Cámara de curado
 
 ## Estado
-**v1.0.10 OTA en uso (30/10/2026)**, en el laboratorio sin producto. Clima, relés, LCD con menú, web con
+**v1.0.15 OTA en uso (30/10/2026)**, en el laboratorio sin producto. Clima, relés, LCD con menú, web con
 historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualización por Wi-Fi (OTA).
 
 ## Versiones
@@ -19,6 +19,10 @@ historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualizac
 - v1.0.8 OTA (30/10): APAGAR TODO es un botón rectangular con borde de franjas amarillas y negras, debajo de las lecturas y visible en todas las pestañas.
 - v1.0.9 OTA (30/10): APAGAR TODO pasó a la barra de pestañas (siempre visible al bajar la página): fila propia en el celular, al lado de las pestañas en pantallas anchas.
 - v1.0.10 OTA (30/10): arreglo del orden de las reglas CSS: en la tablet el botón es de verdad una quinta pestaña.
+- v1.0.11 OTA (30/10): APAGAR TODO chico (media pestaña) y último de la barra, también en el Diario; la parada se resalta mucho en el registro de relés (renglón rojo, y franja roja PARADA en el gráfico de actividad); GET /api/coredump y motivos de watchdog separados para investigar el cuelgue del 30/10 01:12.
+- v1.0.12 OTA (30/10): el test de relés ya no espera a que la heladera lleve 3 min apagada (se hace con los 220 V desconectados): sin cuenta atrás en el LCD ni en la web.
+- v1.0.13 OTA (30/10): Pausar control es un botón discreto (menor jerarquía que APAGAR TODO) en la barra de pestañas, de todas las páginas.
+- v1.0.14 OTA (30/10): arreglo del orden de reglas CSS en la tablet: APAGAR TODO es la 5.ª pestaña y Pausar (verde claro, discreto) queda abajo a la derecha en todos los tamaños.
 
 ## v41 — Balanza
 - [x] Cliente de la balanza (`balanza.cpp`): primero por Bluetooth (NimBLE) → abortaba por falta de RAM
@@ -75,6 +79,24 @@ historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualizac
       forzado/test/AUX rechazados con 409 `parada`; la pausa del hub (`activo`) no la levanta; reanudar devuelve el control.
 - [ ] Probar el LCD (menú APAGAR TODO / REANUDAR TODO y el aviso fijo) con la persona delante de la pantalla.
 - [ ] El panel del hub no muestra la parada (se podría agregar el estado `parada` a su driver).
+
+- v1.0.15 OTA (30/10): Diagnóstico: Reiniciar en naranja y con confirmación escrita (REINICIAR); el borrado dice exactamente qué datos borra; selector de archivo del OTA con el estilo de la página.
+
+## Cuelgue del 30/10/2026: causa hallada (arreglo pendiente de aprobación)
+- Datos: el historial deja de registrar entre las 01:04 y las 01:15; reinicio por watchdog a las 01:12:08 (v1.0.6), con la parada activa
+  desde las 00:21. Volcado leído por Wi-Fi (`GET /api/coredump`, v1.0.11) y decodificado con la v1.0.6 reconstruida (otra carpeta, la firma
+  SHA no coincide pero las funciones sí).
+- **Causa:** `loopTask` estaba en `DHT::expectPulse` (DHT.cpp:387) ← `DHT::read` ← `readHumidity` ← `loop()` (camara_curado.ino:85), con las
+  interrupciones bloqueadas. La librería Adafruit DHT cuenta vueltas de bucle y no tiempo (`_maxcycles` = 240000 a 240 MHz, cada vuelta es un
+  `digitalRead`): cada espera fallida son decenas de ms y una lectura hace ~80 esperas. Un sensor que contesta el arranque y se corta a mitad de
+  la trama bloquea varios segundos (> 300 ms del watchdog de interrupciones) y reinicia la placa. Un sensor sano no pasa por ahí.
+- Disparador de hardware: el sensor falló lecturas durante minutos (por eso no hay puntos de historial) hasta que una lectura tomó el camino largo.
+  Revisar el cableado del DHT22: VCC a 3V3, pull-up de 4,7–10 kΩ entre DATA y VCC, cable corto, GND real (no el pin falso junto al 5 V).
+- Arreglo propuesto: lector propio del DHT22 con tiempos en µs (abortar la trama al primer timeout, interrupciones bloqueadas solo ~5 ms),
+  contadores `dhtFallas`/`dhtMaxMs` en `/api/diag`, y poder borrar el volcado ya leído.
+- Descartado: candados (los candados del control no intervienen: la lectura del sensor va antes del bloque con candado). El registro de eventos
+  vacío es porque el usuario lo borra para pruebas.
+- Si una carga por OTA falla ("other side closed") la cámara puede quedar con el control suspendido hasta 5 min (OTA_MAX_MS).
 
 ## Pendientes generales
 - [ ] Seguir la memoria libre (Diagnóstico) durante 24 h.
