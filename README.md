@@ -10,10 +10,12 @@
 </p>
 
 Soy aficionado a la charcutería de precision.
+
 Curar carnes en casa siempre fue cuestión de paciencia y de clima: temperatura baja y estable, humedad alta
-pero controlada, aire que se renueva: digamos que solo se podia curar en otoño/invierno. |
+pero controlada, aire que se renueva: digamos que solo se podia curar en otoño/invierno.
+
 Una heladera familiar sola enfría de más y reseca todo por su bajisima humedad relativa, y yo no encontraba nada que me
-sirviera, así que armé esto.|
+sirviera, así que armé esto.
 
 Le pone un **cerebro** a la heladera: elegís que temperatura y cuánta humedad querés, y la cámara las sostiene sola.
 Hay un humificador y un deshumidificador (este ultimo mucho mas importante) ademas de un cooler de PC de 12v para ventilacion.
