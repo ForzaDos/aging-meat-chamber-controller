@@ -112,7 +112,7 @@ ul.lista>li:first-child{border-top:0}
 .almacen{margin-top:6px;font-size:14px;color:var(--tenue)}
 </style>
 </head>
-<body class="sinBal">
+<body>
 <nav class="pestanas"><a href="/#secadero">Secadero</a><a href="/#ajustes">Ajustes</a><a href="/#balanza" data-v="bal">Balanza</a><a href="/bitacora" class="act">Diario de secado</a><button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button><button type="button" class="btnPausa" id="btnPausa" disabled>Pausar control</button></nav>
 
 <header>
@@ -688,7 +688,8 @@ $('#archivo').onchange = async ev => {
 async function leerSeg() {
   try {
     const r = await fetch('/api/balanza', { cache: 'no-store' });
-    if (!r.ok) return false;                // 404: el equipo no tiene balanza
+    if (r.status === 404) { document.body.classList.add('sinBal'); return false; }   // el equipo no tiene balanza
+    if (!r.ok) return false;
     document.body.classList.remove('sinBal');
     SEG = (await r.json()).seg || null;
     if (SEG && !SEG.activo) SEG = null;

@@ -4,7 +4,7 @@
 Controlador de una heladera convertida en cámara de curado: ESP32 + DHT22 + 6 relés + encoder + LCD 20x4,
 con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 lee por Wi-Fi la
 **balanza** (`../balanza`) donde cuelga la **pieza testigo** y sigue su merma.
-**Versión actual: v1.0.15 OTA** (29/10/2026, se actualiza por Wi-Fi). Historial de versiones en `plan.md`.
+**Versión actual: v1.0.16 OTA** (30/10/2026, se actualiza por Wi-Fi). Historial de versiones en `plan.md`.
 
 ## Versión
 - `config.h`: `SOFTWARE_VERSION` (LCD al arrancar, LCD > Diagnostico > Acerca de, pie de la web) y

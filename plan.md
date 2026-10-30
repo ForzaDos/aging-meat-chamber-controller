@@ -1,7 +1,7 @@
 # Plan — Cámara de curado
 
 ## Estado
-**v1.0.15 OTA en uso (30/10/2026)**, en el laboratorio sin producto. Clima, relés, LCD con menú, web con
+**v1.0.16 OTA en uso (30/10/2026)**, en el laboratorio sin producto. Clima, relés, LCD con menú, web con
 historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualización por Wi-Fi (OTA).
 
 ## Versiones
@@ -80,7 +80,8 @@ historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualizac
 - [ ] Probar el LCD (menú APAGAR TODO / REANUDAR TODO y el aviso fijo) con la persona delante de la pantalla.
 - [ ] El panel del hub no muestra la parada (se podría agregar el estado `parada` a su driver).
 
-- v1.0.15 OTA (30/10): Diagnóstico: Reiniciar en naranja y con confirmación escrita (REINICIAR); el borrado dice exactamente qué datos borra; selector de archivo del OTA con el estilo de la página.
+- v1.0.16 OTA (30/10): Diagnóstico: Reiniciar en naranja y con confirmación escrita (REINICIAR); el borrado dice exactamente qué datos borra; selector de archivo del OTA con el estilo de la página.
+- v1.0.16 OTA (30/10): Diario de secado: la pestaña Balanza ya no desaparece unos segundos al entrar (la página arrancaba sin ella y la mostraba recién al contestar la balanza; ahora solo la oculta si el equipo contesta 404).
 
 ## Cuelgue del 30/10/2026: causa hallada (arreglo pendiente de aprobación)
 - Datos: el historial deja de registrar entre las 01:04 y las 01:15; reinicio por watchdog a las 01:12:08 (v1.0.6), con la parada activa
