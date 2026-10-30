@@ -90,8 +90,9 @@ historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualizac
   interrupciones bloqueadas. La librería Adafruit DHT cuenta vueltas de bucle y no tiempo (`_maxcycles` = 240000 a 240 MHz, cada vuelta es un
   `digitalRead`): cada espera fallida son decenas de ms y una lectura hace ~80 esperas. Un sensor que contesta el arranque y se corta a mitad de
   la trama bloquea varios segundos (> 300 ms del watchdog de interrupciones) y reinicia la placa. Un sensor sano no pasa por ahí.
-- Disparador de hardware: el sensor falló lecturas durante minutos (por eso no hay puntos de historial) hasta que una lectura tomó el camino largo.
+- Disparador: el usuario estaba cambiando los cables del sensor con la cámara encendida (~20 min sin sensor); no hay un sensor defectuoso.
   Revisar el cableado del DHT22: VCC a 3V3, pull-up de 4,7–10 kΩ entre DATA y VCC, cable corto, GND real (no el pin falso junto al 5 V).
+- **Decisión del 30/10/2026: no se arregla por ahora** (fase de pruebas en el laboratorio, nada conectado a los relés). Retomar al poner producto o cargas.
 - Arreglo propuesto: lector propio del DHT22 con tiempos en µs (abortar la trama al primer timeout, interrupciones bloqueadas solo ~5 ms),
   contadores `dhtFallas`/`dhtMaxMs` en `/api/diag`, y poder borrar el volcado ya leído.
 - Descartado: candados (los candados del control no intervienen: la lectura del sensor va antes del bloque con candado). El registro de eventos
