@@ -1,7 +1,7 @@
 # Plan — Cámara de curado
 
 ## Estado
-**v1.0.7 OTA en uso (30/10/2026)**, en el laboratorio sin producto. Clima, relés, LCD con menú, web con
+**v1.0.8 OTA en uso (30/10/2026)**, en el laboratorio sin producto. Clima, relés, LCD con menú, web con
 historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualización por Wi-Fi (OTA).
 
 ## Versiones
@@ -15,7 +15,8 @@ historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualizac
 - v1.0.3 OTA (29/10): la web ya no pide clave (cámara, pileta y balanza).
 - v1.0.4 OTA (29/10): la balanza se consulta cada 3 s (antes 1 s); la cámara dejó de perder paquetes (5 % → 0,4 %).
 - v1.0.5/1.0.6 OTA (29/10): parada de emergencia APAGAR TODO (web y LCD) y botón Reiniciar la cámara.
-- v1.0.7 OTA (30/10): el botón APAGAR TODO de la web es un pulsador de emergencia redondo (aro amarillo; hundido y parpadeando cuando está activa).
+- v1.0.7 OTA (30/10): el botón APAGAR TODO de la web fue un pulsador redondo (no gustó).
+- v1.0.8 OTA (30/10): APAGAR TODO es un botón rectangular con borde de franjas amarillas y negras, debajo de las lecturas y visible en todas las pestañas.
 
 ## v41 — Balanza
 - [x] Cliente de la balanza (`balanza.cpp`): primero por Bluetooth (NimBLE) → abortaba por falta de RAM

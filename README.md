@@ -1,29 +1,31 @@
 # Cámara de curado
 
-### Estuve buscando AÑOS un controlador para secado de charcuteria.
-### Con una placa de las más baratas del mercado se puede hacer, y ademas lo manejas desde el celu.
+### Estuve buscando AÑOS un controlador para secado de charcutería.
+### Con una placa de las más baratas del mercado se puede hacer, y además lo manejás desde el celu.
 
 <p align="center">
-  <img src="docs/img/web-secadero.jpg" width="300" alt="Pantalla principal en el celular: pulsador de emergencia APAGAR TODO, temperatura y humedad">
+  <img src="docs/img/web-secadero.jpg" width="300" alt="Pantalla principal en el celular: temperatura, humedad y botón APAGAR TODO">
   &nbsp;&nbsp;
   <img src="docs/img/web-historial.jpg" width="300" alt="Historial de temperatura y humedad en el celular">
 </p>
 
-Soy aficionado a la charcutería de precision.
+Soy aficionado a la charcutería de precisión.
 
 Curar carnes en casa siempre fue cuestión de paciencia y de clima: temperatura baja y estable, humedad alta
-pero controlada, aire que se renueva: digamos que solo se podia curar en otoño/invierno.
+pero controlada, aire que se renueva. Digamos que solo se podía curar en otoño o invierno.
 
-Una heladera familiar sola enfría de más y reseca todo por su bajisima humedad relativa, y yo no encontraba nada que me
+Una heladera familiar sola enfría de más y reseca todo por su bajísima humedad relativa, y yo no encontraba nada que me
 sirviera, así que armé esto.
 
-Le pone un **cerebro** a la heladera: elegís que temperatura y cuánta humedad querés, y la cámara las sostiene sola.
-Hay un humificador y un deshumidificador (este ultimo mucho mas importante) ademas de un cooler de PC de 12v para ventilacion.
+Le pone un **cerebro** a la heladera: elegís qué temperatura y cuánta humedad querés, y la cámara las sostiene sola.
+Hay un humidificador y un deshumidificador (este último, mucho más importante), además de un cooler de PC de 12 V para la ventilación.
 
 Lo comparto **gratis y con el código abierto (licencia MIT)** por si a otros aficionados les sirve: bajalo, armalo, cambiale lo
-que quieras. Este softeare NO SE VENDE ni se va a vender. 
-Si lo armás, contame cómo te fue o que cambios le hiciste.
-BUENOS SALAMES!!!
+que quieras. Este software NO SE VENDE ni se va a vender.
+
+Si lo armás, contame cómo te fue o qué cambios le hiciste.
+
+¡BUENOS SALAMES!
 
 ## Qué controla
 
@@ -130,7 +132,7 @@ conector USB. Y no inviertas VCC y GND del HX711: se calienta en segundos y se p
 <summary><b>Cómo se usa</b></summary>
 
 - **Web**: abrí `http://camara-curado.local` o la IP que muestra el menú del equipo (*Diagnóstico > Red e IP*). Pestañas:
-  **Secadero** (estado y botones), **Ajustes**, **Balanza** y **Diario de secado**. Arriba está el botón rojo **APAGAR TODO**.
+  **Secadero** (estado y botones), **Ajustes**, **Balanza** y **Diario de secado**. El botón rojo **APAGAR TODO** está debajo de la temperatura y la humedad, y se ve en todas las pestañas.
 - **Menú del equipo**: apretá la perilla en la pantalla normal. Todo el menú está en [`docs/Menu_LCD.pdf`](docs/Menu_LCD.pdf).
 - **Calibración del sensor**: hay un asistente (con sal) en el menú y en la web.
 
