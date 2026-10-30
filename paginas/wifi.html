@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17191b">
+<title>Red Wi-Fi</title>
+<style>
+:root{--acero:#17191b;--placa:#202326;--placa2:#2a2e32;--borde:#3a3f44;--texto:#e9e4da;--tenue:#9a968c;--laton:#c9a54b;--ok:#8fd694;--alarma:#ff6b57;
+  --f:"DIN Alternate","Bahnschrift","Roboto Condensed","Arial Narrow",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html{background:var(--acero)}
+body{font:16px/1.35 var(--f);font-stretch:condensed;color:var(--texto);background:var(--acero);max-width:640px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) 12px 28px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:6px 2px 10px;border-bottom:2px solid var(--laton);margin-bottom:12px}
+h1{font-size:28px;font-weight:700;line-height:1.05}
+.volver{color:var(--laton);font-weight:700;font-size:17px;text-decoration:none;white-space:nowrap;padding:8px 0}
+.placa{background:var(--placa);border:1px solid var(--borde);padding:14px}
+.placa+.placa{margin-top:12px}
+h2{font-size:15px;font-weight:600;color:var(--tenue);margin-bottom:10px}
+.dato{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--borde)}
+.dato:first-of-type{border-top:0}
+.dato span{color:var(--tenue)}
+.dato b{font-weight:600;text-align:right;word-break:break-all}
+ul{list-style:none;margin-top:10px}
+li button{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:46px;padding:8px 12px;margin-bottom:6px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:2px;font:inherit;font-size:17px;cursor:pointer;text-align:left}
+li button.sel{border-color:var(--laton);background:#352d18}
+li small{color:var(--tenue);font-size:13px;white-space:nowrap;margin-left:8px}
+label{display:block;font-size:14px;color:var(--tenue);margin:12px 0 4px}
+input[type=text],input[type=password]{width:100%;height:46px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:2px;padding:0 10px;font:inherit;font-size:17px}
+.chk{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:15px;color:var(--tenue)}
+.chk input{width:20px;height:20px;accent-color:var(--laton)}
+.sec,.guardar{border-radius:2px;font:inherit;font-weight:700;cursor:pointer;height:44px;padding:0 18px}
+.sec{background:var(--placa2);color:var(--texto);border:1px solid var(--borde)}
+.guardar{background:var(--laton);color:#1b1a14;border:0;height:48px;font-size:17px;width:100%;margin-top:14px}
+.guardar:disabled,.sec:disabled{opacity:.5;cursor:default}
+.ayuda{font-size:14px;color:var(--tenue);margin-top:10px}
+.msg{margin-top:12px;padding:10px 12px;border-left:4px solid var(--laton);background:#352d18;font-weight:600}
+.msg.ok{border-color:var(--ok);background:#1f3022}
+.msg.mal{border-color:var(--alarma);background:#3a1e1b}
+</style>
+</head>
+<body>
+<header><h1>Red Wi-Fi</h1><a class="volver" href="/#ajustes">&lsaquo; Ajustes</a></header>
+
+<section class="placa">
+  <h2>Estado actual</h2>
+  <div class="dato"><span>Red guardada</span><b id="eRed">–</b></div>
+  <div class="dato"><span>Conexión</span><b id="eCon">–</b></div>
+  <div class="dato"><span>Dirección IP</span><b id="eIp">–</b></div>
+  <div class="dato"><span>Señal</span><b id="eSen">–</b></div>
+</section>
+
+<section class="placa">
+  <h2>Elegir otra red</h2>
+  <button type="button" class="sec" id="bBuscar">Buscar redes</button>
+  <ul id="redes"></ul>
+  <label for="ssid">Nombre de la red (SSID)</label>
+  <input type="text" id="ssid" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false">
+  <label for="clave">Clave</label>
+  <input type="password" id="clave" maxlength="63" autocomplete="off" autocapitalize="none" spellcheck="false">
+  <label class="chk"><input type="checkbox" id="ver"> Mostrar la clave</label>
+  <button type="button" class="guardar" id="bCon">Conectar y guardar</button>
+  <div class="msg" id="msg" hidden></div>
+  <p class="ayuda">Si la clave está mal o la red no responde, en 20 segundos la placa vuelve sola a la red anterior. Si cambiás a una red distinta de la que usás ahora, esta página va a dejar de responder: la IP nueva se ve en la pantalla del equipo (Menú &rsaquo; Diagnóstico &rsaquo; Ver IP). Las redes de 5 GHz no sirven: tiene que ser de 2,4 GHz.</p>
+</section>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let probando = false, buscando = false, pruebaDesde = 0;   // pruebaDesde: respuestas pedidas antes de probar no cuentan
+function msg(t, c) { const m = $('#msg'); m.textContent = t; m.className = 'msg' + (c ? ' ' + c : ''); m.hidden = !t; }
+
+async function estado() {
+  const pedido = Date.now();
+  try {
+    const e = await (await fetch('/api/wifi', { cache: 'no-store' })).json();
+    $('#eRed').textContent = e.ssid || '–';
+    $('#eCon').textContent = e.conectado ? 'conectada' : 'sin conexión';
+    $('#eIp').textContent = e.conectado ? e.ip : '–';
+    $('#eSen').textContent = e.conectado ? e.rssi + ' dBm' : '–';
+    if (probando && pedido > pruebaDesde) {
+      if (e.prueba === 2) { probando = false; $('#bCon').disabled = false; msg('Listo: la placa se conectó a "' + e.ssid + '". IP: ' + e.ip + '. Si estás en la red CamaraCurado-Setup, volvé a tu Wi-Fi y abrí http://' + e.ip, 'ok'); }
+      else if (e.prueba === 3) { probando = false; $('#bCon').disabled = false; msg('No se pudo conectar. Revisá la clave y que la red sea de 2,4 GHz. La placa volvió a la red anterior.', 'mal'); }
+    }
+  } catch (_) {}
+}
+
+async function buscar(nuevo) {
+  if (buscando && nuevo) return;
+  buscando = true; $('#bBuscar').disabled = true; $('#bBuscar').textContent = 'Buscando...';
+  try {
+    const r = await (await fetch('/api/wifi/scan' + (nuevo ? '?nuevo=1' : ''), { cache: 'no-store' })).json();
+    if (r.estado === 'listo') {
+      buscando = false; $('#bBuscar').disabled = false; $('#bBuscar').textContent = 'Buscar redes';
+      $('#redes').innerHTML = r.redes.length ? r.redes.map(x =>
+        `<li><button type="button" data-s="${esc(x.s)}" data-a="${x.a ? 1 : 0}">${esc(x.s)}<small>${x.a ? 'abierta' : 'con clave'} · ${x.r} dBm</small></button></li>`).join('')
+        : '<li><span class="ayuda">No se encontró ninguna red.</span></li>';
+      return;
+    }
+  } catch (_) {}
+  setTimeout(() => buscar(false), 1500);
+}
+
+$('#bBuscar').onclick = () => buscar(true);
+$('#redes').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  for (const x of document.querySelectorAll('#redes button')) x.classList.toggle('sel', x === b);
+  $('#ssid').value = b.dataset.s;
+  if (b.dataset.a === '1') $('#clave').value = ''; else $('#clave').focus();
+};
+$('#ver').onchange = e => { $('#clave').type = e.target.checked ? 'text' : 'password'; };
+$('#bCon').onclick = async () => {
+  const s = $('#ssid').value.trim(), c = $('#clave').value;
+  if (!s) { msg('Elegí una red o escribí su nombre.', 'mal'); return; }
+  if (c && c.length < 8) { msg('La clave tiene que tener al menos 8 caracteres.', 'mal'); return; }
+  $('#bCon').disabled = true; msg('Conectando... (hasta 20 segundos)');
+  try {
+    const r = await fetch('/api/wifi', { method: 'POST', headers: { 'X-Camara': '1' }, body: new URLSearchParams({ ssid: s, clave: c }) });
+    if (r.status === 400) { $('#bCon').disabled = false; msg('La placa no aceptó el pedido: ya hay una prueba en curso, o el nombre o la clave no son válidos.', 'mal'); return; }
+    if (!r.ok) throw 0;
+    pruebaDesde = Date.now();
+    probando = true;
+  } catch (_) { $('#bCon').disabled = false; msg('No se pudo enviar. Revisá la conexión con la placa.', 'mal'); }
+};
+estado(); setInterval(estado, 2000); buscar(true);
+</script>
+<footer id="acerca" style="text-align:center;font-size:13px;color:var(--tenue);margin:28px 0 14px;white-space:pre-line;line-height:1.5">Cámara de curado</footer>
+<script>fetch('/api/acerca',{cache:'no-store'}).then(r=>r.json()).then(d=>{document.getElementById('acerca').textContent='Cámara de curado · '+d.version+'\nSoftware hecho por '+d.autor;}).catch(()=>{});</script>
+</body>
+</html>

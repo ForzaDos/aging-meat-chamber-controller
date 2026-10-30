@@ -1,0 +1,10 @@
+# Cámara de curado: dos lugares para el programa (el que corre y el que recibe la actualización
+# por Wi-Fi) y 1 MB para los datos (historial, eventos, diario, pesajes). Flash de 4 MB.
+# nvs queda en el mismo lugar que en los esquemas de fábrica: la configuración no se pierde.
+# Name,   Type, SubType,  Offset,   Size
+nvs,      data, nvs,      0x9000,   0x5000,
+otadata,  data, ota,      0xe000,   0x2000,
+app0,     app,  ota_0,    0x10000,  0x170000,
+app1,     app,  ota_1,    0x180000, 0x170000,
+spiffs,   data, spiffs,   0x2F0000, 0x100000,
+coredump, data, coredump, 0x3F0000, 0x10000,

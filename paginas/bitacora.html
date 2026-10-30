@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17191b">
+<title>Diario de secado</title>
+<style>
+:root{
+  --acero:#17191b; --placa:#202326; --placa2:#2a2e32; --borde:#3a3f44;
+  --texto:#e9e4da; --tenue:#9a968c;
+  --pimenton:#e0623f; --moho:#9fcdbb; --laton:#c9a54b; --ok:#8fd694; --alarma:#ff6b57;
+  --f:"DIN Alternate","Bahnschrift","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html{background:var(--acero)}
+body{font:16px/1.35 var(--f);font-stretch:condensed;color:var(--texto);background:var(--acero);
+  max-width:960px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) 12px max(28px,env(safe-area-inset-bottom))}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:6px 2px 10px;border-bottom:2px solid var(--laton);margin-bottom:12px}
+h1{font-size:28px;font-weight:700;line-height:1.05}
+/* Pestañas: Secadero (mirar), Ajustes (configurar) y Diario de secado. Siempre visibles arriba. */
+.pestanas{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-12px -12px 14px;padding:10px 12px;background:var(--acero);border-bottom:1px solid var(--borde)}
+.pestanas a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:4px 8px;border:1px solid var(--borde);background:var(--placa);color:var(--tenue);font-weight:700;font-size:18px;line-height:1.1;text-align:center;text-decoration:none;letter-spacing:.02em}
+.pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1a14;pointer-events:none}
+@media (max-width:420px){.pestanas a{font-size:15px;padding:4px 4px}}
+body.sinBal .pestanas{grid-template-columns:repeat(3,1fr)}
+body.sinBal [data-v=bal]{display:none!important}
+.tag.bal{border-color:var(--pimenton);color:var(--pimenton)}
+.aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#3a1e1b;font-weight:600}
+.aviso.ok{border-color:var(--ok);background:#1f3022}
+.placa{background:var(--placa);border:1px solid var(--borde);box-shadow:inset 0 1px 0 #ffffff0d;padding:14px}
+.placa+.placa{margin-top:12px}
+details.panel>summary{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;cursor:pointer;min-height:30px;color:var(--tenue)}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::before{content:'';width:7px;height:7px;border-right:2px solid var(--tenue);border-bottom:2px solid var(--tenue);transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px;flex:none}
+details.panel[open]>summary::before{transform:rotate(45deg)}
+details.panel[open]>summary{margin-bottom:12px}
+.tit{font-size:15px;font-weight:600}
+.res{margin-left:auto;font-size:15px;font-weight:600;color:var(--texto);text-align:right}
+details.panel[open]>summary .res{display:none}
+h3{font-size:15px;font-weight:600;color:var(--tenue);margin:14px 0 8px}
+button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--laton);outline-offset:1px}
+
+select,input[type=text],input[type=number],input[type=date],textarea{width:100%;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:2px;height:44px;padding:0 10px;font:inherit;font-size:17px}
+textarea{height:64px;padding:8px 10px;resize:vertical}
+label{display:block;font-size:14px;color:var(--tenue);margin:0 0 4px}
+.campo{margin-bottom:10px;min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.chk{display:flex;align-items:center;gap:10px;margin:6px 0 10px;font-size:17px}
+.chk input{width:22px;height:22px;accent-color:var(--laton);flex:none}
+
+.sec,.guardar{border-radius:2px;font:inherit;font-weight:700;cursor:pointer;height:42px;padding:0 14px}
+.sec{background:var(--placa2);color:var(--texto);border:1px solid var(--borde)}
+.sec.peligro{color:var(--alarma)}
+.sec:disabled{opacity:.45;cursor:default}
+.guardar{background:var(--laton);color:#1b1a14;border:0;height:46px;padding:0 24px;font-size:17px}
+.botones{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.acciones{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px}
+.ayuda{font-size:14px;color:var(--tenue);margin:4px 0 8px}
+form.edit{border:1px solid var(--borde);background:var(--placa2);padding:12px;margin:10px 0}
+form.edit .sec{background:var(--placa)}
+
+.et{display:grid;grid-template-columns:1fr 1fr 1fr 44px;gap:8px;margin-bottom:8px;align-items:end}
+.et button{height:44px;padding:0}
+
+.datos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0}
+@media (min-width:640px){.datos{grid-template-columns:repeat(5,1fr)}}
+.dato{border:1px solid var(--borde);background:var(--placa2);padding:9px 10px;min-width:0}
+.dato small{display:block;font-size:13px;color:var(--tenue)}
+.dato b{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.dato b span{font-size:14px;color:var(--tenue);font-weight:500;margin-left:2px}
+.barra{height:8px;background:var(--placa2);border:1px solid var(--borde);margin-top:6px;position:relative}
+.barra i{display:block;height:100%;background:var(--laton)}
+
+ul.lista{list-style:none}
+ul.lista>li{padding:10px 0;border-top:1px solid var(--borde)}
+ul.lista>li:first-child{border-top:0}
+.l1{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:17px}
+.l1 b{font-weight:700}
+.l1 .d{color:var(--tenue);font-size:14px;white-space:nowrap}
+.l2{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--tenue);margin-top:3px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.l3{font-size:14px;color:var(--texto);margin-top:3px}
+.mini{display:inline-flex;gap:6px;margin-top:6px}
+.mini button{background:none;border:1px solid var(--borde);color:var(--tenue);border-radius:2px;height:32px;padding:0 10px;font:inherit;font-size:14px;cursor:pointer}
+.mini button.x{color:var(--alarma)}
+.merma{color:var(--pimenton);font-weight:700}
+.desv{color:var(--alarma)}
+.tag{font-size:12px;border:1px solid var(--laton);color:var(--laton);padding:0 5px;margin-left:6px;border-radius:2px;vertical-align:middle}
+
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--borde);margin-bottom:12px}
+.tabs button{background:var(--placa2);color:var(--tenue);border:0;padding:11px 0;font:inherit;font-weight:600;cursor:pointer}
+.tabs button+button{border-left:1px solid var(--borde)}
+.tabs button.on{background:var(--laton);color:#1b1a14}
+.grafico{position:relative;height:280px}
+.almacen{margin-top:6px;font-size:14px;color:var(--tenue)}
+</style>
+</head>
+<body class="sinBal">
+<nav class="pestanas"><a href="/#secadero">Secadero</a><a href="/#ajustes">Ajustes</a><a href="/#balanza" data-v="bal">Balanza</a><a href="/bitacora" class="act">Diario de secado</a></nav>
+
+<header>
+  <h1>Diario de secado</h1>
+</header>
+
+<div class="aviso" id="aviso" hidden></div>
+
+<section class="placa">
+  <details class="panel" open>
+    <summary><span class="tit">Tanda</span><span class="res" id="r_tanda"></span></summary>
+    <label for="selT">Tanda en seguimiento</label>
+    <select id="selT"></select>
+    <div class="botones">
+      <button type="button" class="sec" id="bNuevaT">Nueva tanda</button>
+      <button type="button" class="sec" id="bEditT">Editar</button>
+      <button type="button" class="sec peligro" id="bDelT">Borrar</button>
+    </div>
+
+    <form class="edit" id="fT" hidden>
+      <div class="campo"><label for="tn">Nombre</label><input type="text" id="tn" maxlength="40" placeholder="Salame 10 kg"></div>
+      <div class="grid2">
+        <div class="campo"><label for="tf">Fecha de inicio</label><input type="date" id="tf"></div>
+        <div class="campo"><label for="tkg">Peso total (kg)</label><input type="number" id="tkg" step="any" min="0" inputmode="decimal"></div>
+        <div class="campo"><label for="tmo">Merma objetivo (%)</label><input type="number" id="tmo" step="any" min="0" max="80" inputmode="decimal" value="30"></div>
+        <div class="campo"><label for="tdo">Duración prevista (días)</label><input type="number" id="tdo" step="1" min="0" inputmode="numeric" value="45"></div>
+      </div>
+      <h3>Receta de la cámara (a partir de qué día)</h3>
+      <div id="etapas"></div>
+      <button type="button" class="sec" id="bEtapa">+ Agregar etapa</button>
+      <div class="campo" style="margin-top:10px"><label for="tnt">Notas (receta, tripa, curado...)</label><textarea id="tnt" maxlength="200"></textarea></div>
+      <div class="acciones"><button type="submit" class="guardar">Guardar tanda</button><button type="button" class="sec" id="cT">Cancelar</button></div>
+    </form>
+
+    <div id="resT"></div>
+  </details>
+</section>
+
+<section class="placa">
+  <details class="panel" open>
+    <summary><span class="tit">Piezas</span><span class="res" id="r_piezas"></span></summary>
+    <ul class="lista" id="listaP"></ul>
+    <div class="botones"><button type="button" class="sec" id="bNuevaP">Agregar pieza</button></div>
+    <form class="edit" id="fP" hidden>
+      <div class="campo"><label for="pn">Nombre</label><input type="text" id="pn" maxlength="30" placeholder="Pieza testigo 1"></div>
+      <div class="grid2">
+        <div class="campo"><label for="pf">Entró a la cámara</label><input type="date" id="pf"></div>
+        <div class="campo"><label for="pp0">Peso inicial (g)</label><input type="number" id="pp0" step="any" min="0" inputmode="decimal"></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="pts" checked> Es pieza testigo (cuenta para la merma de la tanda)</label>
+      <div class="campo"><label for="pnt">Nota</label><input type="text" id="pnt" maxlength="80"></div>
+      <div class="acciones"><button type="submit" class="guardar">Guardar pieza</button><button type="button" class="sec" id="cP">Cancelar</button></div>
+    </form>
+  </details>
+</section>
+
+<section class="placa">
+  <details class="panel" id="b_reg" open>
+    <summary><span class="tit">Anotar el día</span></summary>
+    <form id="fR">
+      <div class="grid2">
+        <div class="campo"><label for="rf">Fecha</label><input type="date" id="rf"></div>
+        <div class="campo"><label for="rp">Pieza</label><select id="rp"></select></div>
+      </div>
+      <div class="campo"><label for="rw">Peso hoy (g), si pesaste la pieza</label><input type="number" id="rw" step="any" min="0" inputmode="decimal"></div>
+      <div class="grid2">
+        <div class="campo"><label for="rrt">Receta: temperatura (°C)</label><input type="number" id="rrt" step="any" inputmode="decimal"></div>
+        <div class="campo"><label for="rrh">Receta: humedad (%)</label><input type="number" id="rrh" step="any" inputmode="decimal"></div>
+        <div class="campo"><label for="rmt">Medida: temperatura (°C)</label><input type="number" id="rmt" step="any" inputmode="decimal"></div>
+        <div class="campo"><label for="rmh">Medida: humedad (%)</label><input type="number" id="rmh" step="any" inputmode="decimal"></div>
+      </div>
+      <div class="botones" style="margin-top:0"><button type="button" class="sec" id="bTraer">Traer promedio medido por la cámara</button></div>
+      <p class="ayuda" id="infoTraer"></p>
+      <div class="campo"><label for="rnt">Nota</label><input type="text" id="rnt" maxlength="120" placeholder="Aspecto, olor, moho, ajustes..."></div>
+      <div class="acciones"><button type="submit" class="guardar" id="bGuardarR">Guardar registro</button><button type="button" class="sec" id="cR" hidden>Cancelar edición</button></div>
+      <p class="ayuda">Lo que anotás acá es solo un registro: no cambia los objetivos de la cámara.</p>
+    </form>
+  </details>
+</section>
+
+<section class="placa">
+  <details class="panel" open>
+    <summary><span class="tit">Diario</span><span class="res" id="r_diario"></span></summary>
+    <ul class="lista" id="diario"></ul>
+  </details>
+</section>
+
+<section class="placa">
+  <details class="panel" id="b_graf">
+    <summary><span class="tit">Gráficos</span></summary>
+    <div class="tabs" id="tabsG">
+      <button type="button" data-g="merma" class="on">Merma</button>
+      <button type="button" data-g="hum">Humedad</button>
+      <button type="button" data-g="temp">Temperatura</button>
+    </div>
+    <div class="grafico"><canvas id="cv"></canvas></div>
+    <p class="ayuda" id="ayudaG"></p>
+  </details>
+</section>
+
+<section class="placa">
+  <details class="panel">
+    <summary><span class="tit">Copia de seguridad y planilla</span></summary>
+    <div class="botones">
+      <button type="button" class="sec" id="bCsv">Descargar planilla (CSV)</button>
+      <button type="button" class="sec" id="bCopia">Descargar copia</button>
+      <button type="button" class="sec" id="bRestaurar">Restaurar copia</button>
+      <button type="button" class="sec" id="bCompactar">Ordenar y compactar</button>
+    </div>
+    <input type="file" id="archivo" accept=".jsonl,.txt,.json" hidden>
+    <div class="barra"><i id="barraUso" style="width:0"></i></div>
+    <p class="almacen" id="almacen"></p>
+    <p class="ayuda">El diario se guarda en la memoria de la placa y sobrevive a cortes de luz. Igual conviene bajar una copia de vez en cuando. Para abrir la planilla en Excel o Google Sheets usá el CSV.</p>
+  </details>
+</section>
+
+<script src="/chart.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const p2 = n => String(n).padStart(2, '0');
+const num = v => { const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) ? x : null; };
+const fx = (x, d = 1) => x == null ? '–' : Number(x).toFixed(d).replace('.', ',');
+const hoy = () => { const d = new Date(); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); };
+const msd = f => { const [a, b, c] = f.split('-').map(Number); return Date.UTC(a, b - 1, c); };
+const dias = (a, b) => Math.round((msd(b) - msd(a)) / 864e5);
+const nuevoId = p => p + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
+const COLORES = ['#e0623f', '#9fcdbb', '#c9a54b', '#8fb8e0', '#f1dc8a', '#d98fd0', '#8fd694', '#d9d4c7'];
+
+let M = new Map();          // k -> objeto vigente
+let malas = 0, cargadoOk = false;   // cargadoOk: el diario se leyó bien de la placa
+let selTanda = null;
+let editT = null, editP = null, editR = null;
+let modoG = 'merma', chart = null;
+let SEG = null, HISTB = null;   // seguimiento de la pieza testigo en la balanza y su registro de peso
+const segDe = t => SEG && SEG.tanda && t && SEG.tanda === t.k ? SEG : null;   // la balanza pesa la testigo de esta tanda
+
+function aviso(txt, ok) {
+  const a = $('#aviso');
+  a.textContent = txt; a.className = 'aviso' + (ok ? ' ok' : ''); a.hidden = !txt;
+  if (txt && ok) setTimeout(() => { if (a.textContent === txt) a.hidden = true; }, 3500);
+}
+
+// ---------- Acceso a la placa ----------
+async function cargar() {
+  const r = await fetch('/api/bitacora', { cache: 'no-store' });
+  if (!r.ok) throw new Error('http ' + r.status);   // un error no se toma como diario vacío
+  armar(await r.text());
+  cargadoOk = true;
+}
+function armar(t) {
+  M = new Map(); malas = 0;
+  for (const ln of t.split('\n')) {
+    if (!ln.trim()) continue;
+    try {
+      const o = JSON.parse(ln);
+      if (!o || typeof o !== 'object' || !o.k) { malas++; continue; }
+      if (o.x) M.delete(o.k); else M.set(o.k, o);
+    } catch (e) { malas++; }
+  }
+}
+async function enviar(o, tmp) {
+  const b = new URLSearchParams({ linea: JSON.stringify(o) });
+  if (tmp) b.set('tmp', '1');
+  const r = await fetch('/api/bitacora', { method: 'POST', headers: HX, body: b });
+  if (!r.ok) { const e = new Error('http ' + r.status); e.code = r.status; throw e; }
+}
+async function guardar(lineas) {
+  try {
+    for (const o of lineas) await enviar(o, false);
+    await cargar();
+    return true;
+  } catch (e) {
+    aviso(e.code === 507 ? 'No hay lugar en la memoria. Usá "Ordenar y compactar", bajá una copia y borrá tandas viejas.' :
+          e.code === 413 ? 'El texto es demasiado largo.' : 'No se pudo guardar. ¿Hay conexión con la cámara?');
+    try { await cargar(); } catch (e2) {}
+    return false;
+  }
+}
+
+// ---------- Datos ----------
+const tandas = () => [...M.values()].filter(o => o.a === 'tanda');
+const piezasDe = t => [...M.values()].filter(o => o.a === 'pieza' && o.t === t);
+const regsDe = t => [...M.values()].filter(o => o.a === 'reg' && o.t === t)
+  .sort((a, b) => a.f < b.f ? -1 : a.f > b.f ? 1 : (a.k < b.k ? -1 : 1));
+
+function etapaDe(t, dia) {
+  let e = null;
+  for (const s of (t.et || []).slice().sort((a, b) => a[0] - b[0])) if (s[0] <= dia) e = s;
+  return e ? { t: e[1], h: e[2] } : null;
+}
+function mermaDe(p0, w) { return (p0 > 0 && w != null) ? (p0 - w) / p0 * 100 : null; }
+function estadoPieza(p, regs) {
+  const ws = regs.filter(r => r.p === p.k && r.w != null);
+  const u = ws.length ? ws[ws.length - 1] : null;
+  const w = u ? u.w : p.p0;
+  return { w, ult: u, m: u ? mermaDe(p.p0, u.w) : null, dias: u ? dias(p.f, u.f) : 0, n: ws.length };
+}
+function resumenTanda(t) {
+  const piezas = piezasDe(t.k), regs = regsDe(t.k);
+  const est = piezas.map(p => ({ p, e: estadoPieza(p, regs) })).filter(x => x.e.m != null);
+  let base = est.filter(x => x.p.ts);
+  if (!base.length) base = est;
+  const mAvg = base.length ? base.reduce((s, x) => s + x.e.m, 0) / base.length : null;
+  let ritmo = null;
+  const rs = base.filter(x => x.e.dias > 0).map(x => x.e.m / x.e.dias);
+  if (rs.length) ritmo = rs.reduce((a, b) => a + b, 0) / rs.length;
+  let falta = null;
+  if (mAvg != null && ritmo > 0 && t.mo > 0 && mAvg < t.mo) falta = Math.ceil((t.mo - mAvg) / ritmo);
+  const sg = segDe(t);
+  if (sg && sg.merma != null) {         // la pieza de la balanza es la testigo: su merma es la de la tanda
+    return { piezas, regs, mAvg: sg.merma, ritmo: sg.ritmo != null ? sg.ritmo : null,
+             falta: sg.falta == null ? null : sg.falta <= 0 ? 0 : Math.ceil(sg.falta), dia: Math.max(0, dias(t.f, hoy())), bal: sg };
+  }
+  return { piezas, regs, mAvg, ritmo, falta, dia: Math.max(0, dias(t.f, hoy())) };
+}
+
+// ---------- Dibujo ----------
+function tandaActual() { return M.get(selTanda) || null; }
+
+function dibujar() {
+  const ts = tandas();
+  if (!tandaActual()) {
+    const ult = (() => { try { return localStorage.getItem('bitTanda'); } catch (e) { return null; } })();
+    selTanda = (ult && M.get(ult) && M.get(ult).a === 'tanda') ? ult : (ts.length ? ts[ts.length - 1].k : null);
+  }
+  const sel = $('#selT');
+  sel.innerHTML = ts.length ? ts.map(t => `<option value="${esc(t.k)}"${t.k === selTanda ? ' selected' : ''}>${esc(t.n)} (${esc(t.f)})</option>`).join('')
+                            : '<option value="">(todavía no hay tandas)</option>';
+  const t = tandaActual();
+  $('#bEditT').disabled = $('#bDelT').disabled = !t;
+  $('#bNuevaP').disabled = !t;
+  $('#fR').querySelectorAll('input,select,button').forEach(el => { el.disabled = !t; });
+  if (!t) {
+    $('#resT').innerHTML = '<p class="ayuda">Creá una tanda para empezar: por ejemplo "Salame 10 kg", con la fecha en que entró a la cámara y la receta de temperatura y humedad.</p>';
+    $('#r_tanda').textContent = '';
+    $('#listaP').innerHTML = ''; $('#diario').innerHTML = '';
+    $('#r_piezas').textContent = ''; $('#r_diario').textContent = '';
+    if ($('#fT').hidden) abrirT(null);
+    dibujarAlmacen();
+    return;
+  }
+  const R = resumenTanda(t);
+  const dObj = num(t.do) > 0 ? num(t.do) : null;   // días objetivo: solo un número (el diario puede traer cualquier texto)
+  $('#r_tanda').textContent = `día ${R.dia}` + (R.mAvg != null ? ` · merma ${fx(R.mAvg)} %` : '');
+  $('#resT').innerHTML = `
+    <div class="datos">
+      <div class="dato"><small>Día de secado</small><b>${R.dia}<span>de ${dObj != null ? fx(dObj, 0) : '–'}</span></b>
+        ${dObj ? `<div class="barra"><i style="width:${Math.min(100, R.dia / dObj * 100)}%"></i></div>` : ''}</div>
+      <div class="dato"><small>Piezas</small><b>${R.piezas.length + (R.bal ? 1 : 0)}</b></div>
+      <div class="dato"><small>Merma actual</small><b class="merma">${fx(R.mAvg)}<span>%</span></b>
+        ${t.mo ? `<div class="barra"><i style="width:${Math.min(100, Math.max(0, (R.mAvg || 0) / t.mo * 100))}%"></i></div>` : ''}</div>
+      <div class="dato"><small>Merma objetivo</small><b>${fx(t.mo)}<span>%</span></b></div>
+      <div class="dato"><small>Falta (estimado)</small><b>${R.falta != null ? '~' + R.falta : '–'}<span>${R.falta != null ? 'días' : ''}</span></b></div>
+    </div>
+    <p class="ayuda">${R.bal ? 'Merma de la pieza testigo en la balanza (se pesa sola). ' : ''}${esc(t.kg ? t.kg + ' kg · ' : '')}inició el ${esc(t.f)}${t.nt ? ' · ' + esc(t.nt) : ''}${R.ritmo != null ? ' · ritmo ' + fx(R.ritmo, 2) + ' % por día' : ''}. La estimación supone un ritmo constante, que en la práctica baja con los días.</p>`;
+
+  // Piezas
+  const nP = R.piezas.length + (R.bal ? 1 : 0);
+  $('#r_piezas').textContent = nP + (nP === 1 ? ' pieza' : ' piezas');
+  const liBal = R.bal ? `<li><div class="l1"><b>Pieza en la balanza<span class="tag bal">testigo · balanza</span></b><span class="d">${R.bal.vivo ? 'en vivo' : 'último registro'}</span></div>
+      <div class="l2"><span>${fx(R.bal.p0, 0)} g → ${fx(R.bal.peso, 0)} g</span><span class="merma">merma ${fx(R.bal.merma)} %</span></div>
+      <div class="l3">Es la que cuenta para la merma de la tanda.${R.piezas.some(p => p.ts) ? ' Las otras piezas testigo se muestran pero no cuentan.' : ''}</div>
+      <div class="mini"><button type="button" onclick="location.href='/#balanza'">Ver en Balanza</button></div></li>` : '';
+  $('#listaP').innerHTML = liBal + (R.piezas.length ? R.piezas.map(p => {
+    const e = estadoPieza(p, R.regs);
+    return `<li><div class="l1"><b>${esc(p.n)}${p.ts ? '<span class="tag">testigo</span>' : ''}</b><span class="d">entró ${esc(p.f)}</span></div>
+      <div class="l2"><span>${fx(p.p0, 0)} g → ${fx(e.w, 0)} g</span><span class="merma">${e.m != null ? 'merma ' + fx(e.m) + ' %' : 'sin pesar todavía'}</span></div>
+      ${p.nt ? `<div class="l3">${esc(p.nt)}</div>` : ''}
+      <div class="mini"><button type="button" data-ed="${esc(p.k)}">Editar</button><button type="button" class="x" data-del="${esc(p.k)}">Borrar</button></div></li>`;
+  }).join('') : (R.bal ? '' : '<li><span class="ayuda">Agregá las piezas a medida que entran a la cámara.</span></li>'));
+
+  // Selector de pieza en el formulario del día
+  const rp = $('#rp'), prev = rp.value;
+  rp.innerHTML = '<option value="">(toda la cámara, sin pieza)</option>' + R.piezas.map(p => `<option value="${esc(p.k)}">${esc(p.n)}</option>`).join('');
+  if (prev && M.get(prev)) rp.value = prev;
+  else if (R.piezas.length) rp.value = (R.piezas.find(p => p.ts) || R.piezas[0]).k;
+
+  // Diario
+  $('#r_diario').textContent = R.regs.length + (R.regs.length === 1 ? ' registro' : ' registros');
+  const nom = k => { const p = M.get(k); return p ? p.n : 'Cámara'; };
+  $('#diario').innerHTML = R.regs.length ? R.regs.slice().reverse().map(r => {
+    const p = r.p ? M.get(r.p) : null;
+    const m = (p && r.w != null) ? mermaDe(p.p0, r.w) : null;
+    const dh = (r.rh != null && r.mh != null) ? r.mh - r.rh : null;
+    const dt = (r.rt != null && r.mt != null) ? r.mt - r.rt : null;
+    const cl = (d, lim) => d != null && Math.abs(d) > lim ? ' class="desv"' : '';
+    return `<li><div class="l1"><b>Día ${dias(t.f, r.f)} · ${esc(nom(r.p))}</b><span class="d">${esc(r.f)}</span></div>
+      <div class="l2"><span>${r.w != null ? fx(r.w, 0) + ' g' : 'sin pesar'}${m != null ? ' · <span class="merma">merma ' + fx(m) + ' %</span>' : ''}</span></div>
+      <div class="l2"><span${cl(dt, 2)}>Temp. receta ${fx(r.rt)} / medida ${fx(r.mt)} °C</span><span${cl(dh, 5)}>HR receta ${fx(r.rh)} / medida ${fx(r.mh)} %</span></div>
+      ${r.nt ? `<div class="l3">${esc(r.nt)}</div>` : ''}
+      <div class="mini"><button type="button" data-edr="${esc(r.k)}">Editar</button><button type="button" class="x" data-delr="${esc(r.k)}">Borrar</button></div></li>`;
+  }).join('') : '<li><span class="ayuda">Todavía no hay registros. Usá "Anotar el día".</span></li>';
+
+  autoReceta();
+  dibujarGrafico();
+  dibujarAlmacen();
+}
+
+async function dibujarAlmacen() {
+  try {
+    const i = await (await fetch('/api/bitacora/info', { cache: 'no-store' })).json();
+    const pct = Math.min(100, i.tam / i.max * 100);
+    $('#barraUso').style.width = pct + '%';
+    $('#almacen').textContent = `Usado ${fx(i.tam / 1024, 1)} KB de ${fx(i.max / 1024, 0)} KB` + (malas ? ` · ${malas} líneas ilegibles ignoradas` : '');
+  } catch (e) { $('#almacen').textContent = ''; }
+}
+
+function dibujarGrafico() {
+  const t = tandaActual();
+  const ay = $('#ayudaG');
+  if (!$('#b_graf').open) return;          // cerrado: se dibuja al abrirlo
+  if (typeof Chart === 'undefined') { ay.textContent = 'No se pudo cargar la librería de gráficos desde el equipo. Recargá la página. El diario funciona igual.'; return; }
+  if (!t) { if (chart) { chart.destroy(); chart = null; } return; }
+  const R = resumenTanda(t);
+  const hasta = Math.max(num(t.do) || 0, R.dia, ...R.regs.map(r => dias(t.f, r.f)), 1);
+  if (R.bal && modoG === 'merma' && !HISTB) cargarHistBalanza();
+  let ds = [], yTxt = '';
+  if (modoG === 'merma') {
+    yTxt = 'Merma (%)';
+    R.piezas.forEach((p, i) => {
+      const pts = [{ x: Math.max(0, dias(t.f, p.f)), y: 0 }];
+      R.regs.filter(r => r.p === p.k && r.w != null).forEach(r => pts.push({ x: dias(t.f, r.f), y: +mermaDe(p.p0, r.w).toFixed(2) }));
+      ds.push({ label: p.n, data: pts, borderColor: COLORES[i % 8], backgroundColor: COLORES[i % 8], showLine: true, tension: 0.2, pointRadius: 3 });
+    });
+    if (R.bal && HISTB && HISTB.pts.length) {
+      const t0 = msd(t.f), p0 = HISTB.p0;
+      ds.unshift({ label: 'Balanza (testigo)', data: HISTB.pts.map(p => ({ x: +((p[0] * 1000 - t0) / 864e5).toFixed(3), y: +((p0 - p[1]) / p0 * 100).toFixed(2) })),
+                   borderColor: '#e0623f', backgroundColor: '#e0623f', showLine: true, tension: 0.2, pointRadius: 0, borderWidth: 2.5 });
+    }
+    if (t.mo) ds.push({ label: 'Objetivo', data: [{ x: 0, y: t.mo }, { x: hasta, y: t.mo }], borderColor: '#9a968c', borderDash: [6, 4], showLine: true, pointRadius: 0 });
+    ay.textContent = 'Eje horizontal: días desde el inicio de la tanda.';
+  } else {
+    const h = modoG === 'hum';
+    yTxt = h ? 'Humedad (%)' : 'Temperatura (°C)';
+    const idx = h ? 2 : 1;
+    const et = (t.et || []).slice().sort((a, b) => a[0] - b[0]);
+    const lin = [];
+    et.forEach(s => { lin.push({ x: s[0], y: s[idx] }); });
+    if (et.length) lin.push({ x: hasta, y: et[et.length - 1][idx] });
+    // escalonado: repetir el valor anterior justo antes de cada cambio
+    const esc2 = [];
+    lin.forEach((q, i) => { if (i > 0) esc2.push({ x: q.x, y: lin[i - 1].y }); esc2.push(q); });
+    ds.push({ label: 'Receta', data: esc2, borderColor: '#c9a54b', backgroundColor: '#c9a54b', showLine: true, pointRadius: 0, borderDash: [6, 4] });
+    ds.push({ label: 'Medida', data: R.regs.filter(r => r[h ? 'mh' : 'mt'] != null).map(r => ({ x: dias(t.f, r.f), y: r[h ? 'mh' : 'mt'] })),
+              borderColor: h ? '#9fcdbb' : '#e0623f', backgroundColor: h ? '#9fcdbb' : '#e0623f', showLine: true, tension: 0.2, pointRadius: 4 });
+    ay.textContent = 'Línea punteada: lo que pide la receta. Puntos: lo que midió la cámara cada día anotado.';
+  }
+  if (chart) chart.destroy();
+  chart = new Chart($('#cv'), {
+    type: 'scatter', data: { datasets: ds },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: {
+        x: { type: 'linear', min: 0, title: { display: true, text: 'Día', color: '#9a968c' }, ticks: { color: '#9a968c' }, grid: { color: '#3a3f44' } },
+        y: { title: { display: true, text: yTxt, color: '#9a968c' }, ticks: { color: '#9a968c' }, grid: { color: '#3a3f44' } }
+      },
+      plugins: { legend: { labels: { color: '#e9e4da', boxWidth: 14 } } }
+    }
+  });
+}
+
+// ---------- Tanda ----------
+function filaEtapa(d, t, h) {
+  const div = document.createElement('div');
+  div.className = 'et';
+  div.innerHTML = `<div><label>Desde el día</label><input type="number" step="1" min="0" inputmode="numeric" value="${esc(d)}"></div>
+    <div><label>Temp. °C</label><input type="number" step="any" inputmode="decimal" value="${esc(t)}"></div>
+    <div><label>Humedad %</label><input type="number" step="any" inputmode="decimal" value="${esc(h)}"></div>
+    <button type="button" class="sec peligro" aria-label="Quitar etapa">×</button>`;
+  div.querySelector('button').onclick = () => div.remove();
+  $('#etapas').appendChild(div);
+}
+function abrirT(t) {
+  editT = t ? t.k : null;
+  $('#tn').value = t ? t.n : '';
+  $('#tf').value = t ? t.f : hoy();
+  $('#tkg').value = t && t.kg != null ? t.kg : '';
+  $('#tmo').value = t && t.mo != null ? t.mo : 30;
+  $('#tdo').value = t && t.do != null ? t.do : 45;
+  $('#tnt').value = t ? (t.nt || '') : '';
+  $('#etapas').innerHTML = '';
+  (t && t.et && t.et.length ? t.et : [[0, 18, 90], [2, 16, 80], [10, 14, 75]]).forEach(s => filaEtapa(s[0], s[1], s[2]));
+  $('#fT').hidden = false;
+  $('#tn').focus();
+}
+$('#bNuevaT').onclick = () => abrirT(null);
+$('#bEditT').onclick = () => { const t = tandaActual(); if (t) abrirT(t); };
+$('#cT').onclick = () => { $('#fT').hidden = true; };
+$('#bEtapa').onclick = () => {
+  const f = $('#etapas').lastElementChild;
+  const v = f ? [...f.querySelectorAll('input')].map(i => i.value) : [0, 18, 90];
+  filaEtapa((num(v[0]) || 0) + 10, v[1], v[2]);
+};
+$('#fT').onsubmit = async ev => {
+  ev.preventDefault();
+  const n = $('#tn').value.trim();
+  if (!n) { aviso('Poné un nombre a la tanda.'); return; }
+  if (!$('#tf').value) { aviso('Falta la fecha de inicio.'); return; }
+  const et = [...$('#etapas').children].map(d => [...d.querySelectorAll('input')].map(i => num(i.value)))
+    .filter(v => v[0] != null && v[1] != null && v[2] != null).sort((a, b) => a[0] - b[0]);
+  if (et.length > 12) { aviso('Máximo 12 etapas.'); return; }
+  const o = { k: editT || nuevoId('t'), a: 'tanda', n: n.slice(0, 40), f: $('#tf').value, kg: num($('#tkg').value), mo: num($('#tmo').value), do: num($('#tdo').value), et, nt: $('#tnt').value.slice(0, 200) };
+  if (await guardar([o])) { selTanda = o.k; try { localStorage.setItem('bitTanda', o.k); } catch (e) {} $('#fT').hidden = true; dibujar(); aviso('Tanda guardada', true); }
+};
+$('#selT').onchange = e => { selTanda = e.target.value; try { localStorage.setItem('bitTanda', selTanda); } catch (er) {} resetR(); dibujar(); };
+$('#bDelT').onclick = async () => {
+  const t = tandaActual(); if (!t) return;
+  if (!confirm(`Borrar la tanda "${t.n}" con todas sus piezas y registros? No se puede deshacer (conviene bajar una copia antes).`)) return;
+  const xs = [t.k, ...piezasDe(t.k).map(p => p.k), ...regsDe(t.k).map(r => r.k)].map(k => ({ k, x: 1 }));
+  if (await guardar(xs)) { selTanda = null; dibujar(); aviso('Tanda borrada', true); }
+};
+
+// ---------- Piezas ----------
+function abrirP(p) {
+  editP = p ? p.k : null;
+  $('#pn').value = p ? p.n : 'Pieza ' + (piezasDe(selTanda).length + 1);
+  $('#pf').value = p ? p.f : hoy();
+  $('#pp0').value = p ? p.p0 : '';
+  $('#pts').checked = p ? !!p.ts : piezasDe(selTanda).length === 0;
+  $('#pnt').value = p ? (p.nt || '') : '';
+  $('#fP').hidden = false;
+  $('#pp0').focus();
+}
+$('#bNuevaP').onclick = () => abrirP(null);
+$('#cP').onclick = () => { $('#fP').hidden = true; };
+$('#fP').onsubmit = async ev => {
+  ev.preventDefault();
+  const n = $('#pn').value.trim(), p0 = num($('#pp0').value);
+  if (!n || !p0 || p0 <= 0) { aviso('Falta el nombre o el peso inicial (g).'); return; }
+  const o = { k: editP || nuevoId('p'), a: 'pieza', t: selTanda, n: n.slice(0, 30), f: $('#pf').value || hoy(), p0, ts: $('#pts').checked ? 1 : 0, nt: $('#pnt').value.slice(0, 80) };
+  if (await guardar([o])) { $('#fP').hidden = true; dibujar(); aviso('Pieza guardada', true); }
+};
+$('#listaP').onclick = async ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  if (b.dataset.ed) abrirP(M.get(b.dataset.ed));
+  else if (b.dataset.del) {
+    const p = M.get(b.dataset.del); if (!p) return;
+    if (!confirm(`Borrar "${p.n}" y sus registros?`)) return;
+    const xs = [p.k, ...[...M.values()].filter(o => o.a === 'reg' && o.p === p.k).map(o => o.k)].map(k => ({ k, x: 1 }));
+    if (await guardar(xs)) dibujar();
+  }
+};
+
+// ---------- Registro del día ----------
+function resetR() {
+  editR = null;
+  const f = $('#fR');
+  f.dataset.manual = '';
+  $('#rf').value = hoy(); $('#rw').value = ''; $('#rmt').value = ''; $('#rmh').value = ''; $('#rnt').value = '';
+  $('#rrt').value = ''; $('#rrh').value = '';
+  $('#infoTraer').textContent = '';
+  $('#cR').hidden = true;
+  $('#bGuardarR').textContent = 'Guardar registro';
+}
+function autoReceta() {
+  const t = tandaActual(); const f = $('#fR');
+  if (!t || f.dataset.manual === '1' || editR) return;
+  const e = etapaDe(t, dias(t.f, $('#rf').value || hoy()));
+  $('#rrt').value = e ? e.t : ''; $('#rrh').value = e ? e.h : '';
+}
+['#rrt', '#rrh'].forEach(s => $(s).addEventListener('input', () => { $('#fR').dataset.manual = '1'; }));
+$('#rf').addEventListener('change', () => { $('#fR').dataset.manual = ''; autoReceta(); });
+$('#bTraer').onclick = async () => {
+  const fe = $('#rf').value; if (!fe) return;
+  const [a, b, c] = fe.split('-').map(Number);
+  const desde = Math.floor(new Date(a, b - 1, c, 0, 0, 0).getTime() / 1000);
+  const hasta = Math.floor(Math.min(new Date(a, b - 1, c + 1, 0, 0, 0).getTime(), Date.now()) / 1000);
+  try {
+    const r = await (await fetch(`/api/resumen?desde=${desde}&hasta=${hasta}`, { cache: 'no-store' })).json();
+    if (!r.n) { $('#infoTraer').textContent = 'La cámara no tiene mediciones guardadas de ese día.'; return; }
+    $('#rmt').value = r.tProm; $('#rmh').value = r.hProm;
+    $('#infoTraer').textContent = `Promedio del día: ${fx(r.tProm)} °C (mín ${fx(r.tMin)}, máx ${fx(r.tMax)}) y ${fx(r.hProm)} % HR (mín ${fx(r.hMin)}, máx ${fx(r.hMax)}). Intervalos con el relé activo (aprox.): humidificador ${r.pHum} %, deshumidificador ${r.pDesh} %, frío ${r.pFrio} %.`;
+  } catch (e) { $('#infoTraer').textContent = 'No se pudo consultar a la cámara.'; }
+};
+$('#fR').onsubmit = async ev => {
+  ev.preventDefault();
+  const t = tandaActual(); if (!t) return;
+  const f = $('#rf').value;
+  if (!f) { aviso('Falta la fecha.'); return; }
+  const w = num($('#rw').value);
+  const vals = [num($('#rrt').value), num($('#rrh').value), num($('#rmt').value), num($('#rmh').value)];
+  if (w == null && vals.every(v => v == null) && !$('#rnt').value.trim()) { aviso('Anotá al menos un peso, un valor o una nota.'); return; }
+  const o = { k: editR || nuevoId('r'), a: 'reg', t: t.k, p: $('#rp').value, f, w, rt: vals[0], rh: vals[1], mt: vals[2], mh: vals[3], nt: $('#rnt').value.slice(0, 120) };
+  if (await guardar([o])) { resetR(); dibujar(); aviso('Registro guardado', true); }
+};
+$('#cR').onclick = () => { resetR(); autoReceta(); };
+$('#diario').onclick = async ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  if (b.dataset.edr) {
+    const r = M.get(b.dataset.edr); if (!r) return;
+    editR = r.k;
+    $('#rf').value = r.f; $('#rp').value = r.p || ''; $('#rw').value = r.w == null ? '' : r.w;
+    $('#rrt').value = r.rt == null ? '' : r.rt; $('#rrh').value = r.rh == null ? '' : r.rh;
+    $('#rmt').value = r.mt == null ? '' : r.mt; $('#rmh').value = r.mh == null ? '' : r.mh; $('#rnt').value = r.nt || '';
+    $('#cR').hidden = false; $('#bGuardarR').textContent = 'Guardar cambios';
+    $('#b_reg').open = true; { const fr = $('#fR'); if (fr.scrollIntoView) fr.scrollIntoView({ behavior: 'smooth' }); }
+  } else if (b.dataset.delr) {
+    if (!confirm('Borrar este registro?')) return;
+    if (await guardar([{ k: b.dataset.delr, x: 1 }])) dibujar();
+  }
+};
+
+// ---------- Gráficos ----------
+$('#tabsG').onclick = ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  modoG = b.dataset.g;
+  [...$('#tabsG').children].forEach(x => x.classList.toggle('on', x === b));
+  dibujarGrafico();
+};
+$('#b_graf').addEventListener('toggle', () => { if ($('#b_graf').open) dibujarGrafico(); });
+
+// ---------- Copia, planilla y compactado ----------
+function bajar(nombre, texto, tipo) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([texto], { type: tipo }));
+  a.download = nombre; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const csvq = v => { const s = v == null ? '' : String(v); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+$('#bCsv').onclick = () => {
+  const t = tandaActual(); if (!t) { aviso('No hay tanda seleccionada.'); return; }
+  const R = resumenTanda(t);
+  const fila = a => a.map(csvq).join(';');
+  const d = v => v == null ? '' : String(v).replace('.', ',');
+  const L = [fila(['Tanda', 'Pieza', 'Fecha', 'Dia', 'Peso_g', 'Merma_%', 'Receta_T_C', 'Receta_HR_%', 'Medida_T_C', 'Medida_HR_%', 'Nota'])];
+  R.regs.forEach(r => {
+    const p = r.p ? M.get(r.p) : null;
+    const m = (p && r.w != null) ? mermaDe(p.p0, r.w) : null;
+    L.push(fila([t.n, p ? p.n : '', r.f, dias(t.f, r.f), d(r.w), m == null ? '' : d(m.toFixed(2)), d(r.rt), d(r.rh), d(r.mt), d(r.mh), r.nt || '']));
+  });
+  bajar('diario_' + t.n.replace(/[^\w-]+/g, '_') + '.csv', '﻿' + L.join('\r\n') + '\r\n', 'text/csv');
+};
+$('#bCopia').onclick = async () => {
+  try {
+    const t = await (await fetch('/api/bitacora', { cache: 'no-store' })).text();
+    bajar('diario_' + hoy() + '.jsonl', t, 'text/plain');
+  } catch (e) { aviso('No se pudo bajar la copia.'); }
+};
+async function reemplazar(lineas) {
+  const r = await fetch('/api/bitacora', { method: 'POST', headers: HX, body: new URLSearchParams({ ini: '1' }) });
+  if (!r.ok) throw new Error('ini');
+  for (const o of lineas) await enviar(o, true);
+  const r2 = await fetch('/api/bitacora', { method: 'POST', headers: HX, body: new URLSearchParams({ fin: '1' }) });
+  if (!r2.ok) throw new Error('fin');
+}
+$('#bCompactar').onclick = async () => {
+  const lineas = [...M.values()];
+  if (!cargadoOk || !lineas.length) { aviso('No hay un diario leído de la placa para ordenar. Recargá la página.'); return; }
+  if (!confirm('Se reescribe el diario sin las líneas viejas o borradas. Los datos vigentes quedan igual. Seguir?')) return;
+  try { await reemplazar(lineas); await cargar(); dibujar(); aviso('Diario ordenado', true); }
+  catch (e) { aviso(e.code === 507 ? 'No hay lugar ni para compactar. Bajá una copia y borrá tandas viejas.' : 'No se pudo compactar. El diario anterior sigue intacto.'); }
+};
+$('#bRestaurar').onclick = () => $('#archivo').click();
+$('#archivo').onchange = async ev => {
+  const fi = ev.target.files[0]; ev.target.value = '';
+  if (!fi) return;
+  const texto = await fi.text();
+  const lineas = [];
+  for (const ln of texto.split('\n')) { if (!ln.trim()) continue; try { const o = JSON.parse(ln); if (o && o.k) lineas.push(o); } catch (e) {} }
+  if (!lineas.length) { aviso('El archivo no tiene datos del diario.'); return; }
+  if (!confirm(`Restaurar ${lineas.length} líneas? Reemplaza el diario actual (queda una copia de seguridad en la placa).`)) return;
+  try {
+    const m = new Map(); lineas.forEach(o => { if (o.x) m.delete(o.k); else m.set(o.k, o); });
+    await reemplazar([...m.values()]);
+    await cargar(); selTanda = null; dibujar(); aviso('Copia restaurada', true);
+  } catch (e) { aviso('No se pudo restaurar. El diario anterior sigue intacto.'); }
+};
+
+// ---------- Balanza: pieza testigo ----------
+async function leerSeg() {
+  try {
+    const r = await fetch('/api/balanza', { cache: 'no-store' });
+    if (!r.ok) return false;                // 404: el equipo no tiene balanza
+    document.body.classList.remove('sinBal');
+    SEG = (await r.json()).seg || null;
+    if (SEG && !SEG.activo) SEG = null;
+    return true;
+  } catch (e) { return false; }
+}
+async function cargarHistBalanza() {
+  try { HISTB = await (await fetch('/api/balanza/hist', { cache: 'no-store' })).json(); dibujarGrafico(); } catch (e) {}
+}
+// Si la tanda vinculada cambió su merma objetivo o su nombre, la balanza se pone igual.
+async function sincronizarSeg() {
+  const t = SEG && M.get(SEG.tanda);
+  if (!t || t.a !== 'tanda') return;
+  const p = { accion: 'editar' };
+  if (t.mo > 0 && Math.abs(t.mo - SEG.obj) > 0.001) p.obj = t.mo;
+  if (String(t.n).slice(0, 40) !== SEG.nombre) p.nombre = String(t.n).slice(0, 40);
+  if (Object.keys(p).length === 1) return;
+  try { await fetch('/api/balanza/seg', { method: 'POST', headers: HX, body: new URLSearchParams(p) }); await leerSeg(); } catch (e) {}
+}
+
+// ---------- Inicio ----------
+(async () => {
+  resetR();
+  try { await cargar(); } catch (e) { aviso('No se pudo leer el diario de la cámara.'); }
+  if (await leerSeg()) await sincronizarSeg();
+  dibujar();
+  setInterval(async () => { if (!document.hidden && $('#fT').hidden && $('#fP').hidden && !$('#fR').contains(document.activeElement) && await leerSeg()) { sincronizarSeg(); dibujar(); } }, 60000);
+  setInterval(() => { HISTB = null; }, 1800000);   // el registro suma un punto cada 30 min
+})();
+</script>
+<footer id="acerca" style="text-align:center;font-size:13px;color:var(--tenue);margin:28px 0 14px;white-space:pre-line;line-height:1.5">Cámara de curado</footer>
+<script>fetch('/api/acerca',{cache:'no-store'}).then(r=>r.json()).then(d=>{document.getElementById('acerca').textContent='Cámara de curado · '+d.version+'\nSoftware hecho por '+d.autor;}).catch(()=>{});</script>
+</body>
+</html>

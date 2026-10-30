@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17191b">
+<title>Cámara de curado</title>
+<style>
+:root{
+  --acero:#17191b; --placa:#202326; --placa2:#2a2e32; --borde:#3a3f44;
+  --texto:#e9e4da; --tenue:#9a968c;
+  --pimenton:#e0623f; --moho:#9fcdbb; --laton:#c9a54b; --frio:#8fb8e0; --luz:#f1dc8a; --ok:#8fd694; --alarma:#ff6b57;
+  --f:"DIN Alternate","Bahnschrift","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html{background:var(--acero)}
+body{font:16px/1.35 var(--f);font-stretch:condensed;color:var(--texto);background:var(--acero);
+  max-width:960px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) 12px max(28px,env(safe-area-inset-bottom))}
+
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;
+  padding:6px 2px 10px;border-bottom:2px solid var(--laton);margin-bottom:12px}
+h1{font-size:28px;font-weight:700;letter-spacing:.01em;line-height:1.05}
+.hora{color:var(--tenue);font-size:14px;font-variant-numeric:tabular-nums;margin-top:2px}
+.red{display:flex;align-items:center;gap:8px;color:var(--tenue);font-size:14px;white-space:nowrap}
+
+.led{width:12px;height:12px;border-radius:50%;background:#3b3f43;box-shadow:inset 0 0 0 1px #0008;flex:none}
+.led.on{background:var(--ok);box-shadow:0 0 9px 1px #8fd69488}
+.led.hum.on{background:var(--moho);box-shadow:0 0 9px 1px #9fcdbb88}
+.led.des.on{background:var(--laton);box-shadow:0 0 9px 1px #c9a54b88}
+.led.fri.on{background:var(--frio);box-shadow:0 0 9px 1px #8fb8e088}
+.led.luz.on{background:var(--luz);box-shadow:0 0 9px 1px #f1dc8a88}
+.led.otr.on{background:#d9d4c7;box-shadow:0 0 9px 1px #d9d4c788}
+.led.mal{background:var(--alarma);box-shadow:0 0 9px 1px #ff6b5788}
+
+.btnPausa{display:block;width:100%;height:50px;margin-bottom:12px;background:var(--placa2);color:var(--texto);
+  border:1px solid var(--borde);border-radius:2px;font:inherit;font-size:18px;font-weight:700;cursor:pointer}
+.btnPausa.pausado{background:var(--laton);border-color:var(--laton);color:#1b1a14}
+.btnPausa:disabled{opacity:.5;cursor:default}
+.btnParada{display:block;width:100%;height:56px;margin-bottom:12px;background:#b3261e;color:#fff;border:2px solid #ff6b5e;
+  border-radius:2px;font:inherit;font-size:19px;font-weight:800;letter-spacing:.06em;cursor:pointer}
+.btnParada.activa{background:#1f7a3a;border-color:#4cc274}
+.btnParada:disabled{opacity:.5;cursor:default}
+/* Pestañas: Secadero (mirar), Ajustes (configurar) y Diario de secado. Siempre visibles arriba. */
+.pestanas{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-12px -12px 14px;padding:10px 12px;background:var(--acero);border-bottom:1px solid var(--borde)}
+.pestanas a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:4px 8px;border:1px solid var(--borde);background:var(--placa);color:var(--tenue);font-weight:700;font-size:18px;line-height:1.1;text-align:center;text-decoration:none;letter-spacing:.02em}
+.pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1a14;pointer-events:none}
+@media (max-width:420px){.pestanas a{font-size:15px;padding:4px 4px}}
+body.sinBal .pestanas{grid-template-columns:repeat(3,1fr)}
+.aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#3a1e1b;font-weight:600}
+.aviso.pausa{border-color:var(--laton);background:#352d18}
+details.test{margin-top:18px;border:1px solid var(--alarma)}
+.test>summary{padding:10px 12px;color:var(--alarma);font-weight:700;cursor:pointer}
+.test .cuerpo{padding:0 12px 12px}
+.test ul.seg{margin:8px 0 0;padding-left:20px}
+.test ul.seg li{margin:3px 0}
+.test .chk{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-weight:600}
+.test .chk input{width:22px;height:22px;flex:none;margin-top:1px}
+.test ol.pasos{list-style:none;margin:10px 0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.test ol.pasos li{border:1px solid var(--borde);background:var(--placa2);padding:8px 6px;text-align:center;font-size:14px;color:var(--tenue)}
+.test ol.pasos li.on{background:var(--ok);border-color:var(--ok);color:#14200f;font-weight:700}
+.test ol.pasos li.hecho{color:var(--texto)}
+.modoTest{display:grid;gap:6px;margin:10px 0}
+.modoTest label{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--borde);background:var(--placa2);cursor:pointer;line-height:1.3}
+.modoTest input{margin-top:3px;accent-color:var(--laton)}
+.modoTest label:has(input:checked){border-color:var(--laton)}
+.aviso.test{border-color:var(--alarma);background:#4a1e18}
+.aviso.parada{border-color:#ff3b30;background:#5a1410;font-size:17px}
+.cal{margin-top:16px}
+.cal>summary{cursor:pointer;font-weight:700;color:var(--laton)}
+.pasosCal{padding-left:20px}
+.pasosCal li{margin:5px 0}
+.cal select,.cal input[type=number]{width:100%;height:44px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);padding:0 10px;font:inherit;font-size:16px}
+.calGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.calGrid div{background:var(--placa2);border:1px solid var(--borde);padding:8px 10px}
+.calGrid span{display:block;font-size:13px;color:var(--tenue)}
+.calGrid b{font-size:19px}
+.balT{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.balT span{color:var(--tenue);flex:1 1 100%}
+.balT .confTxt{flex:0 0 100px;width:100px}
+.calEstado{font-weight:700;margin:6px 0}
+.calEstado.ok{color:var(--ok)}
+.ren{margin-top:10px}
+.ren>summary{cursor:pointer;color:var(--tenue);font-size:14px}
+.ren input[type=text]{width:100%;height:42px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);padding:0 10px;font:inherit;font-size:17px}
+
+.placa{background:var(--placa);border:1px solid var(--borde);box-shadow:inset 0 1px 0 #ffffff0d;padding:14px}
+.placa+.placa{margin-top:12px}
+h2{font-size:15px;font-weight:600;color:var(--tenue);margin-bottom:10px}
+h3{font-size:15px;font-weight:600;color:var(--tenue);margin:4px 0 8px}
+
+/* Lecturas */
+.lecturas{display:grid;grid-template-columns:1fr 1fr}
+.lectura{min-width:0;padding-right:12px}
+.lectura+.lectura{border-left:1px solid var(--borde);padding:0 0 0 14px}
+.num{font-size:clamp(46px,15vw,86px);font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.num small{font-size:.38em;font-weight:500;margin-left:3px;color:var(--tenue)}
+.t .num{color:var(--pimenton)}
+.h .num{color:var(--moho)}
+.obj{font-size:14px;color:var(--tenue);margin:8px 0 12px}
+.obj b{color:var(--texto);font-weight:600}
+
+/* Regla: franja = zona sin acción, línea de latón = objetivo, marca blanca = valor actual */
+.reg{position:relative;height:10px;background:var(--placa2);border:1px solid var(--borde)}
+.reg i{position:absolute;display:block}
+.reg .zona{top:0;bottom:0;background:#c9a54b44}
+.reg .tick{top:-3px;bottom:-3px;width:1px;background:var(--laton)}
+.reg .marca{top:-5px;width:3px;height:18px;background:var(--texto);margin-left:-1px}
+.esc{display:flex;justify-content:space-between;font-size:12px;color:var(--tenue);margin-top:7px;font-variant-numeric:tabular-nums}
+
+/* Salidas */
+.fila{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:9px 0;min-height:52px}
+.fila+.fila{border-top:1px solid var(--borde)}
+.fila .nom{flex:1;font-size:17px}
+.fila .nom small{display:block;font-size:13px;color:var(--tenue)}
+.fila b{font-weight:600;color:var(--tenue);text-align:right}
+.sec{background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:2px;height:40px;padding:0 14px;font:inherit;font-weight:600;cursor:pointer}
+
+.modoBtn{height:34px;padding:0 12px;font-size:14px;color:var(--tenue)}
+.modoBtn::after{content:' \25BE'}
+.fila.abre .modoBtn::after{content:' \25B4'}
+.modoBtn.man{background:var(--laton);border-color:var(--laton);color:#1b1a14}
+.modos{flex-basis:100%;display:none;grid-template-columns:repeat(3,1fr);border:1px solid var(--borde)}
+.fila.abre .modos{display:grid}
+.modos button{background:var(--placa2);color:var(--tenue);border:0;padding:10px 0;font:inherit;font-weight:600;cursor:pointer}
+.modos button+button{border-left:1px solid var(--borde)}
+.modos button.on{background:var(--laton);color:#1b1a14}
+.modos button:disabled{opacity:.5;cursor:default}
+
+/* Historial */
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--borde);margin-bottom:12px}
+.tabs button{background:var(--placa2);color:var(--tenue);border:0;padding:11px 0;font:inherit;font-weight:600;cursor:pointer}
+.tabs button+button{border-left:1px solid var(--borde)}
+.tabs button.on{background:var(--laton);color:#1b1a14}
+@media (max-width:420px){.tabs button{font-size:13px}}
+.grafico{position:relative;height:270px}
+.stats{margin-top:12px;font-size:14px;color:var(--tenue);font-variant-numeric:tabular-nums}
+.stats b{font-weight:600}
+.stats .tt{color:var(--pimenton)} .stats .hh{color:var(--moho)}
+.subt{font-size:14px;color:var(--tenue);margin:16px 0 6px}
+.actividad{position:relative;height:180px}
+.registro{list-style:none}
+.registro li{display:grid;grid-template-columns:96px 14px 1fr auto;align-items:center;gap:10px;padding:8px 0;font-size:15px}
+.registro li+li{border-top:1px solid var(--borde)}
+.registro .cuando{color:var(--tenue);font-variant-numeric:tabular-nums}
+.registro .dur{color:var(--tenue);font-size:14px;text-align:right}
+.registro .led{width:10px;height:10px}
+.registro li.sis .que{color:var(--laton)}
+#masEv{margin-top:12px}
+#registro{margin-top:8px}
+
+/* Deslizables */
+.grupo+.grupo{margin-top:14px;padding-top:12px;border-top:1px solid var(--borde)}
+.ctl{margin-bottom:8px}
+.ctl-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:16px}
+.ctl-top span{color:var(--tenue)}
+.ctl-top b{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+output{font:inherit}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:38px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:8px;background:var(--placa2);border:1px solid var(--borde)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;margin-top:-13px;background:var(--laton);border:2px solid #1b1a14;border-radius:2px}
+input[type=range]::-moz-range-track{height:8px;background:var(--placa2);border:1px solid var(--borde)}
+input[type=range]::-moz-range-thumb{width:28px;height:28px;background:var(--laton);border:2px solid #1b1a14;border-radius:2px}
+input[type=range]:focus-visible{outline:2px solid var(--laton);outline-offset:2px}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--laton);outline-offset:1px}
+.ayuda{margin:4px 0 0;font-size:14px;color:var(--tenue)}
+details{margin-top:14px}
+summary{cursor:pointer;color:var(--tenue);font-size:14px;padding:4px 0}
+details .ctl{margin-top:10px}
+.chk{display:flex;align-items:center;gap:10px;margin:10px 0 6px;color:var(--texto);font-size:17px}
+.chk input{width:22px;height:22px;accent-color:var(--laton);flex:none}
+.acciones{display:flex;align-items:center;gap:14px;margin-top:16px}
+.guardar{background:var(--laton);color:#1b1a14;border:0;border-radius:2px;height:48px;padding:0 26px;font:inherit;font-size:17px;font-weight:700;cursor:pointer}
+.sec:disabled,.guardar:disabled{opacity:.5;cursor:default}
+.peligro{color:var(--alarma)}
+.confTxt{width:100%;height:44px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);padding:0 10px;font:inherit;font-size:17px}
+.msg{color:var(--ok);font-size:15px}
+.msg.err{color:var(--alarma)}
+.nota{margin-top:12px;font-size:14px;color:var(--tenue)}
+details.panel{margin-top:0}
+details.panel>summary{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;cursor:pointer;min-height:30px;padding:0;color:var(--tenue)}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::before{content:'';width:7px;height:7px;border-right:2px solid var(--tenue);border-bottom:2px solid var(--tenue);transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px;flex:none}
+details.panel[open]>summary::before{transform:rotate(45deg)}
+details.panel[open]>summary{margin-bottom:12px}
+details.panel .tit{font-size:15px;font-weight:600}
+details.panel .res{margin-left:auto;font-size:15px;font-weight:600;color:var(--texto);font-variant-numeric:tabular-nums;text-align:right}
+details.panel .res.pausa{color:var(--laton)}
+details.panel[open]>summary .res,details.panel[open]>summary .tablero{display:none}
+.tablero{flex-basis:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.tile{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--borde);background:var(--placa2);border-radius:2px;font-size:14px;font-weight:600;color:var(--tenue);min-width:0}
+.tile span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.on{color:var(--texto);border-color:#5d636b}
+.tile .led{width:10px;height:10px}
+@media (min-width:720px){ .tablero{grid-template-columns:repeat(6,1fr)} }
+/* Balanza (sin balanza en el equipo, la sección no se muestra) */
+body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
+.datos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0}
+@media (min-width:640px){.datos{grid-template-columns:repeat(4,1fr)}}
+.dato{border:1px solid var(--borde);background:var(--placa2);padding:9px 10px;min-width:0}
+.dato small{display:block;font-size:13px;color:var(--tenue)}
+.dato b{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.dato b span{font-size:14px;color:var(--tenue);font-weight:500;margin-left:2px}
+.dato.grande b{font-size:34px;color:var(--pimenton)}
+.barra{height:8px;background:var(--placa2);border:1px solid var(--borde);margin-top:6px;position:relative}
+.barra i{display:block;height:100%;background:var(--laton)}
+.campos{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.campos label{display:block;font-size:14px;color:var(--tenue);margin-bottom:4px}
+.campos select{width:100%;height:44px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);padding:0 10px;font:inherit;font-size:16px}
+.campos .ancho{grid-column:1/-1}
+.botonera{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.mermaSec{color:var(--pimenton)}
+.bal{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px}
+.bal .num{color:var(--laton)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--borde);background:var(--placa2);color:var(--tenue);padding:4px 10px;font-size:14px;font-weight:600}
+.chip.ok{color:var(--ok);border-color:#8fd69466}
+.chip.mal{color:var(--alarma);border-color:#ff6b5766}
+#diagTxt{margin-top:8px;font-size:14px;color:var(--tenue);white-space:pre-line;font-variant-numeric:tabular-nums}
+
+@media (min-width:720px){ .dos2{display:grid;grid-template-columns:1fr 1fr;gap:28px} .dos2 .grupo+.grupo{margin-top:0;padding-top:0;border-top:0} }
+</style>
+</head>
+<body>
+<nav class="pestanas"><a href="#secadero" data-v="sec" class="act">Secadero</a><a href="#ajustes" data-v="aju">Ajustes</a><a href="#balanza" data-v="bal">Balanza</a><a href="/bitacora">Diario de secado</a></nav>
+
+<header>
+  <div>
+    <h1>Monitoreo del secadero</h1>
+    <div class="hora" id="hora">--:--:--</div>
+  </div>
+  <div class="red"><span class="led" id="conn"></span><span id="rssi">sin conexión</span></div>
+</header>
+
+<button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button>
+<button type="button" class="btnPausa" id="btnPausa" disabled>Pausar control</button>
+
+<div class="aviso" id="aviso" hidden></div>
+
+<section class="placa">
+  <details class="panel" id="p_lect" open>
+  <summary><span class="tit">Lecturas</span><span class="res" id="r_lect"></span></summary>
+  <div class="lecturas">
+    <div class="lectura t">
+      <h2>Temperatura</h2>
+      <div class="num"><span id="temp">--</span><small>°C</small></div>
+      <div class="obj">Objetivo <b id="tsp">--</b> °C, alarma fuera de ±<b id="tb">--</b></div>
+      <div class="reg" id="rt"><i class="zona"></i><i class="tick"></i><i class="marca"></i></div>
+      <div class="esc"><span>0</span><span>30 °C</span></div>
+    </div>
+    <div class="lectura h">
+      <h2>Humedad</h2>
+      <div class="num"><span id="hum">--</span><small>%</small></div>
+      <div class="obj">Objetivo <b id="hsp">--</b> %, actúa fuera de ±<b id="hh">--</b></div>
+      <div class="reg" id="rh"><i class="zona"></i><i class="tick"></i><i class="marca"></i></div>
+      <div class="esc"><span>40</span><span>100 %</span></div>
+    </div>
+  </div>
+  </details>
+</section>
+
+<section class="placa" id="s_bal">
+  <details class="panel" id="p_bal" open>
+  <summary><span class="tit">Pieza testigo (balanza)</span><span class="res" id="r_bal"></span></summary>
+  <div class="lecturas">
+    <div class="lectura">
+      <h2>Merma</h2>
+      <div class="num mermaSec"><span id="sb_merma">--</span><small>%</small></div>
+      <div class="obj" id="sb_obj">sin seguimiento</div>
+    </div>
+    <div class="lectura">
+      <h2>Peso</h2>
+      <div class="num" style="color:var(--laton)"><span id="sb_peso">--</span><small>g</small></div>
+      <div class="obj" id="sb_falta"></div>
+    </div>
+  </div>
+  <div class="botonera"><a class="sec" href="#balanza" style="display:inline-flex;align-items:center;text-decoration:none">Ver todo en Balanza</a></div>
+  </details>
+</section>
+
+<section class="placa">
+  <details class="panel" id="p_sal" open>
+  <summary><span class="tit">Salidas</span><span class="res" id="r_sal"></span><span class="tablero" id="tab_sal"></span></summary>
+  <div class="fila"><span class="led fri" id="l_fri"></span><span class="nom">Refrigeración<small id="pin3">relé 1</small></span><b id="s_fri">apagado</b><button type="button" class="sec modoBtn" data-pill="2">Auto</button><div class="modos" data-i="2"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
+  <div class="fila"><span class="led hum" id="l_hum"></span><span class="nom">Humidificador<small id="pin1">relé 2</small></span><b id="s_hum">apagado</b><button type="button" class="sec modoBtn" data-pill="0">Auto</button><div class="modos" data-i="0"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
+  <div class="fila"><span class="led des" id="l_des"></span><span class="nom">Deshumidificador<small id="pin2">relé 3</small></span><b id="s_des">apagado</b><button type="button" class="sec modoBtn" data-pill="1">Auto</button><div class="modos" data-i="1"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
+  <div class="fila"><span class="led" id="l_ven"></span><span class="nom">Ventilador<small id="pin4">relé 4</small></span><b id="s_ven">apagado</b></div>
+  <div class="fila"><span class="led luz" id="l_luz"></span><span class="nom"><span id="nm_a1">AUX1</span><small id="pin5">relé 5</small></span><button type="button" class="sec" data-cual="luz" id="b_luz">Encender</button></div>
+  <div class="fila"><span class="led otr" id="l_otr"></span><span class="nom"><span id="nm_a2">AUX2</span><small id="pin6">relé 6</small></span><button type="button" class="sec" data-cual="otros" id="b_otr">Encender</button></div>
+  <p class="ayuda" id="ayudaMan"></p>
+  <details class="ren">
+    <summary>Renombrar AUX1 y AUX2</summary>
+    <form id="fn" autocomplete="off">
+      <div class="ctl"><div class="ctl-top"><span>Relé 5 (AUX1)</span></div><input type="text" name="nomAux1" maxlength="12" placeholder="AUX1"></div>
+      <div class="ctl"><div class="ctl-top"><span>Relé 6 (AUX2)</span></div><input type="text" name="nomAux2" maxlength="12" placeholder="AUX2"></div>
+      <p class="ayuda">Hasta 12 caracteres, sin acentos ni ñ (la pantalla del equipo no los muestra; se cambian solos). En el LCD se ven las primeras 4 letras. Vacío = AUX1 / AUX2.</p>
+      <div class="acciones"><button class="guardar" type="submit">Guardar nombres</button><span class="msg"></span></div>
+    </form>
+  </details>
+  </details>
+</section>
+
+<section class="placa">
+  <details class="panel" id="p_hist" open>
+  <summary><span class="tit">Historial</span></summary>
+  <div class="tabs" id="tabs">
+    <button data-r="1h">1 hora</button>
+    <button data-r="1d" class="on">1 día</button>
+    <button data-r="1w">1 semana</button>
+    <button data-r="1m">1 mes</button>
+    <button data-r="3m">3 meses</button>
+  </div>
+  <div class="grafico"><canvas id="cv"></canvas></div>
+  <div class="stats" id="stats"></div>
+  <p class="subt">Actividad de los relés (franja = encendido)</p>
+  <div class="actividad"><canvas id="cvR"></canvas></div>
+  </details>
+</section>
+
+<section class="placa" data-v="bal">
+  <h2>Peso en vivo</h2>
+  <div class="bal">
+    <div class="num"><span id="bal_g">--</span><small>g</small></div>
+    <div class="chips" id="bal_chips"></div>
+  </div>
+  <div class="aviso pausa" id="bal_av" hidden></div>
+  <div class="ctl balT"><span>Temperatura de la tara</span><input type="number" class="confTxt" id="bal_ttara" step="0.1" inputmode="decimal" placeholder="°C"><button type="button" class="sec bal_traer" data-para="#bal_ttara">Traer de la cámara</button></div>
+  <div class="acciones"><button type="button" class="guardar" id="bal_tara">Tarar</button><span class="msg" id="bal_msg"></span></div>
+  <p class="nota">La tara y la calibración quedan guardadas en la balanza: un corte de luz no la pone a cero. Tarar solo con el gancho vacío. Si la temperatura queda vacía se usa la de la cámara.</p>
+</section>
+
+<section class="placa" data-v="bal">
+  <h2 id="seg_tit">Pieza testigo</h2>
+  <div id="seg_datos" hidden>
+    <div class="aviso pausa" id="sg_aviso" hidden></div>
+    <div class="datos">
+      <div class="dato grande"><small>Merma actual</small><b id="sg_merma">--<span>%</span></b><div class="barra"><i id="sg_barra" style="width:0"></i></div></div>
+      <div class="dato"><small>Merma objetivo</small><b id="sg_obj">--<span>%</span></b></div>
+      <div class="dato"><small>Faltan (estimado)</small><b id="sg_falta">--</b></div>
+      <div class="dato"><small>Llegaría el</small><b id="sg_fecha" style="font-size:19px">--</b></div>
+      <div class="dato"><small>Peso inicial → actual</small><b id="sg_pesos" style="font-size:19px">--</b></div>
+      <div class="dato"><small>Perdió</small><b id="sg_perdida">--<span>g</span></b></div>
+      <div class="dato"><small>Día de secado</small><b id="sg_dia">--</b></div>
+      <div class="dato"><small>Ritmo (últimos 3 días)</small><b id="sg_ritmo">--<span>% / día</span></b></div>
+    </div>
+    <p class="ayuda" id="sg_info"></p>
+    <div class="botonera"><button type="button" class="sec" id="sg_pausa">Pausar seguimiento</button><button type="button" class="sec" id="sg_editar">Editar</button><button type="button" class="sec peligro" id="sg_terminar">Terminar seguimiento</button></div>
+  </div>
+  <form id="fs" autocomplete="off" hidden>
+    <p class="ayuda" id="fs_ayuda">La pieza colgada en la balanza es la testigo de la tanda: su merma es la que cuenta para el lote.</p>
+    <div class="campos">
+      <div class="ancho"><label for="fs_tanda">Tanda del Diario de secado</label><select id="fs_tanda"></select></div>
+      <div><label for="fs_p0">Peso inicial (g)</label><input type="number" class="confTxt" id="fs_p0" min="1" max="1100" step="any" inputmode="decimal"></div>
+      <div><label for="fs_obj">Merma objetivo (%)</label><input type="number" class="confTxt" id="fs_obj" min="1" max="80" step="any" inputmode="decimal" value="30"></div>
+      <div class="ancho" id="fs_iniBox"><label for="fs_ini">Entró a la cámara</label><input type="date" class="confTxt" id="fs_ini" max=""></div>
+    </div>
+    <div class="botonera"><button type="button" class="sec" id="fs_usar">Usar el peso de la balanza</button></div>
+    <div class="acciones"><button class="guardar" type="submit" id="fs_ok">Empezar seguimiento</button><button type="button" class="sec" id="fs_cancelar">Cancelar</button><span class="msg" id="fs_msg"></span></div>
+  </form>
+</section>
+
+<section class="placa" data-v="bal">
+  <h2>Evolución de la pieza testigo</h2>
+  <div class="grafico"><canvas id="cvP"></canvas></div>
+  <p class="ayuda" id="gp_info">Un punto cada 30 minutos (promedio del peso quieto). La línea punteada es la proyección al ritmo actual.</p>
+</section>
+
+<section class="placa" data-v="bal">
+  <details class="panel" id="p_bcal">
+  <summary><span class="tit">Calibración de la balanza</span><span class="res" id="r_bcal"></span></summary>
+  <ol class="pasosCal">
+    <li>Con la balanza vacía (con el gancho o el hilo puesto), tocá <b>Tarar</b>.</li>
+    <li>Colgá un peso conocido (un paquete de 500 g, una pesa) y escribí cuántos gramos son.</li>
+    <li>Tocá <b>Calibrar</b> y esperá 2 segundos sin tocar nada.</li>
+  </ol>
+  <div class="ctl"><input type="number" class="confTxt" id="bal_gcal" min="1" max="1000" step="any" inputmode="decimal" placeholder="Gramos del peso conocido"></div>
+  <div class="ctl balT"><span>Temperatura de la calibración</span><input type="number" class="confTxt" id="bal_tcal" step="0.1" inputmode="decimal" placeholder="°C"><button type="button" class="sec bal_traer" data-para="#bal_tcal">Traer de la cámara</button></div>
+  <div class="acciones"><button type="button" class="sec" id="bal_cal">Calibrar</button><button type="button" class="sec" id="bal_reset">Borrar calibración</button></div>
+  </details>
+</section>
+
+<section class="placa" data-v="bal">
+  <details class="panel" id="p_btemp">
+  <summary><span class="tit">Temperatura y compensación</span><span class="res" id="r_btemp"></span></summary>
+  <div class="calGrid">
+    <div><span>Aire (sensor de la cámara)</span><b id="bk_aire">--</b></div>
+    <div><span>Celda (estimada)</span><b id="bk_celda">--</b></div>
+    <div><span>Corrección ahora</span><b id="bk_corr">--</b></div>
+    <div><span>Tara / calibración a</span><b id="bk_ref">--</b></div>
+    <div><span>Deriva del cero</span><b id="bk_kc">--</b></div>
+    <div><span>Deriva de la sensibilidad</span><b id="bk_ks">--</b></div>
+  </div>
+  <div class="botonera"><button type="button" class="sec" id="bk_comp">Apagar compensación</button></div>
+  <p class="ayuda">La balanza está adentro de la cámara y la celda cambia un poco con la temperatura. La cámara le manda su temperatura cada segundo; la balanza estima la de la celda (que tarda unos 20 minutos en seguir al aire) y corrige el peso. Si la corrección es grande, o falta la temperatura, aparece un aviso arriba del peso.</p>
+  <h3>Aprender la deriva</h3>
+  <ol class="pasosCal">
+    <li><b>Balanza vacía</b> (solo el gancho) aprende la deriva del cero. <b>Con un peso fijo</b> (una pesa, una botella cerrada; nunca un salame, que pierde peso) aprende la de la sensibilidad. Conviene hacer las dos, primero la vacía.</li>
+    <li>Tocá <b>Empezar</b> y no la toques mientras la temperatura cambia al menos 2 °C (lo ideal: 24 h).</li>
+    <li>Tocá <b>Terminar y aplicar</b> (hace falta al menos 1 hora de muestras).</li>
+  </ol>
+  <div class="calGrid" id="bk_apr" hidden>
+    <div><span>Muestras (1 por minuto)</span><b id="bk_an">--</b></div>
+    <div><span>Rango de temperatura</span><b id="bk_adt">--</b></div>
+    <div><span>Deriva medida</span><b id="bk_apend">--</b></div>
+    <div><span>Ajuste (R²)</span><b id="bk_ar2">--</b></div>
+  </div>
+  <div class="botonera"><button type="button" class="sec" id="bk_aprender">Empezar</button><button type="button" class="sec peligro" id="bk_cancelar" hidden>Cancelar</button></div>
+  <p class="ayuda">Los coeficientes a mano y la actualización del programa de la balanza están en su propia página: <a id="bk_link" href="http://balanza.local" target="_blank" rel="noopener" style="color:var(--laton)">balanza.local</a>.</p>
+  </details>
+</section>
+
+<section class="placa" data-v="bal">
+  <details class="panel" id="p_bble">
+  <summary><span class="tit">Conexión con la balanza</span><span class="res" id="r_bble"></span></summary>
+  <div class="calGrid">
+    <div><span>Estado</span><b id="bt_est">--</b></div>
+    <div><span>Señal Wi-Fi de la balanza</span><b id="bt_rssi">--</b></div>
+    <div style="grid-column:1/-1"><span>Dirección</span><b id="bt_dir">--</b></div>
+  </div>
+  <div class="botonera">
+    <button type="button" class="sec" id="bt_onoff">Apagar la conexión</button>
+    <button type="button" class="sec" id="bt_recon">Buscar de nuevo</button>
+    <button type="button" class="sec peligro" id="bt_olvidar">Olvidar IP</button>
+  </div>
+  <p class="ayuda">La cámara busca la balanza por su nombre en la red de la casa y le pide el peso una vez por segundo. Si el router le cambia la IP, la vuelve a buscar sola. Con la conexión apagada no se registra el peso.</p>
+  </details>
+</section>
+
+<section class="placa" data-v="aju">
+  <details class="panel" id="p_set">
+  <summary><span class="tit">Setpoints</span><span class="res" id="r_set"></span></summary>
+  <form id="f">
+    <div class="dos2">
+      <div class="grupo">
+        <h3>Humedad</h3>
+        <div class="ctl">
+          <div class="ctl-top"><span>Humedad objetivo</span><b><output id="o_humSP"></output> %</b></div>
+          <input type="range" name="humSP" min="40" max="100" step="0.5" data-fmt="1">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span>Histéresis de humedad</span><b>± <output id="o_humHist"></output> %</b></div>
+          <input type="range" name="humHist" min="0.5" max="10" step="0.5" data-fmt="1">
+        </div>
+        <p class="ayuda" id="ayudaH"></p>
+      </div>
+      <div class="grupo">
+        <h3>Temperatura</h3>
+        <div class="ctl">
+          <div class="ctl-top"><span>Temperatura objetivo</span><b><output id="o_tempSP"></output> °C</b></div>
+          <input type="range" name="tempSP" min="5" max="30" step="0.5" data-fmt="1">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span>Histéresis de temperatura</span><b>± <output id="o_tempHist"></output> °C</b></div>
+          <input type="range" name="tempHist" min="0.5" max="5" step="0.5" data-fmt="1">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span>Alarma si se aparta más de</span><b>± <output id="o_tempBanda"></output> °C</b></div>
+          <input type="range" name="tempBanda" min="1" max="10" step="0.5" data-fmt="1">
+        </div>
+        <p class="ayuda" id="ayudaT"></p>
+      </div>
+    </div>
+    <details>
+      <summary>Tiempos mínimos de los relés de clima</summary>
+      <div class="ctl">
+        <div class="ctl-top"><span>Mínimo encendido: humedad</span><b><output id="o_minOnS"></output> s</b></div>
+        <input type="range" name="minOnS" min="0" max="600" step="10" data-fmt="0">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span>Mínimo encendido: temperatura (frío)</span><b><output id="o_minOnTempS"></output> s</b></div>
+        <input type="range" name="minOnTempS" min="0" max="600" step="10" data-fmt="0">
+      </div>
+      <div class="ctl">
+        <div class="ctl-top"><span>Mínimo apagado</span><b><output id="o_minOffS"></output> s</b></div>
+        <input type="range" name="minOffS" min="0" max="600" step="10" data-fmt="0">
+      </div>
+    </details>
+    <details>
+      <summary>Forzado manual de humidificador, deshumidificador y frío</summary>
+      <div class="ctl">
+        <div class="ctl-top"><span>Vuelve solo a automático a los</span><b><output id="o_manualMin"></output> min</b></div>
+        <input type="range" name="manualMin" min="5" max="120" step="5" data-fmt="0">
+      </div>
+    </details>
+    <div class="acciones">
+      <button class="guardar" type="submit">Guardar cambios</button>
+      <span class="msg"></span>
+    </div>
+    <p class="nota">Los mismos valores se pueden cambiar desde el equipo con el encoder (click para entrar al menú). Manda el último cambio, venga de donde venga.</p>
+  </form>
+  </details>
+</section>
+
+<section class="placa" data-v="aju">
+  <details class="panel" id="p_ven">
+  <summary><span class="tit">Ventilador programado</span><span class="res" id="r_ven"></span></summary>
+  <form id="fv">
+    <label class="chk" style="margin-top:0"><input type="checkbox" name="ventActivo"> Usar el programa del ventilador</label>
+    <div class="ctl">
+      <div class="ctl-top"><span>Repetir cada</span><b><output id="o_ventPer"></output> h</b></div>
+      <input type="range" name="ventPer" min="0" max="7" step="1" data-fmt="per">
+    </div>
+    <div class="ctl">
+      <div class="ctl-top"><span>Encender durante</span><b><output id="o_ventDuracionMin"></output> min</b></div>
+      <input type="range" name="ventDuracionMin" min="0" max="180" step="1" data-fmt="0">
+    </div>
+    <div class="ctl">
+      <div class="ctl-top"><span>Empezar a las</span><b><output id="o_ventAnclaMin"></output></b></div>
+      <input type="range" name="ventAnclaMin" min="0" max="1425" step="15" data-fmt="hora">
+    </div>
+    <p class="ayuda" id="ayudaV"></p>
+    <div class="acciones">
+      <button class="guardar" type="submit">Guardar programa</button>
+      <span class="msg"></span>
+    </div>
+  </form>
+  </details>
+</section>
+
+<section class="placa">
+  <details class="panel" id="regDet">
+    <summary><span class="tit">Registro de relés</span></summary>
+    <ul class="registro" id="registro"><li><span class="que">Cargando...</span></li></ul>
+    <div class="acciones"><button type="button" class="sec" id="masEv" hidden>Ver más</button><button type="button" class="sec peligro" id="borrarEv">Borrar registro</button><span class="msg" id="borrarEvMsg"></span></div>
+  </details>
+</section>
+
+<section class="placa" data-v="aju">
+  <details class="panel" id="p_cal">
+  <summary><span class="tit">Calibración del sensor</span><span class="res" id="r_cal"></span></summary>
+  <p class="ayuda" id="calLect">Lectura del sensor sin ajuste: --</p>
+  <form id="fc">
+    <div class="ctl">
+      <div class="ctl-top"><span>Ajuste de temperatura</span><b><output id="o_offT"></output> °C</b></div>
+      <input type="range" name="offT" min="-5" max="5" step="0.1" data-fmt="sig">
+    </div>
+    <div class="ctl">
+      <div class="ctl-top"><span>Ajuste de humedad</span><b><output id="o_offH"></output> %</b></div>
+      <input type="range" name="offH" min="-15" max="15" step="0.1" data-fmt="sig">
+    </div>
+    <p class="ayuda">Se suman a lo que mide el sensor. Para la temperatura, compará con un termómetro confiable al lado del sensor. Para la humedad conviene usar el asistente con sal de abajo.</p>
+    <div class="acciones"><button class="guardar" type="submit">Guardar ajustes</button><span class="msg"></span></div>
+  </form>
+
+  <details class="cal" id="calDet">
+    <summary>Asistente de calibración con sal</summary>
+    <div id="calIni">
+      <ol class="ayuda pasosCal">
+        <li>En un frasco de vidrio con tapa hermética poné 2 o 3 cucharadas de sal y agregá agua de a gotas hasta que quede como arena mojada: <b>tienen que quedar cristales sin disolver</b>, sin charco de agua.</li>
+        <li>Meté el sensor adentro sin que toque la sal (por ejemplo apoyado sobre una tapita), pasá los cables por la tapa y sellá con cinta o masilla.</li>
+        <li>Dejalo en un lugar de temperatura pareja, lejos del sol y de corrientes de aire.</li>
+        <li>Tocá Iniciar. Hay que esperar <b>como mínimo 1 hora</b>; lo ideal son <b>6 a 12 horas</b> (el DHT22 tarda en asentarse).</li>
+      </ol>
+      <p class="ayuda">Se usa <b>sal común de cocina</b> (cloruro de sodio): saturada en un frasco cerrado mantiene una humedad de <b>75,5 %</b>, muy cerca de la de curado.</p>
+      <p class="ayuda"><b>Mientras dura la calibración el control de clima queda apagado</b> (el sensor está en el frasco, no en la cámara) y no se guarda historial. Si se corta la luz, hay que empezar de nuevo. A las 24 horas se cancela sola y el clima vuelve a funcionar.</p>
+      <div class="acciones"><button type="button" class="guardar" id="calBtnIni">Iniciar calibración</button><span class="msg" id="calMsgIni"></span></div>
+    </div>
+    <div id="calRun" hidden>
+      <div class="calGrid">
+        <div><span>Sal</span><b id="calNom">--</b></div>
+        <div><span>Tiempo</span><b id="calMin">--</b></div>
+        <div><span>Referencia</span><b id="calRef">--</b></div>
+        <div><span>Mide ahora</span><b id="calAct">--</b></div>
+        <div><span>Promedio últimos 30 min</span><b id="calProm">--</b></div>
+        <div><span>Variación (30 min)</span><b id="calRng">--</b></div>
+      </div>
+      <p class="calEstado" id="calEst">--</p>
+      <p class="ayuda">Ajuste que se va a guardar: <b id="calProp">--</b> (reemplaza al ajuste de humedad actual, <span id="calOffAct">--</span>).</p>
+      <div class="acciones"><button type="button" class="guardar" id="calBtnApl" disabled>Aplicar ajuste</button><button type="button" class="sec" id="calBtnCan">Cancelar</button><span class="msg" id="calMsgRun"></span></div>
+    </div>
+  </details>
+  </details>
+</section>
+
+<section class="placa" data-v="aju">
+  <details class="panel" id="diag">
+    <summary><span class="tit">Diagnóstico del equipo</span></summary>
+    <div id="diagTxt">Cargando...</div>
+    <p class="ayuda" style="margin-top:12px"><a href="/wifi" style="color:var(--laton);font-weight:700">Cambiar la red Wi-Fi &rsaquo;</a></p>
+    <details class="test" id="testDet">
+      <summary>Modo test de relés</summary>
+      <div class="cuerpo">
+        <div class="aviso" style="margin-top:4px">PELIGRO: 220 V. Antes de empezar desenchufá TODOS los equipos conectados a los relés.</div>
+        <div class="modoTest" id="testModos">
+          <label><input type="radio" name="testModo" value="uno" checked><span><b>De a uno</b> · prende los 6 relés de a uno (nunca dos juntos), <b id="testOnS">3</b> s cada uno con 1 s de pausa. Dura menos de medio minuto. Cada relé tiene que hacer "click" y prender su luz.</span></label>
+          <label class="avz"><input type="radio" name="testModo" value="suma"><span><b>Sumar 1 a 6</b> · prende el relé 1 y suma uno cada 3 s hasta tener los 6 encendidos.</span></label>
+          <label class="avz"><input type="radio" name="testModo" value="todos"><span><b>Todos juntos</b> · los 6 relés encendidos a la vez.</span></label>
+          <p class="ayuda avz">"Sumar" y "Todos juntos" sirven para probar la fuente con carga (por ejemplo, medir los 5 V del LCD con varios relés encendidos). Quedan encendidos hasta que los detengas o como máximo <span id="testLargo">2 minutos</span>.</p>
+        </div>
+        <ul class="seg ayuda">
+          <li><b>Desenchufá</b> humidificador, deshumidificador, heladera, ventilador y lo que esté en AUX1 y AUX2. No alcanza con apagarlos desde la web.</li>
+          <li><b>La heladera es la más importante:</b> un compresor que arranca y para seguido se puede dañar.</li>
+          <li><b>No toques</b> las borneras del módulo de relés ni los cables de 220 V con el equipo enchufado.</li>
+          <li>Mientras dura el test el control automático, el ventilador y los forzados manuales quedan suspendidos. Al terminar todo vuelve a automático; el clima espera el tiempo mínimo apagado antes de volver a encender.</li>
+          <li>Se puede detener en cualquier momento, desde acá o con un click del encoder.</li>
+        </ul>
+        <label class="chk"><input type="checkbox" id="testChk"> Desenchufé los 220 V de todos los equipos conectados a los relés.</label>
+        <div class="acciones"><button type="button" class="sec peligro" id="testBtn" disabled>Iniciar test</button><span class="msg" id="testMsg"></span></div>
+        <ol class="pasos" id="testPasos"></ol>
+      </div>
+    </details>
+    <details style="margin-top:18px" id="claveDet">
+      <summary>Clave de acceso a la web</summary>
+      <form id="fk" autocomplete="off">
+        <p class="ayuda">El usuario es <b>admin</b>. Al cambiar la clave el navegador la vuelve a pedir. Si te la olvidás, se recupera cambiando WEB_CLAVE en config.h y volviendo a cargar el programa.</p>
+        <div class="ctl"><div class="ctl-top"><span>Clave actual</span></div>
+          <input type="password" id="kAct" autocomplete="current-password" class="confTxt"></div>
+        <div class="ctl"><div class="ctl-top"><span>Clave nueva (8 a 32 caracteres, sin espacios)</span></div>
+          <input type="password" id="kNue" autocomplete="new-password" minlength="8" maxlength="32" class="confTxt"></div>
+        <div class="ctl"><div class="ctl-top"><span>Repetir la clave nueva</span></div>
+          <input type="password" id="kRep" autocomplete="new-password" maxlength="32" class="confTxt"></div>
+        <div class="acciones"><button class="guardar" type="submit">Cambiar clave</button><span class="msg" id="kMsg"></span></div>
+      </form>
+    </details>
+    <details style="margin-top:12px">
+      <summary>Reiniciar la cámara</summary>
+      <p class="ayuda">Reinicia la placa (como apretar el botón EN). Los relés se apagan unos segundos, el historial se guarda antes y el clima espera el tiempo mínimo apagado para volver a encender. Si había una parada de emergencia, sigue activa.</p>
+      <div class="acciones"><button type="button" class="sec" id="reiniciarBtn">Reiniciar ahora</button><span class="msg" id="reiniciarMsg"></span></div>
+    </details>
+    <details style="margin-top:12px" id="otaDet">
+      <summary>Actualizar el programa por Wi-Fi</summary>
+      <p class="ayuda">Elegí el archivo <b>camara_curado.ino.bin</b> que genera la compilación. Mientras se graba (menos de un minuto) el clima queda apagado; después el equipo se reinicia solo y el clima espera el tiempo mínimo apagado. Si el programa nuevo no arranca bien o no se conecta al Wi-Fi, el equipo vuelve solo al anterior.</p>
+      <div class="ctl"><input type="file" id="otaArch" accept=".bin" class="confTxt"></div>
+      <progress id="otaProg" max="100" value="0" hidden style="width:100%;margin-top:8px"></progress>
+      <div class="acciones"><button type="button" class="guardar" id="otaBtn" disabled>Actualizar</button><span class="msg" id="otaMsg"></span></div>
+    </details>
+    <details style="margin-top:12px">
+      <summary class="peligro">Borrar datos guardados</summary>
+      <p class="ayuda">Borra el historial de temperatura y humedad y el registro de relés. No se puede deshacer. El diario de secado y los ajustes se conservan.</p>
+      <div class="ctl"><div class="ctl-top"><span>Para confirmar escribí BORRAR</span></div>
+        <input type="text" id="borrarTxt" autocomplete="off" autocapitalize="characters" class="confTxt"></div>
+      <div class="acciones"><button type="button" class="sec peligro" id="borrarBtn" disabled>Borrar todo</button><span class="msg" id="borrarMsg"></span></div>
+    </details>
+    <details style="margin-top:12px">
+      <summary class="peligro">Borrar el diario de secado</summary>
+      <p class="ayuda">Borra todas las tandas, piezas y registros del diario. No se puede deshacer. Antes conviene bajar una copia desde la página del diario. El historial y los ajustes se conservan.</p>
+      <div class="ctl"><div class="ctl-top"><span>Para confirmar escribí BORRAR</span></div>
+        <input type="text" id="borrarBitTxt" autocomplete="off" autocapitalize="characters" class="confTxt"></div>
+      <div class="acciones"><button type="button" class="sec peligro" id="borrarBitBtn" disabled>Borrar diario</button><span class="msg" id="borrarBitMsg"></span></div>
+    </details>
+  </details>
+</section>
+
+<script src="/chart.js"></script>
+<script>
+const PAGINA_VERSION = 'v1.0.6 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const $ = s => document.querySelector(s);
+const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
+const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
+const PERIODOS = [1, 2, 3, 4, 6, 8, 12, 24];
+const CAMPOS_F  = ['humSP','humHist','tempSP','tempHist','tempBanda','minOnS','minOnTempS','minOffS','manualMin'];
+const COL_T = '#e0623f', COL_H = '#9fcdbb';
+const sucio = { f: false, fv: false, fn: false, fc: false };   // el usuario está editando ese formulario: no pisarlo con lo que llega
+const manual = { luz: false, otros: false };   // estado de los relés manuales
+const MAN_API = ['hum', 'desh', 'frio'], MAN_ID = ['hum', 'des', 'fri'];
+const manModo = [0, 0, 0], manFin = [0, 0, 0];   // forzado de clima: modo (0 auto, 1 on, 2 off) y hora de vencimiento
+let manualMin = 15;
+let activo = true;          // false = control en pausa
+let rango = '1d';
+let chart = null;
+
+const txt  = (id, v) => { $(id).textContent = v; };
+
+for (const d of document.querySelectorAll('details.panel')) {
+  try { const v = localStorage.getItem('panel:' + d.id); if (v !== null) d.open = (v === '1'); } catch (_) {}
+  d.addEventListener('toggle', () => { try { localStorage.setItem('panel:' + d.id, d.open ? '1' : '0'); } catch (_) {} });
+}
+
+/* ---------- Pestañas Secadero / Ajustes (la misma página: se muestra una parte u otra) ---------- */
+// La pestaña va en la dirección (#ajustes), así se mantiene al recargar y anda el botón "atrás".
+const TITULO_VISTA = { sec: 'Monitoreo del secadero', aju: 'Ajustes del secadero', bal: 'Balanza' };
+let vistaAct = '';
+function mostrarVista() {
+  const v = location.hash === '#ajustes' ? 'aju' : location.hash === '#balanza' ? 'bal' : 'sec';
+  if (v === vistaAct) return;
+  const antes = vistaAct;
+  vistaAct = v;
+  for (const s of document.querySelectorAll('section.placa')) s.hidden = (s.dataset.v || 'sec') !== v;
+  for (const a of document.querySelectorAll('.pestanas a[data-v]')) a.classList.toggle('act', a.dataset.v === v);
+  txt('header h1', TITULO_VISTA[v]);
+  if (antes) window.scrollTo(0, 0);
+  if (antes && v === 'sec') { cargarHist(); cargarEventos(); }   // al volver, gráfico y registro al día
+  if (antes && v === 'bal') { cargarPesaje(); cargarTandas(); }
+}
+mostrarVista();
+addEventListener('hashchange', mostrarVista);
+const fijo = (v, d) => (v == null ? '--' : v.toFixed(d).replace('.', ','));
+const num  = (v, d) => Number(v).toFixed(d).replace('.', ',');
+const hhmm = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+
+function tiempo(s) {                       // "1 h 20 min", "12 min", "menos de 1 min"
+  if (s < 60) return 'menos de 1 min';
+  const h = Math.floor(s / 3600), m = Math.ceil((s % 3600) / 60);
+  return h ? `${h} h ${m} min` : `${m} min`;
+}
+
+function salida(el) {
+  const v = +el.value, k = el.dataset.fmt;
+  const t = k === 'hora' ? hhmm(v) : k === 'per' ? PERIODOS[v] : k === 'sig' ? conSigno(v, 1) : num(v, +k);
+  txt('#o_' + el.name, t);
+}
+function poner(form, n, v) { const el = form.elements[n]; el.value = v; salida(el); }
+
+function regla(id, val, min, max, lo, hi, sp) {
+  const el = $(id);
+  const p = v => Math.min(100, Math.max(0, (v - min) / (max - min) * 100));
+  el.querySelector('.zona').style.cssText = `left:${p(lo)}%;width:${p(hi) - p(lo)}%`;
+  el.querySelector('.tick').style.left = p(sp) + '%';
+  const m = el.querySelector('.marca');
+  m.style.display = (val == null) ? 'none' : '';
+  if (val != null) m.style.left = p(val) + '%';
+}
+
+function ayuda() {
+  const v = n => +f.elements[n].value;
+  txt('#ayudaH', `Humidifica por debajo de ${num(v('humSP') - v('humHist'), 1)} % y deshumidifica por encima de ${num(v('humSP') + v('humHist'), 1)} %. Ambos se detienen en ${num(v('humSP'), 1)} %.`);
+  txt('#ayudaT', `Enfría por encima de ${num(v('tempSP') + v('tempHist'), 1)} °C y se detiene en ${num(v('tempSP'), 1)} °C.`);
+
+  const per = PERIODOS[+fv.elements.ventPer.value], dur = +fv.elements.ventDuracionMin.value, anc = +fv.elements.ventAnclaMin.value;
+  let a;
+  if (!dur)                a = 'Con 0 minutos el ventilador no se enciende.';
+  else if (dur >= per * 60) a = 'Con esa duración el ventilador queda encendido todo el tiempo.';
+  else if (per === 24)     a = `Se enciende ${dur} min por día, a las ${hhmm(anc)}.`;
+  else                     a = `Se enciende ${dur} min cada ${per} h, empezando a las ${hhmm(anc)} (y después ${hhmm((anc + per * 60) % 1440)}, ${hhmm((anc + per * 120) % 1440)}...).`;
+  txt('#ayudaV', a);
+}
+
+function rele(clave, on, texto) {
+  $('#l_' + clave).classList.toggle('on', !!on);
+  if (texto !== undefined) txt('#s_' + clave, texto);
+}
+
+function pintar(e) {
+  txt('#temp', fijo(e.temp, 1));
+  txt('#hum', fijo(e.hum, 1));
+  txt('#tsp', num(e.tempSP, 1)); txt('#tb', num(e.tempBanda, 1));
+  txt('#hsp', num(e.humSP, 1));  txt('#hh', num(e.humHist, 1));
+  regla('#rt', e.temp, 0, 30, e.tempSP - e.tempBanda, e.tempSP + e.tempBanda, e.tempSP);
+  regla('#rh', e.hum, 40, 100, e.humSP - e.humHist, e.humSP + e.humHist, e.humSP);
+
+  const ea = on => on ? 'encendido' : 'apagado';
+  rele('hum', e.releHum,  ea(e.releHum));
+  rele('des', e.releDesh, ea(e.releDesh));
+  rele('fri', e.releFrio, ea(e.releFrio));
+
+  let v;
+  if (!e.ventActivo)        v = 'sin programa';
+  else if (!e.activo)       v = 'en pausa';
+  else if (e.ventSeg === 0) v = 'encendido continuo';
+  else if (e.releVent)      v = `encendido, quedan ${tiempo(e.ventSeg)}`;
+  else if (e.ventSeg > 0)   v = `apagado, enciende en ${tiempo(e.ventSeg)}`;
+  else                      v = 'apagado';
+  rele('ven', e.releVent, v);
+
+  if (e.manual) {
+    manualMin = e.manualMin;
+    e.manual.forEach((m, i) => {
+      manModo[i] = m;
+      manFin[i] = m ? Date.now() + e.manualSeg[i] * 1000 : 0;
+    });
+    for (const box of document.querySelectorAll('.modos')) {
+      const m = manModo[+box.dataset.i];
+      for (const b of box.children) b.classList.toggle('on', b.dataset.modo === ['auto', 'on', 'off'][m]);
+    }
+    for (const p of document.querySelectorAll('.modoBtn')) {
+      const m = manModo[+p.dataset.pill];
+      p.classList.toggle('man', !!m);
+      p.firstChild.nodeValue = m ? 'Manual' : 'Auto';
+    }
+    if (!$('#ayudaMan').dataset.err) txt('#ayudaMan', `Auto / Encender / Apagar a mano: después de ${manualMin} min vuelve solo a automático. Funciona también con el control en pausa.`);
+    tickManual();
+  }
+
+  if (e.pines) e.pines.forEach((p, i) => txt('#pin' + (i + 1), `relé ${e.nrel ? e.nrel[i] : i + 1} · IO${p}`));
+  aplicarNombresAux(e.nomAux1, e.nomAux2);   // antes del tablero, que usa esos nombres
+  resumenes(e);
+
+  activo = !!e.activo;
+  const bp = $('#btnPausa');
+  bp.disabled = false;
+  bp.textContent = activo ? 'Pausar control' : 'Reanudar control';
+  bp.classList.toggle('pausado', !activo);
+
+  const enTest = testActivo || !!(e.test && e.test.activo);
+  const parada = !!e.parada;
+  const bpa = $('#btnParada');
+  bpa.disabled = false;
+  bpa.textContent = parada ? 'REANUDAR TODO' : 'APAGAR TODO';
+  bpa.classList.toggle('activa', parada);
+  rele('luz', e.releLuz);
+  rele('otr', e.releOtros);
+  if (!enTest) {                       // durante el test los relés 5 y 6 los mueve el test, no la persona
+    manual.luz = !!e.releLuz;
+    manual.otros = !!e.releOtros;
+    txt('#b_luz', manual.luz ? 'Apagar' : 'Encender');
+    txt('#b_otr', manual.otros ? 'Apagar' : 'Encender');
+  }
+  for (const b of document.querySelectorAll('[data-cual], .modos button, .modoBtn')) b.disabled = enTest || parada;
+
+  txt('#hora', e.hora > 1.7e9 ? new Date(e.hora * 1000).toLocaleTimeString('es-AR', { hourCycle: 'h23' }) : 'sin hora de red');
+  txt('#rssi', e.rssi ? e.rssi + ' dBm' : 'sin señal');
+
+  pintarCalib(e);
+  let m = '', c = 'aviso';
+  if (!testTimer) pintarTest(e.test);   // con el test en curso manda su propio sondeo (más rápido)
+  if (testActivo && ultTest) ledsTest(ultTest);
+  if (parada) { m = 'PARADA DE EMERGENCIA: los 6 relés están apagados y el control está suspendido, SIN protección de temperatura. Se mantiene aunque se reinicie el equipo. Tocá "REANUDAR TODO" cuando el problema esté resuelto.'; c += ' parada'; }
+  else if (e.calib && e.calib.activo) { m = 'CALIBRANDO EL SENSOR: el control de clima está apagado y no se guarda historial. Ver "Calibración del sensor".'; c += ' pausa'; }
+  else if (e.test && e.test.activo) { m = 'TEST DE RELÉS EN CURSO: el control automático está suspendido. Se puede detener en Ajustes › Diagnóstico › Modo test de relés.'; c += ' test'; }
+  else if (!e.sensorOk)        m = 'El sensor no responde. Humedad y temperatura están apagadas.';
+  else if (!e.activo)   { m = `Control en pausa. Las salidas automáticas están apagadas (${RELES[4].nombre} y ${RELES[5].nombre} siguen a mano). Tocá "Reanudar control" para volver.`; c += ' pausa'; }
+  else if (e.alarmaTemp)  m = 'La temperatura está fuera de la banda de alarma.';
+  const av = $('#aviso');
+  av.hidden = !m; av.className = c; av.textContent = m;
+
+  if (!sucio.f) {
+    for (const n of CAMPOS_F) poner(f, n, e[n]);
+  }
+  if (!sucio.fv) {
+    fv.elements.ventActivo.checked = !!e.ventActivo;
+    poner(fv, 'ventPer', Math.max(0, PERIODOS.indexOf(e.ventPeriodoH)));
+    poner(fv, 'ventDuracionMin', e.ventDuracionMin);
+    poner(fv, 'ventAnclaMin', e.ventAnclaMin);
+  }
+  ayuda();
+}
+
+function mmss(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+// Cuenta regresiva de los forzados manuales (se actualiza cada segundo sin pedirle nada a la placa).
+function tickManual() {
+  manModo.forEach((m, i) => {
+    if (!m) return;
+    const s = Math.max(0, Math.round((manFin[i] - Date.now()) / 1000));
+    txt('#s_' + MAN_ID[i], `${m === 1 ? 'encendido' : 'apagado'} a mano · ${mmss(s)}`);
+  });
+}
+setInterval(tickManual, 1000);
+
+// Lo que se ve en los títulos cuando los paneles están cerrados.
+const TILE_LED = ['hum', 'des', 'fri', '', 'luz', 'otr'];
+function resumenes(e) {
+  txt('#r_lect', e.sensorOk ? `${$('#temp').textContent} °C · ${$('#hum').textContent} %` : 'sin sensor');
+
+  const on = [e.releHum, e.releDesh, e.releFrio, e.releVent, e.releLuz, e.releOtros].map(Boolean);
+  const tab = $('#tab_sal');
+  if (!tab.children.length) RELES.forEach((r, i) => {
+    const t = document.createElement('span');
+    t.className = 'tile';
+    t.innerHTML = `<span class="led ${TILE_LED[i]}"></span><span>${r.corto}</span>`;
+    tab.appendChild(t);
+  });
+  on.forEach((v, i) => {
+    tab.children[i].classList.toggle('on', v);
+    tab.children[i].firstElementChild.classList.toggle('on', v);
+    const man = i < 3 && e.manual ? e.manual[i] : 0;
+    tab.children[i].lastElementChild.textContent = RELES[i].corto + (man ? ' (manual)' : '');   // AUX1/AUX2 con el nombre elegido
+  });
+  const n = on.filter(Boolean).length, rs = $('#r_sal');
+  const nm = e.manual ? e.manual.filter(Boolean).length : 0;
+  rs.textContent = (!e.activo ? 'en pausa' : n === 0 ? 'todo apagado' : n === 1 ? '1 encendida' : `${n} encendidas`) + (nm ? ` · ${nm} manual` : '');
+  rs.classList.toggle('pausa', !e.activo);
+
+  txt('#r_set', `${num(e.humSP, 1)} % ±${num(e.humHist, 1)} · ${num(e.tempSP, 1)} °C ±${num(e.tempHist, 1)}`);
+
+  const per = e.ventPeriodoH, dur = e.ventDuracionMin;
+  txt('#r_ven', !e.ventActivo || !dur ? 'sin programa'
+    : dur >= per * 60 ? 'continuo'
+    : per === 24 ? `${dur} min por día` : `${dur} min cada ${per} h`);
+}
+
+// Cada pedido lleva un número: si llega tarde una respuesta vieja (pedida antes que otra), se descarta,
+// así nunca pisa un estado más nuevo (por ejemplo, justo después de guardar).
+let estadoSeq = 0, estadoPendiente = false;
+async function refrescar() {
+  const n = ++estadoSeq;
+  estadoPendiente = true;
+  try {
+    const r = await fetch('/api/estado', { cache: 'no-store' });
+    if (!r.ok) throw 0;
+    const e = await r.json();
+    if (n !== estadoSeq) return;
+    pintar(e);
+    $('#conn').className = 'led on';
+  } catch (_) {
+    if (n !== estadoSeq) return;
+    $('#conn').className = 'led mal';
+    txt('#rssi', 'sin conexión');
+  } finally {
+    if (n === estadoSeq) estadoPendiente = false;
+  }
+}
+
+async function enviar(form, clave, params) {
+  const msg = form.querySelector('.msg');
+  try {
+    const r = await fetch('/api/config', { method: 'POST', headers: HX, body: params });
+    if (!r.ok) throw 0;
+    sucio[clave] = false; msg.className = 'msg'; msg.textContent = 'Cambios guardados';
+    refrescar();
+  } catch (_) {
+    msg.className = 'msg err'; msg.textContent = 'No se pudo guardar. Revisá la conexión.';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 4000);
+}
+
+for (const [form, clave] of [[f, 'f'], [fv, 'fv']]) {
+  form.addEventListener('input', ev => {
+    sucio[clave] = true;
+    if (ev.target.type === 'range') salida(ev.target);
+    ayuda();
+  });
+}
+
+f.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const p = new URLSearchParams();
+  for (const n of CAMPOS_F) p.set(n, f.elements[n].value);
+  enviar(f, 'f', p);
+});
+
+// Nombres de AUX1 / AUX2: se limpian mientras se escriben (sin acentos ni ñ).
+fn.addEventListener('input', ev => {
+  sucio.fn = true;
+  const t = ev.target, l = limpiarNombre(t.value);
+  if (l !== t.value) t.value = l;
+});
+fn.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const p = new URLSearchParams();
+  p.set('nomAux1', limpiarNombre(fn.elements.nomAux1.value).trim());
+  p.set('nomAux2', limpiarNombre(fn.elements.nomAux2.value).trim());
+  nombresAux = '';          // fuerza a repintar con lo que devuelva el equipo
+  enviar(fn, 'fn', p);
+});
+
+fv.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const p = new URLSearchParams();
+  p.set('ventActivo',      fv.elements.ventActivo.checked ? '1' : '0');
+  p.set('ventPeriodoH',    PERIODOS[+fv.elements.ventPer.value]);
+  p.set('ventDuracionMin', fv.elements.ventDuracionMin.value);
+  p.set('ventAnclaMin',    fv.elements.ventAnclaMin.value);
+  enviar(fv, 'fv', p);
+});
+
+$('#btnParada').addEventListener('click', async () => {
+  const quiere = $('#btnParada').classList.contains('activa') ? 'off' : 'on';
+  const ok = quiere === 'on'
+    ? confirm('¿APAGAR TODO?\n\nSe apagan los 6 relés (clima, ventilador y salidas auxiliares) y se suspende el control, incluida la protección de temperatura. Sigue así, también si se reinicia, hasta que toques "REANUDAR TODO".')
+    : confirm('¿Reanudar todo?\n\nEl control vuelve a funcionar solo. El clima espera el tiempo mínimo apagado antes de encender.');
+  if (!ok) return;
+  const b = $('#btnParada');
+  b.disabled = true;
+  try {
+    const r = await fetch('/api/parada', { method: 'POST', headers: HX, body: new URLSearchParams({ accion: quiere }) });
+    if (!r.ok) throw 0;
+  } catch (_) {
+    alert('No se pudo cambiar. Revisá la conexión; si hace falta, cortá la corriente.');
+  }
+  await refrescar();
+  cargarEventos();
+});
+
+$('#btnPausa').addEventListener('click', async () => {
+  if (activo && !confirm(`¿Pausar el control? Se apagan humidificador, deshumidificador, refrigeración y ventilador. ${RELES[4].nombre} y ${RELES[5].nombre} siguen igual.`)) return;
+  const bp = $('#btnPausa');
+  bp.disabled = true;
+  try {
+    const r = await fetch('/api/config', { method: 'POST', headers: HX, body: new URLSearchParams({ activo: activo ? '0' : '1' }) });
+    if (!r.ok) throw 0;
+  } catch (_) {
+    alert('No se pudo cambiar. Revisá la conexión.');
+  }
+  await refrescar();
+  cargarEventos();
+});
+
+for (const p of document.querySelectorAll('.modoBtn')) {
+  p.addEventListener('click', () => p.closest('.fila').classList.toggle('abre'));
+}
+// Mensaje de error bajo las salidas: queda 8 s (un error nuevo reinicia la cuenta).
+let avisoManTimer = null;
+function avisoMan(msg) {
+  const aviso = $('#ayudaMan');
+  aviso.dataset.err = '1';
+  txt('#ayudaMan', msg);
+  clearTimeout(avisoManTimer);
+  avisoManTimer = setTimeout(() => { delete aviso.dataset.err; }, 8000);
+}
+// Respuesta de /api/manual: 409 = todavía no se puede encender, 423 = test en curso.
+async function errorManual(r) {
+  if (r.status === 409) {
+    const j = await r.json();
+    const MOT = { ota: 'se está actualizando el programa', calibracion: 'hay una calibración en curso', seguridad: 'un límite de seguridad de temperatura lo impide', test: 'hay un test en curso', parada: 'hay una parada de emergencia (tocá REANUDAR TODO)' };
+    if (j.motivo) avisoMan(`No se puede cambiar: ${MOT[j.motivo] || j.motivo}. No se cambió nada.`);
+    else avisoMan(`Todavía no se puede encender: esperá ${mmss(j.espera)} (tiempo mínimo apagado). No se cambió nada.`);
+  }
+  else if (r.status === 423) avisoMan('Hay un test de relés en curso: no se puede cambiar nada hasta que termine.');
+  else if (!r.ok) throw 0;
+}
+for (const box of document.querySelectorAll('.modos')) {
+  box.addEventListener('click', async ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    box.closest('.fila').classList.remove('abre');
+    const i = +box.dataset.i;
+    for (const x of box.children) x.disabled = true;
+    try {
+      await errorManual(await fetch('/api/manual', { method: 'POST', headers: HX, body: new URLSearchParams({ cual: MAN_API[i], modo: b.dataset.modo }) }));
+    } catch (_) { avisoMan('No se pudo cambiar. Revisá la conexión.'); }
+    for (const x of box.children) x.disabled = false;
+    await refrescar();
+    cargarEventos();
+  });
+}
+
+for (const b of document.querySelectorAll('[data-cual]')) {
+  b.addEventListener('click', async () => {
+    const cual = b.dataset.cual;
+    b.disabled = true;
+    const p = new URLSearchParams({ cual, estado: manual[cual] ? '0' : '1' });
+    try { await errorManual(await fetch('/api/manual', { method: 'POST', headers: HX, body: p })); }
+    catch (_) { avisoMan('No se pudo cambiar. Revisá la conexión.'); }
+    b.disabled = false;
+    await refrescar();
+    cargarEventos();
+  });
+}
+
+/* ---------- Relés: nombres y colores (mismo orden que en Salidas) ---------- */
+const RELES = [
+  { nombre: 'Humidificador',    corto: 'Humidif.',   color: '#9fcdbb', bit: 1,  on: 'Humidificador encendido',    off: 'Humidificador apagado' },
+  { nombre: 'Deshumidificador', corto: 'Deshumid.',  color: '#c9a54b', bit: 2,  on: 'Deshumidificador encendido', off: 'Deshumidificador apagado' },
+  { nombre: 'Refrigeración',    corto: 'Frío',       color: '#8fb8e0', bit: 4,  on: 'Refrigeración encendida',    off: 'Refrigeración apagada' },
+  { nombre: 'Ventilador',       corto: 'Ventilador', color: '#8fd694', bit: 8,  on: 'Ventilador encendido',       off: 'Ventilador apagado' },
+  { nombre: 'AUX1',             corto: 'AUX1',       color: '#f1dc8a', bit: 32, on: 'AUX1 encendido',             off: 'AUX1 apagado' },
+  { nombre: 'AUX2',             corto: 'AUX2',       color: '#d9d4c7', bit: 16, on: 'AUX2 encendido',             off: 'AUX2 apagado' }
+];
+
+// Nombres de AUX1 (relé 5) y AUX2 (relé 6): vienen del equipo y se usan en toda la página.
+let nombresAux = '';
+function aplicarNombresAux(n1, n2) {
+  n1 = n1 || 'AUX1'; n2 = n2 || 'AUX2';
+  if (n1 + '|' + n2 === nombresAux) return;
+  nombresAux = n1 + '|' + n2;
+  [[4, n1], [5, n2]].forEach(([i, n]) => Object.assign(RELES[i], { nombre: n, corto: n, on: n + ' encendido', off: n + ' apagado' }));
+  txt('#nm_a1', n1); txt('#nm_a2', n2);
+  if (chartR) { chartR.data.datasets[4].label = n1; chartR.data.datasets[5].label = n2; chartR.update(); }
+  testOrden = ''; armarPasos(ultOrden);
+  if (!sucio.fn) { fn.elements.nomAux1.value = n1; fn.elements.nomAux2.value = n2; }
+  cargarEventos();
+}
+// Sin acentos ni ñ: el LCD no los muestra. Mismos caracteres que acepta el equipo.
+function limpiarNombre(s) {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ñ/g, 'n').replace(/Ñ/g, 'N')
+          .replace(/[^A-Za-z0-9 \-.\/()+#]/g, '').replace(/\s+/g, ' ').trimStart().slice(0, 12);
+}
+let chartR = null;
+
+// Convierte las marcas de cada punto del historial en tramos "encendido" por relé.
+function franjas(d, paso) {
+  return RELES.map((r, fila) => {
+    const pts = [];
+    let enTramo = false, ultX = 0;
+    for (let i = 0; i < d.k.length; i++) {
+      const x = (d.t0 + d.k[i] * d.dt) * 1000, on = (d.f[i] & r.bit) !== 0;
+      if (enTramo && (!on || x - ultX > paso * 1.5)) {
+        pts.push({ x: ultX + paso, y: fila }, { x: ultX + paso, y: null });
+        enTramo = false;
+      }
+      if (on) {
+        if (!enTramo) { pts.push({ x, y: fila }); enTramo = true; }
+        ultX = x;
+      }
+    }
+    if (enTramo) pts.push({ x: ultX + paso, y: fila });
+    return pts;
+  });
+}
+
+function dibujarActividad(d, paso, ini, fin) {
+  const series = franjas(d, paso), rejilla = '#2a2e32';
+  if (!chartR) {
+    chartR = new Chart($('#cvR'), {
+      type: 'line',
+      data: { datasets: RELES.map((r, i) => ({ label: r.nombre, data: series[i], borderColor: r.color, backgroundColor: r.color,
+        borderWidth: 10, borderCapStyle: 'butt', pointRadius: 0, spanGaps: false, tension: 0 })) },
+      options: {
+        parsing: false, animation: false, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { type: 'linear', grid: { color: rejilla },
+               ticks: { color: '#9a968c', maxRotation: 0, callback: v => etiqueta(v) },
+               afterBuildTicks: s => { const n = 5; s.ticks = Array.from({ length: n + 1 }, (_, i) => ({ value: s.min + (s.max - s.min) * i / n })); } },
+          y: { min: -0.5, max: RELES.length - 0.5, reverse: true, grid: { color: rejilla },
+               afterBuildTicks: s => { s.ticks = RELES.map((_, i) => ({ value: i })); },
+               ticks: { color: '#9a968c', callback: v => (RELES[v] ? RELES[v].corto : '') } }
+        }
+      }
+    });
+  }
+  series.forEach((pts, i) => { chartR.data.datasets[i].data = pts; });
+  chartR.options.scales.x.min = ini;
+  chartR.options.scales.x.max = fin;
+  chartR.update();
+}
+
+/* ---------- Historial ---------- */
+const SPAN = { '1h': 3600, '1d': 86400, '1w': 604800, '1m': 2592000, '3m': 7776000 };
+
+function etiqueta(v) {
+  const d = new Date(v);
+  if (rango === '1h' || rango === '1d') return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  if (rango === '1w') return d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+}
+
+// Escala vertical automática pero con un alto mínimo, centrada en los datos:
+// así las oscilaciones chicas se ven chicas y un desvío grande igual entra.
+// Los bordes se redondean a "paso" para que las marcas queden en números redondos.
+function escalaMin(a, altoMin, paso, lo, hi) {
+  const v = a.filter(x => x.y != null).map(x => x.y);
+  if (!v.length) return { min: undefined, max: undefined };
+  let min = Math.min(...v), max = Math.max(...v);
+  const margen = (max - min) * 0.08;                     // un poco de aire arriba y abajo
+  min -= margen; max += margen;
+  if (max - min < altoMin) { const c = (min + max) / 2; min = c - altoMin / 2; max = c + altoMin / 2; }
+  min = Math.floor(min / paso) * paso; max = Math.ceil(max / paso) * paso;
+  if (lo != null && min < lo) { max = Math.min(hi ?? Infinity, max + (lo - min)); min = lo; }
+  if (hi != null && max > hi) { min = Math.max(lo ?? -Infinity, min - (max - hi)); max = hi; }
+  return { min, max };
+}
+const ALTO_MIN_T = 4, ALTO_MIN_H = 10;   // °C y % HR mínimos que muestra el gráfico
+
+function resumen(a) {
+  const v = a.filter(x => x.y != null).map(x => x.y);
+  if (!v.length) return 'sin datos';
+  const min = Math.min(...v), max = Math.max(...v), avg = v.reduce((s, x) => s + x, 0) / v.length;
+  return `mín <b>${num(min, 1)}</b>, prom <b>${num(avg, 1)}</b>, máx <b>${num(max, 1)}</b>`;
+}
+
+async function cargarHist() {
+  if (!$('#p_hist').open || vistaAct !== 'sec') return;   // cerrado o en otra pestaña: no se le pide nada a la placa
+  const st = $('#stats');
+  if (typeof Chart === 'undefined') {
+    st.textContent = 'No se pudo cargar la librería de gráficos desde el equipo. Recargá la página.';
+    return;
+  }
+  const rg = rango;                        // si se cambia de rango mientras llega la respuesta, se descarta
+  let d;
+  try {
+    const r = await fetch('/api/historial?rango=' + rg, { cache: 'no-store' });
+    if (!r.ok) throw new Error('el equipo respondió con el código ' + r.status);
+    d = await r.json();
+  } catch (err) {
+    if (rg === rango) st.textContent = 'No se pudo leer el historial del equipo (' + (err.message || 'respuesta incompleta') + '). Mirá "Diagnóstico del equipo" en la pestaña Ajustes.';
+    return;
+  }
+  if (rg !== rango) return;
+
+  const dtm = d.dt * 1000, paso = dtm * (d.g || 1), T = [], H = [];
+  let prev = null;
+  for (let i = 0; i < d.k.length; i++) {
+    const x = (d.t0 + d.k[i] * d.dt) * 1000;
+    if (prev !== null && x - prev > paso * 2.5) {          // hueco: equipo apagado o sin hora
+      T.push({ x: prev + paso, y: null }); H.push({ x: prev + paso, y: null });
+    }
+    T.push({ x, y: d.t[i] }); H.push({ x, y: d.h[i] });
+    prev = x;
+  }
+
+  const fin = Date.now(), ini = fin - SPAN[rg] * 1000;
+  if (!chart) {
+    const rejilla = '#2a2e32';
+    chart = new Chart($('#cv'), {
+      type: 'line',
+      data: { datasets: [
+        { label: 'Temperatura °C', data: T, borderColor: COL_T, backgroundColor: COL_T, yAxisID: 'yT', pointRadius: 0, borderWidth: 2, tension: .25, spanGaps: false },
+        { label: 'Humedad %',      data: H, borderColor: COL_H, backgroundColor: COL_H, yAxisID: 'yH', pointRadius: 0, borderWidth: 2, tension: .25, spanGaps: false }
+      ]},
+      options: {
+        parsing: false, animation: false, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#9a968c', boxWidth: 12 } },
+          tooltip: { callbacks: { title: it => new Date(it[0].parsed.x).toLocaleString('es-AR', { hourCycle: 'h23' }) } }
+        },
+        scales: {
+          x:  { type: 'linear', grid: { color: rejilla },
+                ticks: { color: '#9a968c', maxRotation: 0, callback: v => etiqueta(v) },
+                afterBuildTicks: s => { const n = 5; s.ticks = Array.from({ length: n + 1 }, (_, i) => ({ value: s.min + (s.max - s.min) * i / n })); } },
+          yT: { position: 'left',  grid: { color: rejilla }, ticks: { color: COL_T } },
+          yH: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: COL_H } }
+        }
+      }
+    });
+  }
+  chart.data.datasets[0].data = T;
+  chart.data.datasets[1].data = H;
+  chart.options.scales.x.min = ini;
+  chart.options.scales.x.max = fin;
+  Object.assign(chart.options.scales.yT, escalaMin(T, ALTO_MIN_T, 0.5));
+  Object.assign(chart.options.scales.yH, escalaMin(H, ALTO_MIN_H, 1, 0, 100));
+  chart.update();
+  dibujarActividad(d, paso, ini, fin);
+
+  if (!d.k.length) {
+    st.textContent = 'Todavía no hay datos guardados en este rango. El equipo empieza a registrar cuando tiene la hora de internet.';
+  } else {
+    st.innerHTML =
+      `<div><span class="tt">Temperatura</span>: ${resumen(T)} °C</div>` +
+      `<div><span class="hh">Humedad</span>: ${resumen(H)} %</div>`;
+  }
+}
+
+$('#tabs').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  rango = b.dataset.r;
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  cargarHist();
+});
+
+/* ---------- Registro de relés ---------- */
+let evCargados = 40;
+
+function cuando(ts) {
+  if (!ts) return 'sin hora';
+  const d = new Date(ts * 1000), hoy = new Date();
+  const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  return d.toDateString() === hoy.toDateString() ? hora : d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + hora;
+}
+
+function textoEvento(cod, on, man) {
+  if (cod === 6) return 'Equipo encendido (arranque)';
+  if (cod === 7) return on ? 'Control pausado' : 'Control reanudado';
+  if (cod === 8) return on ? 'Test de relés iniciado' : 'Test de relés terminado';
+  if (cod === 9) return on ? 'PARADA DE EMERGENCIA (todo apagado)' : 'Parada de emergencia levantada';
+  return RELES[cod] ? (on ? RELES[cod].on : RELES[cod].off) + (man && cod < 3 ? ' (manual)' : '') : 'Evento desconocido';
+}
+
+function pintarEventos(r) {
+  const lista = r.ev, ul = $('#registro');
+  ul.textContent = '';
+  if (!lista.length) { ul.innerHTML = '<li><span class="que">Todavía no hay eventos.</span></li>'; }
+  lista.forEach(([ts, cod, on, man], i) => {
+    // Duración: si es un apagado, se busca el encendido anterior del mismo relé.
+    let dur = '';
+    if (cod < 6 && !on && ts) {
+      const prev = lista.slice(i + 1).find(e => e[1] === cod);
+      if (prev && prev[2] === 1 && prev[0]) dur = 'duró ' + tiempo(ts - prev[0]);
+    }
+    const li = document.createElement('li');
+    if (cod >= 6) li.className = 'sis';
+    const led = cod < 6 ? `<span class="led${on ? ' on' : ''}" style="${on ? 'background:' + RELES[cod].color + ';box-shadow:none' : ''}"></span>` : '<span></span>';
+    li.innerHTML = `<span class="cuando">${cuando(ts)}</span>${led}<span class="que"></span><span class="dur">${dur}</span>`;
+    li.querySelector('.que').textContent = textoEvento(cod, on, man);
+    ul.appendChild(li);
+  });
+  $('#masEv').hidden = lista.length >= r.total || evCargados >= 200;   // el equipo manda como máximo los 200 más recientes
+}
+
+async function cargarEventos() {
+  if (!$('#regDet').open || vistaAct !== 'sec') return;   // cerrado o en otra pestaña: no se le pide nada a la placa
+  try {
+    const r = await (await fetch(`/api/eventos?n=${evCargados}&saltar=0`, { cache: 'no-store' })).json();
+    pintarEventos(r);
+  } catch (_) {
+    $('#registro').innerHTML = '<li><span class="que">No se pudo leer el registro.</span></li>';
+  }
+}
+
+// Borra solo el registro de relés (el historial de temperatura y humedad no se toca).
+$('#borrarEv').addEventListener('click', async () => {
+  if (!confirm('Se borra todo el registro de relés. El historial de temperatura y humedad no se toca. No se puede deshacer. ¿Seguro?')) return;
+  const m = $('#borrarEvMsg');
+  try {
+    const r = await fetch('/api/borrar/registro', { method: 'POST', headers: HX, body: new URLSearchParams({ confirmar: 'BORRAR' }) });
+    m.className = r.ok ? 'msg' : 'msg err';
+    m.textContent = r.ok ? 'Registro borrado' : 'No se pudo borrar';
+    if (r.ok) { evCargados = 40; cargarEventos(); }
+  } catch (_) { m.className = 'msg err'; m.textContent = 'Sin conexión'; }
+  setTimeout(() => { m.textContent = ''; }, 4000);
+});
+$('#masEv').addEventListener('click', () => { evCargados = Math.min(evCargados + 40, 200); cargarEventos(); });
+$('#regDet').addEventListener('toggle', () => { if ($('#regDet').open) cargarEventos(); });
+$('#p_hist').addEventListener('toggle', () => { if ($('#p_hist').open) cargarHist(); });
+
+/* ---------- Diagnóstico ---------- */
+function duracion(s) {
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return (d ? d + ' d ' : '') + h + ' h ' + m + ' min';
+}
+$('#diag').addEventListener('toggle', async () => {
+  if (!$('#diag').open) return;
+  const box = $('#diagTxt');
+  try {
+    const r = await fetch('/api/diag', { cache: 'no-store' });
+    if (!r.ok) throw 0;
+    const d = await r.json(), kb = n => Math.round(n / 1024) + ' KB', h = d.historial;
+    box.textContent =
+      `Programa: ${d.version || '?'} · página: ${PAGINA_VERSION}${d.version && d.version !== PAGINA_VERSION ? '  (¡distintos! recargá la página con Ctrl+F5)' : ''}\n` +
+      `Memoria libre: ${kb(d.heapLibre)} (bloque más grande: ${kb(d.heapBloqueMayor)})\n` +
+      `Hora de internet: ${d.horaOk ? 'sí' : 'NO'}\n` +
+      `Encendido hace: ${duracion(d.uptime)}\n` +
+      `Último reinicio: ${d.reinicio}\n` +
+      `Datos guardados: 1 hora ${h[4] ?? 0}/360 (no se guarda), 1 día ${h[0]}/1440, 1 semana ${h[1]}/2016, 1 mes ${h[2]}/1440, 3 meses ${h[3]}/1440\n` +
+      `Dirección: ${d.ip}\n` +
+      `Acceso: ${d.sinClave ? 'sin clave' : 'con clave'}
+` +
+      `Programa en: ${d.particion || '?'} · actualización por Wi-Fi: ${d.ota ? 'sí' : 'NO (falta cargar por USB con la partición nueva)'}`;
+    $('#claveDet').hidden = !!d.sinClave;
+  } catch (_) { box.textContent = 'No se pudo leer el diagnóstico.'; }
+});
+
+refrescar();
+cargarHist();
+cargarEventos();
+/* ---------- Modo test de relés ---------- */
+let testTimer = null, testActivo = false, testPidiendo = false, ultTest = null, ultHechos = 0;
+let testOrden = '', ultOrden = null;
+function armarPasos(orden) {   // un casillero por relé, de IN1 a IN6, con la función que tiene conectada
+  if (orden) ultOrden = orden;
+  const o = orden || ultOrden || RELES.map((_, i) => i);
+  if (o.join() === testOrden) return;
+  testOrden = o.join();
+  $('#testPasos').innerHTML = o.map((f, k) => `<li data-f="${f}">${k + 1}. ${RELES[f].corto}</li>`).join('');
+}
+armarPasos();
+$('#testChk').addEventListener('change', () => { if (!testActivo) $('#testBtn').disabled = !$('#testChk').checked; });
+
+// Luces de Salidas y del tablero según el relé que está probando el test (en tiempo real).
+const LED_ID = ['hum', 'des', 'fri', 'ven', 'luz', 'otr'];
+function mascaraTest(t) { return t.mascara ?? (t.rele >= 0 ? 1 << t.rele : 0); }
+function ledsTest(t) {
+  const tab = $('#tab_sal');
+  LED_ID.forEach((id, i) => {
+    const on = !!t.activo && !!(mascaraTest(t) >> i & 1);
+    rele(id, on, i < 4 ? (on ? 'encendido (test)' : 'apagado (test)') : undefined);
+    if (tab.children[i]) { tab.children[i].classList.toggle('on', on); tab.children[i].firstElementChild.classList.toggle('on', on); }
+  });
+}
+
+let testEsperaHasta = 0;                  // recién pedido el inicio: el equipo puede tardar un instante en arrancarlo
+function pintarTest(t) {
+  if (!t) return;
+  if (!t.activo && Date.now() < testEsperaHasta) return;
+  if (t.activo) testEsperaHasta = 0;
+  const antes = testActivo;
+  testActivo = !!t.activo;
+  if (testActivo && !antes) ultHechos = 0;                 // empieza un test: se limpian los pasos
+  if (!testActivo && antes && ultTest && ultTest.seg <= 2 && !(ultTest.modo > 1)) ultHechos = 6;   // de a uno terminó solo: los 6 probados
+  const varios = t.modo === 2 || t.modo === 3;             // sumar / todos: varios relés a la vez
+  if (testActivo) { ultTest = t; ultHechos = varios ? 0 : (t.hechos ?? Math.max(0, t.num - 1)); }
+  for (const x of document.querySelectorAll('#testModos .avz')) x.hidden = t.avanzado === false;
+  for (const x of document.querySelectorAll('#testModos input')) x.disabled = testActivo;
+  if (testActivo) for (const b of document.querySelectorAll('[data-cual], .modos button, .modoBtn')) b.disabled = true;   // se habilitan al refrescar después del test
+  if (t.largoS) txt('#testLargo', t.largoS >= 60 ? `${Math.round(t.largoS / 60)} minutos` : `${t.largoS} s`);
+  if (t.onMs) txt('#testOnS', Math.round(t.onMs / 1000));
+  if (t.orden) armarPasos(t.orden);
+  const b = $('#testBtn'), m = $('#testMsg');
+  document.querySelectorAll('#testPasos li').forEach((li, k) => {
+    li.classList.toggle('on', testActivo && !!(mascaraTest(t) >> +li.dataset.f & 1));
+    li.classList.toggle('hecho', k < ultHechos);          // queda marcado al terminar su turno (y después del test)
+  });
+  if (testActivo || antes) ledsTest(t);
+  if (testActivo) {
+    if (!antes) $('#testDet').open = true;   // se abre al empezar; después se puede cerrar
+    b.disabled = false; b.textContent = 'Detener test';
+    m.className = 'msg';
+    m.textContent = t.modo === 2 ? `Sumando relés: ${t.num} de 6 encendidos · faltan ${t.seg} s`
+      : t.modo === 3 ? `Todos juntos: ${t.num} de 6 encendidos · faltan ${t.seg} s`
+      : t.rele >= 0 ? `Encendido: ${RELES[t.rele].nombre} (${t.num}/6) · faltan ${t.seg} s` : `Pausa · faltan ${t.seg} s`;
+    if (!testTimer) testTimer = setInterval(leerTest, 400);
+  } else {
+    b.textContent = 'Iniciar test';
+    b.disabled = !$('#testChk').checked;
+    if (testTimer) { clearInterval(testTimer); testTimer = null; }
+    if (antes) { m.className = 'msg'; m.textContent = 'Test terminado. Todo volvió a automático.'; $('#testChk').checked = false; b.disabled = true; refrescar(); cargarEventos(); }
+  }
+}
+
+async function leerTest() {
+  if (testPidiendo) return;                 // nunca dos pedidos a la vez: así no llegan respuestas viejas fuera de orden
+  testPidiendo = true;
+  try {
+    const j = await (await fetch('/api/test', { cache: 'no-store' })).json();
+    pintarTest(j.test);                     // el equipo responde {"test":{...}}, igual que dentro de /api/estado
+  } catch (_) {}
+  testPidiendo = false;
+}
+
+$('#testBtn').addEventListener('click', async () => {
+  const m = $('#testMsg');
+  let p;
+  if (testActivo) p = { accion: 'detener' };
+  else {
+    if (!$('#testChk').checked) return;
+    const modo = (document.querySelector('input[name=testModo]:checked') || {}).value || 'uno';
+    const que = { uno: 'Se van a prender los 6 relés de a uno.', suma: 'Se van a ir sumando los relés del 1 al 6 hasta quedar los 6 encendidos.', todos: 'Se van a prender LOS 6 RELÉS A LA VEZ.' }[modo];
+    if (!confirm('ATENCIÓN 220 V\n\n¿Desenchufaste TODOS los equipos conectados a los relés (sobre todo la heladera)?\n\n' + que)) return;
+    p = { accion: 'iniciar', confirmar: 'SIN220', modo };
+  }
+  try {
+    const r = await fetch('/api/test', { method: 'POST', headers: HX, body: new URLSearchParams(p) });
+    if (r.status === 409) {
+      const j = await r.json();
+      m.className = 'msg err';
+      if (j.motivo === 'parada') { m.textContent = 'Hay una parada de emergencia: reanudá antes de hacer el test.'; return; }
+      m.textContent = `Protección de la heladera: el test arranca cuando lleve 3 min apagada. Esperá ${mmss(j.espera)}.`;
+      return;
+    }
+    if (!r.ok) throw 0;
+    testEsperaHasta = p.accion === 'iniciar' ? Date.now() + 2500 : 0;
+    setTimeout(leerTest, 150);
+    if (!testTimer) testTimer = setInterval(leerTest, 400);
+  } catch (_) { m.className = 'msg err'; m.textContent = 'No se pudo comunicar con el equipo'; }
+});
+
+/* ---------- Calibración del sensor ---------- */
+const fc = $('#fc');
+let calActivo = false;
+fc.addEventListener('input', ev => { sucio.fc = true; if (ev.target.type === 'range') salida(ev.target); });
+fc.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const p = new URLSearchParams();
+  p.set('offT', fc.elements.offT.value);
+  p.set('offH', fc.elements.offH.value);
+  enviar(fc, 'fc', p);
+});
+
+function conSigno(v, d) { return (v > 0 ? '+' : '') + num(v, d); }
+
+function pintarCalib(e) {
+  if (!sucio.fc && e.offT != null) { poner(fc, 'offT', e.offT); poner(fc, 'offH', e.offH); }
+  const aj = (e.offT || e.offH) ? `ajuste ${conSigno(e.offT || 0, 1)} °C / ${conSigno(e.offH || 0, 1)} %` : 'sin ajuste';
+  txt('#calLect', e.tCruda != null
+    ? `Lectura del sensor sin ajuste: ${num(e.tCruda, 1)} °C · ${num(e.hCruda, 1)} % → con ajuste: ${e.sensorOk ? num(e.temp, 1) + ' °C · ' + num(e.hum, 1) + ' %' : '--'}`
+    : 'Lectura del sensor sin ajuste: --');
+  const c = e.calib || {};
+  const calAntes = calActivo;
+  calActivo = !!c.activo;
+  txt('#r_cal', calActivo ? 'calibrando' : aj);
+  $('#r_cal').classList.toggle('pausa', calActivo);
+  $('#calIni').hidden = calActivo;
+  $('#calRun').hidden = !calActivo;
+  if (!calActivo) return;
+  if (!calAntes) $('#calDet').open = true;   // se abre al empezar; después se puede cerrar
+  const h = Math.floor(c.min / 60), m = c.min % 60;
+  txt('#calNom', 'Sal común');
+  txt('#calMin', (h ? h + ' h ' : '') + m + ' min');
+  txt('#calRef', num(c.ref, 1) + ' %');
+  txt('#calAct', c.actual != null ? num(c.actual, 1) + ' %' : '--');
+  txt('#calProm', c.prom != null ? num(c.prom, 2) + ' %' : 'esperando 1 min');
+  txt('#calRng', c.rango != null ? num(c.rango, 2) + ' %' : '--');
+  txt('#calProp', c.prom != null ? conSigno(c.propuesto, 1) + ' %' : '--');
+  txt('#calOffAct', conSigno(e.offH || 0, 1) + ' %');
+  const est = $('#calEst');
+  est.className = 'calEstado' + (c.estable ? ' ok' : '');
+  est.textContent = c.estable ? 'Estable: se puede aplicar el ajuste.'
+    : !c.sePuede ? `Estabilizando… faltan ${Math.max(0, c.minMin - c.min)} min para poder aplicar (mejor esperar varias horas).`
+    : 'Todavía varía. Se puede aplicar, pero conviene esperar a que se estabilice.';
+  $('#calBtnApl').disabled = !c.sePuede;
+}
+
+async function ordenCalib(p, msgSel) {
+  const m = $(msgSel);
+  try {
+    const r = await fetch('/api/calib', { method: 'POST', headers: HX, body: new URLSearchParams(p) });
+    if (!r.ok) throw r.status;
+    m.className = 'msg'; m.textContent = p.accion === 'aplicar' ? 'Ajuste guardado' : p.accion === 'cancelar' ? 'Calibración cancelada' : '';
+    refrescar();
+  } catch (st) {
+    m.className = 'msg err'; m.textContent = st === 409 ? 'Todavía no hay datos suficientes' : 'No se pudo comunicar con el equipo';
+  }
+  setTimeout(() => { m.textContent = ''; }, 5000);
+}
+$('#calBtnIni').addEventListener('click', () => {
+  if (!confirm('Mientras dura la calibración el control de clima queda APAGADO. ¿Empezar?')) return;
+  ordenCalib({ accion: 'iniciar' }, '#calMsgIni');
+});
+$('#calBtnApl').addEventListener('click', () => {
+  if (!confirm(`¿Guardar ${$('#calProp').textContent} como ajuste de humedad y terminar la calibración?`)) return;
+  ordenCalib({ accion: 'aplicar' }, '#calMsgRun');
+});
+$('#calBtnCan').addEventListener('click', () => {
+  if (!confirm('¿Cancelar la calibración? No se cambia el ajuste actual.')) return;
+  ordenCalib({ accion: 'cancelar' }, '#calMsgRun');
+});
+
+/* ---------- Balanza y pieza testigo ---------- */
+// Se consulta aparte del estado (cada 1 s) para que el peso se vea al momento. Sin balanza en el
+// equipo (/api/balanza da 404) la sección y la pestaña quedan ocultas y se deja de preguntar.
+let balHay = true, balPend = false, balEspera = '', balUlt = null, chartP = null, tandasDiario = [];
+const BT_EST = ['apagada', 'buscando en la red…', 'no contesta', 'conectada'];
+function balMsg(t, err) { const m = $('#bal_msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); }
+const chip = (t, c) => `<span class="chip ${c || ''}">${t}</span>`;
+const fechaCorta = d => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+function textoFalta(sg) {
+  if (!sg.activo) return '';
+  if (sg.falta == null) return sg.puntos > 1 ? 'estimando (hacen falta 12 h de datos)' : 'estimando…';
+  return sg.falta <= 0 ? '¡llegó a la merma objetivo!' : `faltan ~${Math.ceil(sg.falta)} días`;
+}
+
+function pintarBalanza(d) {
+  balUlt = d;
+  document.body.classList.remove('sinBal');
+  const sg = d.seg || {}, bt = d.red || {};
+
+  // Peso en vivo
+  txt('#bal_g', d.ocup ? '···' : fijo(d.g, 1));
+  let c = '';
+  if (!bt.activo)  c = chip('conexión apagada', 'mal');
+  else if (!d.con) c = chip('sin conexión: ' + BT_EST[bt.estado || 1], 'mal');
+  else if (d.err)  c = chip('la balanza no lee la celda (cables del HX711)', 'mal');
+  else if (d.ocup) c = chip('midiendo…');
+  else             c = d.est ? chip('quieto', 'ok') : chip('moviéndose');
+  if (d.sob) c += chip('SOBRECARGA', 'mal');
+  if (d.con && !d.cal) c += chip('sin calibrar', 'mal');
+  $('#bal_chips').innerHTML = c;
+  for (const b of document.querySelectorAll('#bal_tara, #bal_cal, #bal_reset, #bk_comp, #bk_aprender, #bk_cancelar')) b.disabled = !d.con || !!d.ocup;
+  txt('#r_bcal', d.con ? (d.cal ? 'calibrada' : 'sin calibrar') : '');
+
+  // Temperatura y compensación
+  const tp = d.temp || {}, gr = v => v == null ? '--' : fijo(v, 1) + ' °C';
+  const av = $('#bal_av');
+  av.hidden = !d.con || !tp.avn;
+  av.textContent = tp.av || '';
+  av.className = 'aviso' + (tp.avn > 1 ? '' : ' pausa');
+  txt('#bk_aire', gr(tp.aire));
+  txt('#bk_celda', gr(tp.celda));
+  txt('#bk_corr', !d.con ? '--' : tp.comp ? (tp.corr > 0 ? '+' : '') + fijo(tp.corr, 1) + ' g' : 'apagada');
+  txt('#bk_ref', `${tp.tara == null ? '--' : fijo(tp.tara, 1)} / ${tp.calib == null ? '--' : fijo(tp.calib, 1)} °C`);
+  txt('#bk_kc', tp.kc == null ? '--' : num(tp.kc, 3) + ' g/°C');
+  txt('#bk_ks', tp.ks == null ? '--' : num(tp.ks, 4) + ' %/°C');
+  txt('#bk_comp', tp.comp ? 'Apagar compensación' : 'Encender compensación');
+  txt('#r_btemp', !d.con ? '' : tp.apr ? 'aprendiendo' : !tp.comp ? 'apagada' : tp.celda == null ? 'sin temperatura'
+    : `${fijo(tp.celda, 1)} °C · ${tp.corr > 0 ? '+' : ''}${fijo(tp.corr, 1)} g`);
+  const ap = tp.apr;
+  $('#bk_apr').hidden = !ap; $('#bk_cancelar').hidden = !ap;
+  txt('#bk_aprender', ap ? 'Terminar y aplicar' : 'Empezar');
+  if (ap) {
+    txt('#bk_an', ap.n);
+    txt('#bk_adt', ap.dt == null ? '--' : fijo(ap.dt, 1) + ' °C');
+    txt('#bk_apend', ap.pend == null ? '--' : `${num(ap.pend, 3)} g/°C con ${num(ap.carga, 0)} g`);
+    txt('#bk_ar2', ap.r2 == null ? '--' : num(ap.r2, 2));
+  }
+  if (bt.ip) $('#bk_link').href = 'http://' + bt.ip;
+
+  if (balEspera && d.msg && !d.ocup) {
+    if (d.msg.startsWith('OK T'))       balMsg('Listo: balanza en cero' + (tp.tara != null ? ` (a ${fijo(tp.tara, 1)} °C)` : ''), false);
+    else if (d.msg.startsWith('OK C'))  balMsg('Calibración guardada' + (tp.calib != null ? ` (a ${fijo(tp.calib, 1)} °C)` : ''), false);
+    else if (d.msg.startsWith('OK R'))  balMsg('Calibración borrada', false);
+    else if (d.msg.startsWith('OK AF')) balMsg('Deriva aprendida y aplicada: ' + d.msg.slice(6), false);
+    else if (d.msg === 'OK AX')         balMsg('Aprendizaje cancelado', false);
+    else if (d.msg.startsWith('OK A'))  balMsg('Aprendiendo la deriva: no toques la balanza', false);
+    else if (d.msg.startsWith('OK M'))  balMsg(tp.comp ? 'Compensación encendida' : 'Compensación apagada', false);
+    else balMsg(d.msg === 'OCUPADA' ? 'La balanza está ocupada, probá de nuevo' : d.msg.replace(/^ERR /, 'Error: '), true);
+    balEspera = '';
+  }
+
+  // Resumen en Secadero
+  const peso = sg.activo && sg.peso != null ? sg.peso : d.g;
+  txt('#sb_merma', sg.activo ? fijo(sg.merma, 1) : '--');
+  txt('#sb_peso', fijo(peso, 1));
+  txt('#sb_obj', sg.activo ? `objetivo ${num(sg.obj, 0)} % · día ${Math.floor(sg.dias)}` : 'sin seguimiento');
+  txt('#sb_falta', !sg.activo ? (d.con ? 'balanza conectada' : 'balanza sin conexión')
+    : sg.pausa ? 'seguimiento en pausa' : sg.descolgada ? '¿pieza descolgada? Pausá el seguimiento'
+    : textoFalta(sg) + (sg.vivo ? '' : ' · último peso registrado'));
+  txt('#r_bal', sg.activo && sg.merma != null ? `merma ${fijo(sg.merma, 1)} %` : !d.con ? 'sin conexión' : fijo(d.g, 1) + ' g');
+
+  // Seguimiento
+  $('#seg_datos').hidden = !sg.activo;
+  if (sg.activo) {
+    // Pausa (pieza descolgada para limpiar o revisar) y aviso si la balanza no tiene la pieza.
+    const av = $('#sg_aviso');
+    av.hidden = !sg.pausa && !sg.descolgada;
+    av.className = 'aviso' + (sg.pausa ? ' pausa' : '');
+    av.textContent = sg.pausa
+      ? `Seguimiento en pausa desde el ${new Date(sg.pausaDesde * 1000).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}: no se registra el peso. Es un buen momento para tarar con el gancho vacío. Al retomar, colgá la pieza y esperá a que el peso quede quieto.`
+      : 'La balanza casi no marca peso: ¿descolgaste la pieza? Mientras tanto no se registra nada. Si la vas a dejar afuera un rato, pausá el seguimiento.';
+    txt('#sg_pausa', sg.pausa ? 'Retomar seguimiento' : 'Pausar seguimiento');
+    txt('#seg_tit', 'Pieza testigo' + (sg.nombre ? ' · ' + sg.nombre : ''));
+    $('#sg_merma').firstChild.nodeValue = fijo(sg.merma, 1);
+    $('#sg_barra').style.width = Math.min(100, Math.max(0, (sg.merma || 0) / sg.obj * 100)) + '%';
+    $('#sg_obj').firstChild.nodeValue = num(sg.obj, 1);
+    txt('#sg_falta', sg.falta == null ? '--' : sg.falta <= 0 ? '¡Listo!' : `~${Math.ceil(sg.falta)} días`);
+    txt('#sg_fecha', sg.falta == null ? '--' : sg.falta <= 0 ? 'ya llegó' : fechaCorta(new Date(Date.now() + sg.falta * 864e5)));
+    txt('#sg_pesos', `${num(sg.p0, 0)} → ${sg.peso != null ? num(sg.peso, 0) : '--'} g`);
+    $('#sg_perdida').firstChild.nodeValue = sg.peso != null ? num(sg.p0 - sg.peso, 0) : '--';
+    txt('#sg_dia', Math.floor(sg.dias));
+    $('#sg_ritmo').firstChild.nodeValue = sg.ritmo != null ? num(sg.ritmo, 2) : '--';
+    txt('#sg_info', (sg.pausa ? 'En pausa: se muestra el último peso registrado. ' : sg.vivo ? '' : 'La balanza no está conectada: se muestra el último peso registrado. ') +
+      `Empezó el ${new Date(sg.ini * 1000).toLocaleDateString('es-AR')} · ${sg.puntos} puntos registrados. La estimación usa el ritmo de los últimos 3 días, que normalmente va bajando: tomala como mínimo.`);
+  } else {
+    txt('#seg_tit', 'Pieza testigo');
+    if ($('#fs').hidden && !$('#fs').dataset.abierto) abrirSeg(false);
+  }
+
+  // Bluetooth
+  txt('#bt_est', bt.activo ? BT_EST[bt.estado] || '--' : 'apagada');
+  txt('#bt_rssi', d.con && d.rssi ? d.rssi + ' dBm' : '--');
+  txt('#bt_dir', bt.ip ? `${bt.ip} (${bt.host})` : `buscando ${bt.host || 'balanza.local'}…`);
+  txt('#bt_onoff', bt.activo ? 'Apagar la conexión' : 'Encender la conexión');
+  txt('#r_bble', bt.activo ? BT_EST[bt.estado] : 'apagada');
+}
+
+// En la pestaña Balanza, cada 1 s; en Secadero (solo el panel chico), cada 3 s, como el estado.
+let balUltPedido = 0;
+async function leerBalanza(cadaSeg) {
+  if (!balHay || balPend || vistaAct === 'aju' || document.hidden) return;
+  if (cadaSeg && vistaAct !== 'bal' && Date.now() - balUltPedido < 2900) return;
+  balUltPedido = Date.now();
+  balPend = true;
+  try {
+    const r = await fetch('/api/balanza', { cache: 'no-store' });
+    if (r.status === 404) { balHay = false; document.body.classList.add('sinBal'); if (vistaAct === 'bal') location.hash = '#secadero'; return; }
+    if (r.ok) pintarBalanza(await r.json());
+  } catch (_) {} finally { balPend = false; }
+}
+async function postBal(url, p) {
+  return fetch(url, { method: 'POST', headers: HX, body: new URLSearchParams(p) });
+}
+async function ordenBalanza(o, t) {
+  balMsg(o === 'T' ? 'Tarando, no toques la balanza…' : o[0] === 'C' ? 'Calibrando, no toques la balanza…' : '', false);
+  const p = { o };
+  if (t !== undefined && t !== '') p.t = t;
+  try {
+    const r = await postBal('/api/balanza', p);
+    if (r.status === 409) { balMsg('La balanza no está conectada', true); return; }
+    if (!r.ok) throw 0;
+    balEspera = o;
+  } catch (_) { balMsg('No se pudo enviar la orden', true); }
+}
+$('#bal_tara').onclick = () => {
+  if (balUlt && balUlt.seg && balUlt.seg.activo && !balUlt.seg.pausa &&
+      !confirm('Hay un seguimiento en curso. Tarar con la pieza colgada pone el peso en cero y arruina la merma.\n\nTarar solo con el gancho vacío. ¿Tarar igual?')) return;
+  const t = balTemp('#bal_ttara');
+  if (t === null) return;
+  ordenBalanza('T', t);
+};
+$('#bal_cal').onclick = () => {
+  const g = parseFloat($('#bal_gcal').value.replace(',', '.'));
+  if (!(g > 0 && g <= 1000)) { balMsg('Escribí los gramos del peso conocido (1 a 1000)', true); return; }
+  const t = balTemp('#bal_tcal');
+  if (t === null) return;
+  ordenBalanza('C' + g, t);
+};
+// Temperatura escrita para la tara / calibración: '' = la que estima la balanza, null = inválida.
+function balTemp(sel) {
+  const v = $(sel).value.trim().replace(',', '.');
+  if (!v) return '';
+  const t = parseFloat(v);
+  if (t > -30 && t < 70) return t;
+  balMsg('Temperatura inválida', true);
+  return null;
+}
+for (const b of document.querySelectorAll('.bal_traer')) b.onclick = () => {
+  const tp = (balUlt && balUlt.temp) || {}, t = tp.celda != null ? tp.celda : tp.aire;
+  if (t == null) { balMsg('Todavía no hay temperatura', true); return; }
+  $(b.dataset.para).value = t.toFixed(1);
+};
+$('#bk_comp').onclick = () => ordenBalanza(balUlt && balUlt.temp && balUlt.temp.comp ? 'M0' : 'M1');
+$('#bk_aprender').onclick = () => {
+  const ap = balUlt && balUlt.temp && balUlt.temp.apr;
+  if (!ap && balUlt && balUlt.seg && balUlt.seg.activo && !balUlt.seg.pausa &&
+      !confirm('Hay un seguimiento en curso. Para aprender, la balanza tiene que estar vacía o con un peso fijo (no un salame). ¿Empezar igual?')) return;
+  ordenBalanza(ap ? 'AF' : 'A');
+};
+$('#bk_cancelar').onclick = () => { if (confirm('¿Cancelar el aprendizaje? Se pierden las muestras.')) ordenBalanza('AX'); };
+$('#bal_reset').onclick = () => { if (confirm('¿Borrar la calibración de la balanza? El peso va a ser aproximado hasta volver a calibrar.')) ordenBalanza('R'); };
+
+/* Conexión con la balanza */
+async function ordenBle(accion) {
+  try { await postBal('/api/balanza/red', { accion }); } catch (_) {}
+  leerBalanza();
+}
+$('#bt_onoff').onclick = () => {
+  const on = balUlt && balUlt.red && balUlt.red.activo;
+  if (on && !confirm('¿Apagar la conexión con la balanza? Mientras esté apagada no se registra el peso de la pieza testigo.')) return;
+  ordenBle(on ? 'off' : 'on');
+};
+$('#bt_recon').onclick = () => ordenBle('reconectar');
+$('#bt_olvidar').onclick = () => { if (confirm('¿Olvidar la IP guardada? La cámara vuelve a buscar la balanza por su nombre en la red.')) ordenBle('olvidar'); };
+
+/* Seguimiento de la pieza testigo */
+// Tandas del Diario (para vincular la pieza testigo a su tanda).
+async function cargarTandas() {
+  try {
+    const t = await (await fetch('/api/bitacora', { cache: 'no-store' })).text();
+    const M = new Map();
+    for (const ln of t.split('\n')) {
+      try { const o = JSON.parse(ln); if (o && o.k) { if (o.x) M.delete(o.k); else M.set(o.k, o); } } catch (_) {}
+    }
+    tandasDiario = [...M.values()].filter(o => o.a === 'tanda').reverse();
+  } catch (_) { tandasDiario = []; }
+  llenarTandas();
+}
+// Los textos del Diario pueden traer cualquier cosa: se escapan antes de ir al HTML.
+const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function llenarTandas(elegida) {
+  const sel = $('#fs_tanda'), prev = elegida != null ? elegida : sel.value;
+  sel.innerHTML = '<option value="">(sin vincular a una tanda)</option>' +
+    tandasDiario.map(t => `<option value="${escH(t.k)}">${escH(t.n)} (${escH(t.f)})</option>`).join('');
+  if (prev && tandasDiario.some(t => t.k === prev)) sel.value = prev;
+}
+let segEditando = false;
+function abrirSeg(editar) {
+  segEditando = editar;
+  const sg = (balUlt && balUlt.seg) || {};
+  const f = $('#fs');
+  f.hidden = false;
+  f.dataset.abierto = editar ? '1' : '';
+  $('#fs_iniBox').hidden = editar;
+  $('#fs_cancelar').hidden = !editar;
+  txt('#fs_ok', editar ? 'Guardar cambios' : 'Empezar seguimiento');
+  txt('#fs_msg', '');
+  if (editar) {
+    $('#fs_p0').value = sg.p0; $('#fs_obj').value = sg.obj;
+    llenarTandas(sg.tanda || '');
+  } else {
+    const hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    $('#fs_ini').max = hoy;
+    if (!$('#fs_ini').value) $('#fs_ini').value = hoy;
+    if (!$('#fs_p0').value && balUlt && balUlt.g != null) $('#fs_p0').value = balUlt.g;
+  }
+}
+$('#sg_editar').onclick = () => { abrirSeg(true); $('#fs').scrollIntoView({ behavior: 'smooth' }); };
+$('#fs_cancelar').onclick = () => { $('#fs').hidden = true; $('#fs').dataset.abierto = ''; };
+$('#fs_usar').onclick = () => {
+  if (!balUlt || balUlt.g == null) { txt('#fs_msg', 'La balanza no tiene peso para leer'); $('#fs_msg').className = 'msg err'; return; }
+  $('#fs_p0').value = balUlt.g;
+};
+$('#fs_tanda').onchange = () => {
+  const t = tandasDiario.find(x => x.k === $('#fs_tanda').value);
+  if (t && t.mo) $('#fs_obj').value = t.mo;           // la merma objetivo de la tanda
+  if (t && t.f && !segEditando) $('#fs_ini').value = t.f;
+};
+$('#fs').onsubmit = async ev => {
+  ev.preventDefault();
+  const msg = $('#fs_msg');
+  const p0 = parseFloat($('#fs_p0').value.replace(',', '.')), obj = parseFloat($('#fs_obj').value.replace(',', '.'));
+  if (!(p0 >= 1 && p0 <= 1100)) { msg.className = 'msg err'; msg.textContent = 'Peso inicial: de 1 a 1100 g'; return; }
+  if (!(obj >= 1 && obj <= 80)) { msg.className = 'msg err'; msg.textContent = 'Merma objetivo: de 1 a 80 %'; return; }
+  const t = tandasDiario.find(x => x.k === $('#fs_tanda').value);
+  const p = { accion: segEditando ? 'editar' : 'iniciar', p0, obj, tanda: t ? t.k : '', nombre: t ? String(t.n).slice(0, 40) : '' };
+  if (!segEditando) {
+    const sg = (balUlt && balUlt.seg) || {};
+    if (sg.puntos > 1 && !confirm('Empezar un seguimiento nuevo borra el registro de peso anterior. ¿Seguir?')) return;
+    // Hoy = ahora mismo; otro día = ese día a las 12 (la pieza entró antes de colgarla).
+    const f = $('#fs_ini').value, hoyStr = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    p.ini = !f || f === hoyStr ? 0 : Math.floor(new Date(f + 'T12:00:00').getTime() / 1000);
+  }
+  try {
+    const r = await postBal('/api/balanza/seg', p);
+    if (!r.ok) throw 0;
+    $('#fs').hidden = true; $('#fs').dataset.abierto = '';
+    await leerBalanza(); cargarPesaje();
+  } catch (_) { msg.className = 'msg err'; msg.textContent = 'No se pudo guardar (¿la cámara tiene hora de red?)'; }
+};
+$('#sg_pausa').onclick = async () => {
+  const pausar = !(balUlt && balUlt.seg && balUlt.seg.pausa);
+  if (!pausar && balUlt && balUlt.g != null && balUlt.seg.p0 && balUlt.g < balUlt.seg.p0 * 0.15 &&
+      !confirm('La balanza casi no marca peso. ¿Ya colgaste la pieza? Retomar igual?')) return;
+  try {
+    const r = await postBal('/api/balanza/seg', { accion: pausar ? 'pausar' : 'retomar' });
+    if (!r.ok) throw 0;
+  } catch (_) { alert('No se pudo ' + (pausar ? 'pausar' : 'retomar') + ' el seguimiento'); }
+  leerBalanza();
+};
+$('#sg_terminar').onclick = async () => {
+  if (!confirm('¿Terminar el seguimiento? Deja de registrar el peso (el gráfico queda hasta que empieces otro).')) return;
+  try { await postBal('/api/balanza/seg', { accion: 'terminar' }); } catch (_) {}
+  $('#fs').dataset.abierto = '';
+  leerBalanza();
+};
+
+/* Gráfico: merma (%) y peso (g) por día desde el inicio, con la proyección al ritmo actual */
+async function cargarPesaje() {
+  if (!balHay || vistaAct !== 'bal') return;
+  if (typeof Chart === 'undefined') { txt('#gp_info', 'No se pudo cargar la librería de gráficos. Recargá la página.'); return; }
+  let h;
+  try { h = await (await fetch('/api/balanza/hist', { cache: 'no-store' })).json(); } catch (_) { return; }
+  const ini = h.ini || (h.pts.length ? h.pts[0][0] : 0);
+  const dia = t => +((t - ini) / 86400).toFixed(3);
+  const merma = h.pts.map(p => ({ x: dia(p[0]), y: +((h.p0 - p[1]) / h.p0 * 100).toFixed(2) }));
+  const peso  = h.pts.map(p => ({ x: dia(p[0]), y: p[1] }));
+  const ds = [
+    { label: 'Merma (%)', data: merma, yAxisID: 'y', borderColor: COL_T, backgroundColor: COL_T, showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2 },
+    { label: 'Peso (g)', data: peso, yAxisID: 'y2', borderColor: '#c9a54b', backgroundColor: '#c9a54b', showLine: true, pointRadius: 0, borderWidth: 1.5, tension: 0.2 },
+  ];
+  const sg = (balUlt && balUlt.seg) || {};
+  let hasta = merma.length ? merma[merma.length - 1].x : 1;
+  if (sg.activo && sg.falta > 0 && merma.length) {
+    const u = merma[merma.length - 1];
+    hasta = Math.max(hasta, u.x + sg.falta);
+    ds.push({ label: 'Proyección', data: [u, { x: u.x + sg.falta, y: h.obj }], yAxisID: 'y', borderColor: COL_T, borderDash: [4, 4], showLine: true, pointRadius: 0, borderWidth: 1 });
+  }
+  if (h.obj) ds.push({ label: 'Objetivo', data: [{ x: 0, y: h.obj }, { x: Math.max(hasta, 1), y: h.obj }], yAxisID: 'y', borderColor: '#9a968c', borderDash: [6, 4], showLine: true, pointRadius: 0, borderWidth: 1 });
+  if (chartP) chartP.destroy();
+  const ej = (t, pos) => ({ position: pos, title: { display: true, text: t, color: '#9a968c' }, ticks: { color: '#9a968c' }, grid: { color: pos === 'left' ? '#3a3f44' : 'transparent' } });
+  chartP = new Chart($('#cvP'), {
+    type: 'scatter', data: { datasets: ds },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: { x: { type: 'linear', min: 0, title: { display: true, text: 'Día', color: '#9a968c' }, ticks: { color: '#9a968c' }, grid: { color: '#3a3f44' } },
+                y: { ...ej('Merma (%)', 'left'), min: 0 }, y2: ej('Peso (g)', 'right') },
+      plugins: { legend: { labels: { color: '#e9e4da', boxWidth: 14 } } }
+    }
+  });
+  txt('#gp_info', h.pts.length < 2 ? 'Todavía no hay registros: se agrega un punto cada 30 minutos con el peso quieto.'
+    : 'Un punto cada 30 minutos (promedio del peso quieto). La línea punteada roja es la proyección al ritmo actual.');
+}
+
+leerBalanza();
+setInterval(() => leerBalanza(true), 1000);
+setInterval(cargarPesaje, 300000);
+// El Diario completo (para elegir la tanda) se pide recién al entrar a la pestaña Balanza.
+if (vistaAct === 'bal') { cargarPesaje(); cargarTandas(); }
+
+setInterval(() => { if (!estadoPendiente) refrescar(); }, 3000);   // con wifi lenta no se acumulan pedidos
+setInterval(() => { if (rango !== '1h') cargarHist(); }, 60000);
+setInterval(() => { if (rango === '1h') cargarHist(); }, 10000);   // 1 hora: se actualiza cada 10 s
+setInterval(cargarEventos, 30000);
+
+// Borrar datos (hay que escribir BORRAR y confirmar). Dos acciones separadas:
+// historial + registro de relés, y diario de secado.
+function borradoConfig(txt, btn, msg, url, pregunta, ok) {
+  $(txt).addEventListener('input', e => { $(btn).disabled = e.target.value.trim().toUpperCase() !== 'BORRAR'; });
+  $(btn).addEventListener('click', async () => {
+    if (!confirm(pregunta)) return;
+    const m = $(msg);
+    try {
+      const r = await fetch(url, { method: 'POST', headers: HX, body: new URLSearchParams({ confirmar: 'BORRAR' }) });
+      m.className = r.ok ? 'msg' : 'msg err';
+      m.textContent = r.ok ? ok : 'No se pudo borrar';
+      if (r.ok) { $(txt).value = ''; $(btn).disabled = true; setTimeout(() => location.reload(), 1200); }
+    } catch (e) { m.className = 'msg err'; m.textContent = 'Sin conexión'; }
+  });
+}
+borradoConfig('#borrarTxt', '#borrarBtn', '#borrarMsg', '/api/borrar',
+  'Se borran el historial y el registro de relés. No se puede deshacer. ¿Seguro?', 'Datos borrados');
+borradoConfig('#borrarBitTxt', '#borrarBitBtn', '#borrarBitMsg', '/api/borrar/bitacora',
+  'Se borra TODO el diario de secado (tandas, piezas y registros). No se puede deshacer. ¿Seguro?', 'Diario borrado');
+
+// Cambio de la clave de acceso.
+$('#fk').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const m = $('#kMsg'), nueva = $('#kNue').value;
+  const error = t => { m.className = 'msg err'; m.textContent = t; };
+  if (nueva.length < 8 || nueva.length > 32 || /[^\x21-\x7e]/.test(nueva)) return error('La clave nueva tiene que tener de 8 a 32 caracteres, sin espacios ni acentos.');
+  if (nueva !== $('#kRep').value) return error('Las dos claves nuevas no coinciden.');
+  try {
+    const r = await fetch('/api/clave', { method: 'POST', headers: HX, body: new URLSearchParams({ actual: $('#kAct').value, nueva }) });
+    if (r.status === 403) return error('La clave actual no es correcta.');
+    if (!r.ok) return error('No se pudo cambiar la clave.');
+    $('#fk').reset();
+    m.className = 'msg'; m.textContent = 'Clave cambiada. El navegador la va a pedir de nuevo.';
+    setTimeout(() => location.reload(), 2000);
+  } catch (e) { error('Sin conexión'); }
+});
+
+// Actualización del programa por Wi-Fi (POST /api/ota con el .bin).
+$('#reiniciarBtn').addEventListener('click', async () => {
+  const btn = $('#reiniciarBtn'), m = $('#reiniciarMsg');
+  const error = t => { m.className = 'msg err'; m.textContent = t; btn.disabled = false; };
+  if (!confirm('¿Reiniciar la cámara ahora? Los relés se apagan unos segundos.')) return;
+  btn.disabled = true; m.className = 'msg'; m.textContent = 'Reiniciando...';
+  try {
+    const r = await fetch('/api/reiniciar', { method: 'POST', headers: HX });
+    if (r.status === 409) {
+      const j = await r.json();
+      return error(j.motivo === 'sin_confirmar' ? 'Se acaba de actualizar: esperá un minuto antes de reiniciar (si no, vuelve al programa anterior).' : 'Hay una actualización en curso.');
+    }
+    if (!r.ok) throw 0;
+  } catch (_) { return error('No se pudo pedir el reinicio. Revisá la conexión.'); }
+  const ini = Date.now();
+  const esperar = async () => {
+    try {
+      const d = await (await fetch('/api/diag', { cache: 'no-store' })).json();
+      if (d.uptime < 120) { m.textContent = 'Listo. Recargando la página...'; setTimeout(() => location.reload(), 1200); return; }
+    } catch (_) {}
+    if (Date.now() - ini > 120000) return error('El equipo no volvió a contestar. Revisalo.');
+    setTimeout(esperar, 3000);
+  };
+  setTimeout(esperar, 6000);
+});
+$('#otaArch').addEventListener('change', () => { $('#otaBtn').disabled = !$('#otaArch').files.length; $('#otaMsg').textContent = ''; });
+$('#otaBtn').addEventListener('click', async () => {
+  const f = $('#otaArch').files[0], m = $('#otaMsg'), p = $('#otaProg'), btn = $('#otaBtn');
+  const error = t => { m.className = 'msg err'; m.textContent = t; btn.disabled = false; p.hidden = true; };
+  if (!f) return;
+  const cab = new Uint8Array(await f.slice(0, 1).arrayBuffer());
+  if (!/\.bin$/i.test(f.name) || cab[0] !== 0xE9) return error('Ese archivo no es un programa del ESP32 (.bin).');
+  if (/merged|bootloader|partitions/i.test(f.name)) return error('Ese no: elegí camara_curado.ino.bin (el que no dice merged ni bootloader).');
+  if (!confirm(`Se va a cargar ${f.name} (${Math.round(f.size / 1024)} KB). Mientras se graba el clima queda apagado. ¿Seguro?`)) return;
+  btn.disabled = true; p.hidden = false; p.value = 0;
+  m.className = 'msg'; m.textContent = 'Enviando...';
+  const fd = new FormData();
+  fd.append('bin', f, f.name);
+  const x = new XMLHttpRequest();
+  x.open('POST', '/api/ota');
+  x.setRequestHeader('X-Camara', '1');
+  x.upload.onprogress = e => { if (e.lengthComputable) { p.value = e.loaded / e.total * 100; m.textContent = 'Enviando... ' + Math.round(p.value) + ' %'; } };
+  x.onerror = () => error('Se cortó la conexión. Sigue el programa anterior.');
+  x.onload = () => {
+    let r = {};
+    try { r = JSON.parse(x.responseText); } catch (_) {}
+    if (x.status !== 200 || !r.ok) return error(x.status === 409 ? 'Ya hay una actualización en curso.' : 'No se pudo grabar' + (r.error ? ' (' + r.error + ')' : '') + '. Sigue el programa anterior.');
+    m.textContent = 'Grabado. Reiniciando el equipo...';
+    const ini = Date.now();
+    const esperar = async () => {
+      try {
+        const d = await (await fetch('/api/diag', { cache: 'no-store' })).json();
+        if (d.uptime < 120) { m.textContent = `Listo: ${d.version}. Recargando la página...`; setTimeout(() => location.reload(), 1500); return; }
+      } catch (_) {}
+      if (Date.now() - ini > 120000) return error('El equipo no volvió a contestar. Revisalo (puede tardar en reconectarse al Wi-Fi).');
+      setTimeout(esperar, 3000);
+    };
+    setTimeout(esperar, 6000);
+  };
+  x.send(fd);
+});
+</script>
+<footer id="acerca" style="text-align:center;font-size:13px;color:var(--tenue);margin:28px 0 14px;white-space:pre-line;line-height:1.5">Cámara de curado</footer>
+<script>fetch('/api/acerca',{cache:'no-store'}).then(r=>r.json()).then(d=>{document.getElementById('acerca').textContent='Cámara de curado · '+d.version+'\nSoftware hecho por '+d.autor;}).catch(()=>{});</script>
+</body>
+</html>

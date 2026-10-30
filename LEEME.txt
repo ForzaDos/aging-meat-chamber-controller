@@ -1,0 +1,56 @@
+Camara de curado - v1.0.1 OTA (24/10/2026)
+
+ACTUALIZAR EL PROGRAMA (por Wi-Fi, sin cable)
+- Desde la PC: en esta carpeta, "node subir.mjs" (compila y sube a 192.168.18.88).
+- Desde la web: Ajustes > Diagnostico > "Actualizar el programa por Wi-Fi" y elegir camara_curado.ino.bin.
+- Mientras graba (menos de un minuto) el clima queda apagado; despues se reinicia sola. Si la version nueva
+  no arranca bien o no se conecta al Wi-Fi, vuelve sola a la anterior.
+- Por USB (solo si hace falta): "node subir.mjs COM3". Con el Arduino IDE: Partition Scheme "Custom"
+  (usa partitions.csv de esta carpeta). NUNCA "No OTA": cambiar de esquema borra historial, diario y pesajes.
+- Manual del menu del LCD: docs\Menu_LCD.pdf
+
+------------------------------------------------------------------------------------------------------
+Notas de la v41 - Balanza por Wi-Fi + seguimiento de la pieza testigo (proyecto "balanza")
+
+- La camara busca la balanza en la red de la casa por su nombre (balanza.local), le pide el peso una vez
+  por segundo y le manda tarar o calibrar. Guarda la IP; si el router se la cambia, la vuelve a buscar.
+  No hace falta ninguna libreria nueva. Sin balanza: USAR_BALANZA 0 en hardware.h.
+- Se probo por Bluetooth, pero a esta placa no le alcanza la memoria (se colgaba al arrancar).
+
+LA PIEZA DE LA BALANZA ES LA TESTIGO DE LA TANDA
+- Pestaña nueva "Balanza" en la web:
+    peso en vivo y Tarar | merma actual, objetivo, dias que faltan y fecha estimada, peso perdido,
+    ritmo de los ultimos 3 dias | grafico de merma y peso con la proyeccion | calibracion | conexion con la balanza.
+- Para empezar: Balanza > Pieza testigo > elegir la tanda del Diario, peso inicial ("Usar el peso de la
+  balanza") y merma objetivo (se copia de la tanda) > "Empezar seguimiento".
+- Se registra un punto cada 30 minutos (promedio del peso quieto) en la memoria de la placa. Hace falta
+  la hora de red (NTP). Si la balanza se desconecta, se muestra el ultimo peso registrado.
+- La estimacion de dias usa el ritmo de las ultimas 72 h (necesita al menos 12 h de datos). El secado
+  se va frenando, asi que la estimacion tiende a quedarse corta: tomarla como minimo.
+- Diario de secado: en la tanda vinculada, la merma, el ritmo y los dias que faltan salen de la balanza;
+  la pieza aparece como "Pieza en la balanza (testigo)" y su curva se suma al grafico de merma.
+  Si se cambia la merma objetivo de la tanda en el Diario, la balanza se actualiza sola.
+- Secadero: panel chico "Pieza testigo (balanza)" con merma y peso.
+
+MENU DEL LCD (la pantalla principal no cambia)
+- Menu > Balanza:
+    Peso/merma   -> pantalla con merma, objetivo, peso y dias que faltan (girar = estado de la conexion)
+    Conexion     -> ON / OFF
+    Estado red   -> conectada / buscando / sin respuesta, señal Wi-Fi de la balanza e IP
+    Buscar       -> la vuelve a buscar por nombre en la red
+    Olvidar IP   -> borra la IP guardada (con confirmacion)
+  Tarar y calibrar solo desde la web (tarar con la pieza colgada arruina la merma).
+
+OJO
+- La balanza y la camara tienen que estar en la misma red Wi-Fi.
+- Si la balanza no aparece: abrir http://balanza.local desde el celular (o la IP que muestra su Monitor
+  Serie). Si ahi anda, en la camara: Menu > Balanza > Buscar.
+
+COMO EDITAR UNA PAGINA
+  1) Editar el .html en la carpeta "paginas" (principal.html, bitacora.html o wifi.html).
+     pagina.h, pagina_bitacora.h y pagina_wifi.h se GENERAN: no editarlos a mano.
+  2) Si el cambio es una version nueva, cambiar SOFTWARE_VERSION y VERSION_PROGRAMA en config.h.
+  3) Ejecutar  python paginas\generar.py  (o doble click en generar.py).
+  4) Subir por Wi-Fi:  node subir.mjs
+
+DESPUES DE SUBIR: recargar la pagina con Ctrl+F5 (PC) o cerrar y reabrir la pestaña (celular).
