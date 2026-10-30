@@ -37,9 +37,18 @@ h1{font-size:28px;font-weight:700;letter-spacing:.01em;line-height:1.05}
   border:1px solid var(--borde);border-radius:2px;font:inherit;font-size:18px;font-weight:700;cursor:pointer}
 .btnPausa.pausado{background:var(--laton);border-color:var(--laton);color:#1b1a14}
 .btnPausa:disabled{opacity:.5;cursor:default}
-.btnParada{display:block;width:100%;height:56px;margin-bottom:12px;background:#b3261e;color:#fff;border:2px solid #ff6b5e;
-  border-radius:2px;font:inherit;font-size:19px;font-weight:800;letter-spacing:.06em;cursor:pointer}
-.btnParada.activa{background:#1f7a3a;border-color:#4cc274}
+.paradaCaja{display:flex;justify-content:center;margin:6px 0 16px}
+/* Pulsador de emergencia: redondo, rojo, con aro amarillo y borde negro, como en los tableros eléctricos. */
+.btnParada{width:136px;height:136px;padding:0;border:0;border-radius:50%;color:#fff;font:inherit;font-size:17px;font-weight:800;
+  letter-spacing:.04em;line-height:1.15;text-align:center;cursor:pointer;
+  background:radial-gradient(circle at 36% 30%,#ff6a5c 0%,#d8190f 52%,#93100a 100%);
+  box-shadow:0 0 0 7px #f2c400,0 0 0 12px #1c1c1c,0 8px 16px 12px rgba(0,0,0,.45),inset 0 -7px 12px rgba(0,0,0,.35),inset 0 7px 10px rgba(255,255,255,.28)}
+.btnParada:active{transform:translateY(2px)}
+/* Con la parada activa el pulsador se ve hundido y el aro parpadea. */
+.btnParada.activa{background:radial-gradient(circle at 50% 55%,#8e0f09 0%,#5e0904 100%);
+  box-shadow:0 0 0 7px #f2c400,0 0 0 12px #1c1c1c,inset 0 9px 16px rgba(0,0,0,.65);animation:aroParada 1s ease-in-out infinite}
+@keyframes aroParada{50%{box-shadow:0 0 0 7px #fff3a0,0 0 0 12px #1c1c1c,0 0 22px 14px rgba(242,196,0,.7),inset 0 9px 16px rgba(0,0,0,.65)}}
+@media (prefers-reduced-motion:reduce){.btnParada.activa{animation:none}}
 .btnParada:disabled{opacity:.5;cursor:default}
 /* Pestañas: Secadero (mirar), Ajustes (configurar) y Diario de secado. Siempre visibles arriba. */
 .pestanas{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-12px -12px 14px;padding:10px 12px;background:var(--acero);border-bottom:1px solid var(--borde)}
@@ -232,7 +241,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
   <div class="red"><span class="led" id="conn"></span><span id="rssi">sin conexión</span></div>
 </header>
 
-<button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button>
+<div class="paradaCaja"><button type="button" class="btnParada" id="btnParada" disabled>APAGAR TODO</button></div>
 <button type="button" class="btnPausa" id="btnPausa" disabled>Pausar control</button>
 
 <div class="aviso" id="aviso" hidden></div>
@@ -643,7 +652,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.6 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.7 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');

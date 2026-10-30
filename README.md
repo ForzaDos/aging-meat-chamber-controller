@@ -4,7 +4,7 @@
 ### Con una placa de las más baratas del mercado se puede hacer, y ademas lo manejas desde el celu.
 
 <p align="center">
-  <img src="docs/img/web-secadero.jpg" width="300" alt="Pantalla principal en el celular: temperatura, humedad y botón APAGAR TODO">
+  <img src="docs/img/web-secadero.jpg" width="300" alt="Pantalla principal en el celular: pulsador de emergencia APAGAR TODO, temperatura y humedad">
   &nbsp;&nbsp;
   <img src="docs/img/web-historial.jpg" width="300" alt="Historial de temperatura y humedad en el celular">
 </p>

@@ -48,7 +48,7 @@ add = S.append
 # ---------------------------------------------------------------- portada / uso
 add(f"""
 <h1>Cámara de curado — Menú del LCD</h1>
-<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.6 OTA · generado desde <code>menu.cpp</code></p>
+<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.7 OTA · generado desde <code>menu.cpp</code></p>
 
 <h2>Cómo se maneja</h2>
 <table class="ctl">
@@ -257,7 +257,7 @@ add(f"""
 <li>Si la heladera estuvo apagada menos de 180 s no arranca: avisa <code>Heladera: proteccion / esperar m:ss</code>.</li>
 <li>Al terminar: <code>Test terminado / Todo en automatico</code>; AUX1 y AUX2 vuelven a como estaban.</li>
 </ul>
-<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.6 OTA")}</div>
+<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.7 OTA")}</div>
 """)
 
 # ---------------------------------------------------------------- editar / confirmar
