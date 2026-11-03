@@ -308,7 +308,7 @@ details.test{border-radius:12px}
     <div class="lectura t">
       <h2>Temperatura</h2>
       <div class="num"><span id="temp">--</span><small>°C</small></div>
-      <div class="obj">Objetivo <b id="tsp">--</b> °C, alarma fuera de ±<b id="tb">--</b></div>
+      <div class="obj">Objetivo <b id="tsp">--</b> °C, enfría por encima de +<b id="tb">--</b></div>
       <div class="reg" id="rt"><i class="zona"></i><i class="tick"></i><i class="marca"></i></div>
       <div class="esc"><span>0</span><span>30 °C</span></div>
     </div>
@@ -851,9 +851,9 @@ function rele(clave, on, texto) {
 function pintar(e) {
   txt('#temp', fijo(e.temp, 1));
   txt('#hum', fijo(e.hum, 1));
-  txt('#tsp', num(e.tempSP, 1)); txt('#tb', num(e.tempBanda, 1));
+  txt('#tsp', num(e.tempSP, 1)); txt('#tb', num(e.tempHist, 1));
   txt('#hsp', num(e.humSP, 1));  txt('#hh', num(e.humHist, 1));
-  regla('#rt', e.temp, 0, 30, e.tempSP - e.tempBanda, e.tempSP + e.tempBanda, e.tempSP);
+  regla('#rt', e.temp, 0, 30, e.tempSP, e.tempSP + e.tempHist, e.tempSP);   // franja = histéresis: enfría arriba de la franja y se detiene en el objetivo
   regla('#rh', e.hum, 40, 100, e.humSP - e.humHist, e.humSP + e.humHist, e.humSP);
 
   const ea = on => on ? 'encendido' : 'apagado';
