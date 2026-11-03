@@ -20,14 +20,15 @@ enum : uint8_t { T_TEMP, T_HUM, T_HTEMP, T_HHUM, T_VACT, T_VPER, T_VDUR, T_LUZ, 
                  T_FHUM, T_FDESH, T_FFRIO, T_MANMIN, T_MINON, T_MINONT, T_BANDA, T_OFFT, T_OFFH,
                  T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_IP, T_SUB_CAL, T_VOLVER, T_SALIR, T_VERIP, T_WIFI, T_TEST, T_CALIB,
                  T_TSUMA, T_TTODOS, T_ACERCA, T_SUB_TIEMPOS, T_MINOFF, T_SUB_TEST, T_TUNO,
-                 T_SUB_BAL, T_BVER, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_BSEG, T_PARADA, T_BSEL, T_N };
+                 T_SUB_BAL, T_BVER, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_BSEG, T_PARADA, T_BSEL,
+                 T_HTEMPI, T_HHUMI, T_N };
 
 struct Item { const char* corto; const char* largo; };
 static const Item ITEMS[T_N] = {
   { "Objetivo",   "Temperatura objetivo" },
   { "Objetivo",   "Humedad objetivo" },
-  { "Histeresis", "Histeresis temp." },
-  { "Histeresis", "Histeresis humedad" },
+  { "Hist. sup.", "Hist. temp. superior" },
+  { "Hist. sup.", "Hist. hum. superior" },
   { "Programa",   "Programa ventilador" },
   { "Cada",       "Ventilador: cada" },
   { "Duracion",   "Ventilador: duracion" },
@@ -70,6 +71,8 @@ static const Item ITEMS[T_N] = {
   { "Seguimiento","Seguimiento merma" },
   { "APAGAR TODO","APAGAR TODO" },          // cambia a REANUDAR mientras esté la parada (ver corto/largo)
   { "Balanza",    "Balanza a usar" },       // elige cuál de las balanzas se opera
+  { "Hist. inf.", "Hist. temp. inferior" },
+  { "Hist. inf.", "Hist. hum. inferior" },
 };
 
 // Nombre a mostrar: AUX1 y AUX2 usan el nombre elegido en la web.
@@ -88,8 +91,8 @@ static const uint8_t L_PRINC[] = { T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_O
 static const uint8_t L_PRINC[] = { T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
                                    T_SUB_TIEMPOS, T_SUB_CAL, T_IP, T_PARADA, T_SALIR };
 #endif
-static const uint8_t L_TEMP[]  = { T_TEMP, T_HTEMP, T_BANDA, T_MINONT, T_FFRIO, T_VOLVER };
-static const uint8_t L_HUM[]   = { T_HUM, T_HHUM, T_MINON, T_FHUM, T_FDESH, T_VOLVER };
+static const uint8_t L_TEMP[]  = { T_TEMP, T_HTEMP, T_HTEMPI, T_BANDA, T_MINONT, T_FFRIO, T_VOLVER };
+static const uint8_t L_HUM[]   = { T_HUM, T_HHUM, T_HHUMI, T_MINON, T_FHUM, T_FDESH, T_VOLVER };
 static const uint8_t L_VENT[]  = { T_VACT, T_VPER, T_VDUR, T_VOLVER };
 #if TEST_AVANZADO
 static const uint8_t L_DIAG[]  = { T_VERIP, T_WIFI, T_SUB_TEST, T_ACERCA, T_VOLVER };   // test: submenú con los 3 modos
@@ -147,8 +150,10 @@ static Campo campo(uint8_t t) {
   switch (t) {
     case T_TEMP:   return { false, TEMP_SP_MIN, TEMP_SP_MAX, 0.5f, 1, "C",   0, nullptr };
     case T_HUM:    return { false, HUM_SP_MIN,  HUM_SP_MAX,  0.5f, 1, "%",   0, nullptr };
-    case T_HTEMP:  return { false, 0.5f, 5.0f,  0.5f, 1, "C",   0, nullptr };
-    case T_HHUM:   return { false, 0.5f, 10.0f, 0.5f, 1, "%",   0, nullptr };
+    case T_HTEMP:  return { false, HIST_TEMP_MIN, HIST_TEMP_MAX, 0.5f, 1, "C",   0, nullptr };
+    case T_HTEMPI: return { false, 0.0f,          HIST_TEMP_MAX, 0.5f, 1, "C",   0, nullptr };
+    case T_HHUM:
+    case T_HHUMI:  return { false, HIST_HUM_MIN, HIST_HUM_MAX, 0.5f, 1, "%",   0, nullptr };
     case T_BANDA:  return { false, 1.0f, 10.0f, 0.5f, 1, "C",   0, nullptr };
     case T_OFFT:   return { false, -OFF_T_MAX, OFF_T_MAX, 0.1f, 1, "C", 0, nullptr };
     case T_OFFH:   return { false, -OFF_H_MAX, OFF_H_MAX, 0.1f, 1, "%", 0, nullptr };
@@ -173,8 +178,10 @@ static float valorActual(uint8_t t) {
   switch (t) {
     case T_TEMP:   return cfg.tempSP;
     case T_HUM:    return cfg.humSP;
-    case T_HTEMP:  return cfg.tempHist;
-    case T_HHUM:   return cfg.humHist;
+    case T_HTEMP:  return cfg.tempHistSup;
+    case T_HTEMPI: return cfg.tempHistInf;
+    case T_HHUM:   return cfg.humHistSup;
+    case T_HHUMI:  return cfg.humHistInf;
     case T_BANDA:  return cfg.tempBanda;
     case T_OFFT:   return cfg.offT;
     case T_OFFH:   return cfg.offH;
@@ -224,8 +231,10 @@ static uint32_t aplicarValor(uint8_t t, float v) {
   switch (t) {
     case T_TEMP:   cfg.tempSP = v; break;
     case T_HUM:    cfg.humSP = v; break;
-    case T_HTEMP:  cfg.tempHist = v; break;
-    case T_HHUM:   cfg.humHist = v; break;
+    case T_HTEMP:  cfg.tempHistSup = v; break;
+    case T_HTEMPI: cfg.tempHistInf = v; break;
+    case T_HHUM:   cfg.humHistSup = v; break;
+    case T_HHUMI:  cfg.humHistInf = v; break;
     case T_BANDA:  cfg.tempBanda = v; break;
     case T_OFFT:   cfg.offT = v; break;
     case T_OFFH:   cfg.offH = v; break;

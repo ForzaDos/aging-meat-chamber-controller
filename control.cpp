@@ -127,9 +127,14 @@ void controlInit() {
 
   prefs.begin("camara", false);
   cfg.humSP           = prefs.getFloat("humSP",     DEF_HUM_SP);
-  cfg.humHist         = prefs.getFloat("humHist",   DEF_HUM_HIST);
+  // Histéresis superior e inferior independientes. Si la clave nueva no existe (versión anterior), se parte de la única que había.
+  const float humVieja  = prefs.getFloat("humHist",  DEF_HUM_HIST);
+  const float tempVieja = prefs.getFloat("tempHist", DEF_TEMP_HIST);
+  cfg.humHistSup      = prefs.isKey("humHistSup")  ? prefs.getFloat("humHistSup",  humVieja)  : humVieja;
+  cfg.humHistInf      = prefs.isKey("humHistInf")  ? prefs.getFloat("humHistInf",  humVieja)  : humVieja;
   cfg.tempSP          = prefs.getFloat("tempSP",    DEF_TEMP_SP);
-  cfg.tempHist        = prefs.getFloat("tempHist",  DEF_TEMP_HIST);
+  cfg.tempHistSup     = prefs.isKey("tempHistSup") ? prefs.getFloat("tempHistSup", tempVieja) : tempVieja;
+  cfg.tempHistInf     = prefs.getFloat("tempHistInf", DEF_TEMP_HIST_INF);
   cfg.tempBanda       = prefs.getFloat("tempBanda", DEF_TEMP_BANDA);
   cfg.minOnS          = prefs.getUShort("minOnS",   DEF_MIN_ON_S);
   cfg.minOnTempS      = prefs.getUShort("minOnT",   DEF_MIN_ON_S);
@@ -148,9 +153,11 @@ void controlInit() {
 
   // Todos los valores dentro de los rangos de los deslizables.
   cfg.humSP     = limitar(cfg.humSP,     HUM_SP_MIN,  HUM_SP_MAX, DEF_HUM_SP);
-  cfg.humHist   = limitar(cfg.humHist,   0.5f, 10.0f, DEF_HUM_HIST);
+  cfg.humHistInf  = limitar(cfg.humHistInf,  HIST_HUM_MIN,  HIST_HUM_MAX,  DEF_HUM_HIST);
+  cfg.humHistSup  = limitar(cfg.humHistSup,  HIST_HUM_MIN,  HIST_HUM_MAX,  DEF_HUM_HIST);
   cfg.tempSP    = limitar(cfg.tempSP,    TEMP_SP_MIN, TEMP_SP_MAX, DEF_TEMP_SP);
-  cfg.tempHist  = limitar(cfg.tempHist,  0.5f, 5.0f, DEF_TEMP_HIST);
+  cfg.tempHistSup = limitar(cfg.tempHistSup, HIST_TEMP_MIN, HIST_TEMP_MAX, DEF_TEMP_HIST);
+  cfg.tempHistInf = limitar(cfg.tempHistInf, 0.0f,          HIST_TEMP_MAX, DEF_TEMP_HIST_INF);
   cfg.tempBanda = limitar(cfg.tempBanda, 1.0f, 10.0f, DEF_TEMP_BANDA);
   if (cfg.minOnS  > 600) cfg.minOnS  = 600;
   if (cfg.minOnTempS > 600) cfg.minOnTempS = 600;
@@ -168,9 +175,13 @@ void controlInit() {
 
 void controlGuardarConfig() {
   prefs.putFloat("humSP",     cfg.humSP);
-  prefs.putFloat("humHist",   cfg.humHist);
+  prefs.putFloat("humHistInf",  cfg.humHistInf);
+  prefs.putFloat("humHistSup",  cfg.humHistSup);
+  prefs.putFloat("humHist",     cfg.humHistSup);    // clave anterior: si se vuelve a un programa viejo, queda un valor razonable
   prefs.putFloat("tempSP",    cfg.tempSP);
-  prefs.putFloat("tempHist",  cfg.tempHist);
+  prefs.putFloat("tempHistInf", cfg.tempHistInf);
+  prefs.putFloat("tempHistSup", cfg.tempHistSup);
+  prefs.putFloat("tempHist",    cfg.tempHistSup);
   prefs.putFloat("tempBanda", cfg.tempBanda);
   prefs.putUShort("minOnS",   cfg.minOnS);
   prefs.putUShort("minOnT",   cfg.minOnTempS);
@@ -363,16 +374,16 @@ void controlActualizar(float t, float h, bool ok) {
     if (aFrio) aplicar(est.releFrio, PIN_RELE_FRIO, EV_FRIO, segCalor, cambioFrio, !segCalor);
   } else if (ok) {
     // ---------------- Humedad ----------------
-    //   humidificador    ON si HR < SP - H     OFF si HR >= SP
-    //   deshumidificador ON si HR > SP + H     OFF si HR <= SP
+    //   humidificador    ON si HR < SP - Hinf  OFF si HR >= SP
+    //   deshumidificador ON si HR > SP + Hsup  OFF si HR <= SP
     const float hr = est.hum;
     bool quiereHum  = est.releHum;
     bool quiereDesh = est.releDesh;
 
-    if      (hr <  cfg.humSP - cfg.humHist) quiereHum = true;
+    if      (hr <  cfg.humSP - cfg.humHistInf) quiereHum = true;
     else if (hr >= cfg.humSP)               quiereHum = false;
 
-    if      (hr >  cfg.humSP + cfg.humHist) quiereDesh = true;
+    if      (hr >  cfg.humSP + cfg.humHistSup) quiereDesh = true;
     else if (hr <= cfg.humSP)               quiereDesh = false;
 
     if (segHumNo)  quiereHum  = false;
@@ -385,12 +396,12 @@ void controlActualizar(float t, float h, bool ok) {
     if (aDesh && quiereDesh && !est.releHum)  aplicar(est.releDesh, PIN_RELE_DESH, EV_DESH, true, cambioDesh, false);
 
     // ---------------- Temperatura ----------------
-    //   frío: ON si T > SP + H     OFF si T <= SP
+    //   frío: ON si T > SP + Hsup     OFF si T <= SP - Hinf (Hinf = 0: apaga en el objetivo)
     if (aFrio) {
       const float tt = est.temp;
       bool quiereFrio = est.releFrio;
-      if      (tt >  cfg.tempSP + cfg.tempHist) quiereFrio = true;
-      else if (tt <= cfg.tempSP)                quiereFrio = false;
+      if      (tt >  cfg.tempSP + cfg.tempHistSup) quiereFrio = true;
+      else if (tt <= cfg.tempSP - cfg.tempHistInf) quiereFrio = false;
       if (segCalor)  quiereFrio = true;
       if (segFrioNo) quiereFrio = false;
       aplicar(est.releFrio, PIN_RELE_FRIO, EV_FRIO, quiereFrio, cambioFrio, segFrioNo);   // demasiado frío: apaga sin esperar

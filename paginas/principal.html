@@ -308,14 +308,14 @@ details.test{border-radius:12px}
     <div class="lectura t">
       <h2>Temperatura</h2>
       <div class="num"><span id="temp">--</span><small>°C</small></div>
-      <div class="obj">Objetivo <b id="tsp">--</b> °C, enfría por encima de +<b id="tb">--</b></div>
+      <div class="obj">Objetivo <b id="tsp">--</b> °C · el frío prende a +<b id="tb">--</b> y apaga a −<b id="ti">--</b></div>
       <div class="reg" id="rt"><i class="zona"></i><i class="tick"></i><i class="marca"></i></div>
       <div class="esc"><span>0</span><span>30 °C</span></div>
     </div>
     <div class="lectura h">
       <h2>Humedad</h2>
       <div class="num"><span id="hum">--</span><small>%</small></div>
-      <div class="obj">Objetivo <b id="hsp">--</b> %, actúa fuera de ±<b id="hh">--</b></div>
+      <div class="obj">Objetivo <b id="hsp">--</b> % · humidifica a −<b id="hi">--</b>, deshumidifica a +<b id="hh">--</b></div>
       <div class="reg" id="rh"><i class="zona"></i><i class="tick"></i><i class="marca"></i></div>
       <div class="esc"><span>40</span><span>100 %</span></div>
     </div>
@@ -377,6 +377,7 @@ details.test{border-radius:12px}
   </div>
   <div class="grafico"><canvas id="cv"></canvas></div>
   <div class="stats" id="stats"></div>
+  <div class="botones"><button type="button" class="sec" id="btnTip">Ocultar valores flotantes</button></div>
   <p class="subt">Actividad de los relés (franja = encendido)</p>
   <div class="actividad"><canvas id="cvR"></canvas></div>
   </details>
@@ -525,8 +526,12 @@ details.test{border-radius:12px}
           <input type="range" name="humSP" min="40" max="100" step="0.5" data-fmt="1">
         </div>
         <div class="ctl">
-          <div class="ctl-top"><span>Histéresis de humedad</span><b>± <output id="o_humHist"></output> %</b></div>
-          <input type="range" name="humHist" min="0.5" max="10" step="0.5" data-fmt="1">
+          <div class="ctl-top"><span>Histéresis inferior (humidificador)</span><b>− <output id="o_humHistInf"></output> %</b></div>
+          <input type="range" name="humHistInf" min="0.5" max="10" step="0.5" data-fmt="1">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span>Histéresis superior (deshumidificador)</span><b>+ <output id="o_humHistSup"></output> %</b></div>
+          <input type="range" name="humHistSup" min="0.5" max="10" step="0.5" data-fmt="1">
         </div>
         <p class="ayuda" id="ayudaH"></p>
       </div>
@@ -537,8 +542,12 @@ details.test{border-radius:12px}
           <input type="range" name="tempSP" min="5" max="30" step="0.5" data-fmt="1">
         </div>
         <div class="ctl">
-          <div class="ctl-top"><span>Histéresis de temperatura</span><b>± <output id="o_tempHist"></output> °C</b></div>
-          <input type="range" name="tempHist" min="0.5" max="5" step="0.5" data-fmt="1">
+          <div class="ctl-top"><span>Histéresis superior (prende el frío)</span><b>+ <output id="o_tempHistSup"></output> °C</b></div>
+          <input type="range" name="tempHistSup" min="0.5" max="5" step="0.5" data-fmt="1">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span>Histéresis inferior (apaga el frío)</span><b>− <output id="o_tempHistInf"></output> °C</b></div>
+          <input type="range" name="tempHistInf" min="0" max="5" step="0.5" data-fmt="1">
         </div>
         <div class="ctl">
           <div class="ctl-top"><span>Alarma si se aparta más de</span><b>± <output id="o_tempBanda"></output> °C</b></div>
@@ -732,13 +741,45 @@ details.test{border-radius:12px}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.22 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.23 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
 const PERIODOS = [1, 2, 3, 4, 6, 8, 12, 24];
-const CAMPOS_F  = ['humSP','humHist','tempSP','tempHist','tempBanda','minOnS','minOnTempS','minOffS','manualMin'];
+const CAMPOS_F  = ['humSP','humHistInf','humHistSup','tempSP','tempHistSup','tempHistInf','tempBanda','minOnS','minOnTempS','minOffS','manualMin'];
 const COL_T = '#f2a83b', COL_H = '#5fb3f0';
+let UMB = null;   // umbrales vigentes { t: [inferior, objetivo, superior], h: [...] }, los carga pintar()
+let verTip = true;   // ventana flotante con los valores del gráfico
+try { verTip = localStorage.getItem('camTip') !== '0'; } catch (e) {}
+const EVENTOS_TIP = ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'];
+// Franja de la histéresis y línea del objetivo, detrás de las curvas (temperatura y humedad, cada una en su eje).
+const plugUmbrales = {
+  id: 'umbrales',
+  beforeDatasetsDraw(ch) {
+    if (!UMB) return;
+    const { ctx, chartArea: a, scales } = ch;
+    for (const [eje, col, u] of [['yT', COL_T, UMB.t], ['yH', COL_H, UMB.h]]) {
+      const sc = scales[eje]; if (!sc || !u) continue;
+      const y = v => Math.min(a.bottom, Math.max(a.top, sc.getPixelForValue(v)));
+      ctx.save();
+      ctx.fillStyle = col + '14'; ctx.fillRect(a.left, y(u[2]), a.right - a.left, y(u[0]) - y(u[2]));
+      ctx.lineWidth = 1; ctx.strokeStyle = col + '99';
+      ctx.setLineDash([2, 4]);
+      for (const v of [u[0], u[2]]) { ctx.beginPath(); ctx.moveTo(a.left, y(v)); ctx.lineTo(a.right, y(v)); ctx.stroke(); }
+      ctx.setLineDash([6, 4]); ctx.strokeStyle = col + 'cc';
+      ctx.beginPath(); ctx.moveTo(a.left, y(u[1])); ctx.lineTo(a.right, y(u[1])); ctx.stroke();
+      ctx.restore();
+    }
+  }
+};
+function aplicarTip() {
+  const b = $('#btnTip'); if (b) b.textContent = verTip ? 'Ocultar valores flotantes' : 'Mostrar valores flotantes';
+  if (!chart) return;
+  chart.options.plugins.tooltip.enabled = verTip;
+  chart.options.events = verTip ? EVENTOS_TIP : ['click'];   // oculto: sigue andando el clic en la leyenda
+  if (!verTip) { chart.setActiveElements([]); chart.tooltip.setActiveElements([], { x: 0, y: 0 }); }
+  chart.update('none');
+}
 
 // Estilo de los gráficos del hub: curva suave, relleno en degradé, rejilla punteada y tooltip oscuro.
 if (typeof Chart !== 'undefined') {
@@ -776,6 +817,12 @@ let manualMin = 15;
 let activo = true;          // false = control en pausa
 let rango = '1d';
 let chart = null;
+$('#btnTip').addEventListener('click', () => {
+  verTip = !verTip;
+  try { localStorage.setItem('camTip', verTip ? '1' : '0'); } catch (e) {}
+  aplicarTip();
+});
+aplicarTip();
 
 const txt  = (id, v) => { $(id).textContent = v; };
 
@@ -831,8 +878,8 @@ function regla(id, val, min, max, lo, hi, sp) {
 
 function ayuda() {
   const v = n => +f.elements[n].value;
-  txt('#ayudaH', `Humidifica por debajo de ${num(v('humSP') - v('humHist'), 1)} % y deshumidifica por encima de ${num(v('humSP') + v('humHist'), 1)} %. Ambos se detienen en ${num(v('humSP'), 1)} %.`);
-  txt('#ayudaT', `Enfría por encima de ${num(v('tempSP') + v('tempHist'), 1)} °C y se detiene en ${num(v('tempSP'), 1)} °C.`);
+  txt('#ayudaH', `Humidifica por debajo de ${num(v('humSP') - v('humHistInf'), 1)} % y deshumidifica por encima de ${num(v('humSP') + v('humHistSup'), 1)} %. Ambos se detienen en ${num(v('humSP'), 1)} %.`);
+  txt('#ayudaT', `Enfría por encima de ${num(v('tempSP') + v('tempHistSup'), 1)} °C y se detiene en ${num(v('tempSP') - v('tempHistInf'), 1)} °C.` + (v('tempHistInf') >= v('tempBanda') ? ' Ojo: ese punto cae dentro de la zona de alarma.' : ''));
 
   const per = PERIODOS[+fv.elements.ventPer.value], dur = +fv.elements.ventDuracionMin.value, anc = +fv.elements.ventAnclaMin.value;
   let a;
@@ -851,10 +898,13 @@ function rele(clave, on, texto) {
 function pintar(e) {
   txt('#temp', fijo(e.temp, 1));
   txt('#hum', fijo(e.hum, 1));
-  txt('#tsp', num(e.tempSP, 1)); txt('#tb', num(e.tempHist, 1));
-  txt('#hsp', num(e.humSP, 1));  txt('#hh', num(e.humHist, 1));
-  regla('#rt', e.temp, 0, 30, e.tempSP, e.tempSP + e.tempHist, e.tempSP);   // franja = histéresis: enfría arriba de la franja y se detiene en el objetivo
-  regla('#rh', e.hum, 40, 100, e.humSP - e.humHist, e.humSP + e.humHist, e.humSP);
+  txt('#tsp', num(e.tempSP, 1)); txt('#tb', num(e.tempHistSup, 1)); txt('#ti', num(e.tempHistInf, 1));
+  txt('#hsp', num(e.humSP, 1));  txt('#hh', num(e.humHistSup, 1));   txt('#hi', num(e.humHistInf, 1));
+  // franja = histéresis (inferior y superior independientes)
+  regla('#rt', e.temp, 0, 30, e.tempSP - e.tempHistInf, e.tempSP + e.tempHistSup, e.tempSP);
+  regla('#rh', e.hum, 40, 100, e.humSP - e.humHistInf, e.humSP + e.humHistSup, e.humSP);
+  UMB = { t: [e.tempSP - e.tempHistInf, e.tempSP, e.tempSP + e.tempHistSup], h: [e.humSP - e.humHistInf, e.humSP, e.humSP + e.humHistSup] };
+  if (chart) chart.draw();
 
   const ea = on => on ? 'encendido' : 'apagado';
   rele('hum', e.releHum,  ea(e.releHum));
@@ -980,7 +1030,7 @@ function resumenes(e) {
   rs.textContent = (!e.activo ? 'en pausa' : n === 0 ? 'todo apagado' : n === 1 ? '1 encendida' : `${n} encendidas`) + (nm ? ` · ${nm} manual` : '');
   rs.classList.toggle('pausa', !e.activo);
 
-  txt('#r_set', `${num(e.humSP, 1)} % ±${num(e.humHist, 1)} · ${num(e.tempSP, 1)} °C ±${num(e.tempHist, 1)}`);
+  txt('#r_set', `${num(e.humSP, 1)} % −${num(e.humHistInf, 1)}/+${num(e.humHistSup, 1)} · ${num(e.tempSP, 1)} °C −${num(e.tempHistInf, 1)}/+${num(e.tempHistSup, 1)}`);
 
   const per = e.ventPeriodoH, dur = e.ventDuracionMin;
   txt('#r_ven', !e.ventActivo || !dur ? 'sin programa'
@@ -1240,9 +1290,10 @@ function etiqueta(v) {
 // Escala vertical automática pero con un alto mínimo, centrada en los datos:
 // así las oscilaciones chicas se ven chicas y un desvío grande igual entra.
 // Los bordes se redondean a "paso" para que las marcas queden en números redondos.
-function escalaMin(a, altoMin, paso, lo, hi) {
+function escalaMin(a, altoMin, paso, lo, hi, extra) {
   const v = a.filter(x => x.y != null).map(x => x.y);
   if (!v.length) return { min: undefined, max: undefined };
+  if (extra) v.push(...extra);   // los umbrales también tienen que entrar en el gráfico
   let min = Math.min(...v), max = Math.max(...v);
   const margen = (max - min) * 0.08;                     // un poco de aire arriba y abajo
   min -= margen; max += margen;
@@ -1300,12 +1351,14 @@ async function cargarHist() {
         { label: 'Temperatura °C', data: T, borderColor: COL_T, backgroundColor: degrade(COL_T), fill: true, yAxisID: 'yT', pointRadius: 0, borderWidth: 2.5, cubicInterpolationMode: 'monotone', spanGaps: false },
         { label: 'Humedad %',      data: H, borderColor: COL_H, backgroundColor: degrade(COL_H), fill: true, yAxisID: 'yH', pointRadius: 0, borderWidth: 2.5, cubicInterpolationMode: 'monotone', spanGaps: false }
       ]},
+      plugins: [plugUmbrales],
       options: {
+        events: verTip ? EVENTOS_TIP : ['click'],
         parsing: false, animation: false, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { labels: { color: '#8b95a3', boxWidth: 12 } },
-          tooltip: { callbacks: { title: it => new Date(it[0].parsed.x).toLocaleString('es-AR', { hourCycle: 'h23' }) } }
+          tooltip: { enabled: verTip, callbacks: { title: it => new Date(it[0].parsed.x).toLocaleString('es-AR', { hourCycle: 'h23' }) } }
         },
         scales: {
           x:  { type: 'linear', grid: Object.assign({}, rejilla, { drawTicks: false }), border: { display: false },
@@ -1321,8 +1374,8 @@ async function cargarHist() {
   chart.data.datasets[1].data = H;
   chart.options.scales.x.min = ini;
   chart.options.scales.x.max = fin;
-  Object.assign(chart.options.scales.yT, escalaMin(T, ALTO_MIN_T, 0.5));
-  Object.assign(chart.options.scales.yH, escalaMin(H, ALTO_MIN_H, 1, 0, 100));
+  Object.assign(chart.options.scales.yT, escalaMin(T, ALTO_MIN_T, 0.5, undefined, undefined, UMB && UMB.t));
+  Object.assign(chart.options.scales.yH, escalaMin(H, ALTO_MIN_H, 1, 0, 100, UMB && UMB.h));
   chart.update();
   dibujarActividad(d, paso, ini, fin);
 

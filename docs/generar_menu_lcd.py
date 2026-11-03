@@ -48,7 +48,7 @@ add = S.append
 # ---------------------------------------------------------------- portada / uso
 add(f"""
 <h1>Cámara de curado — Menú del LCD</h1>
-<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.22 OTA · generado desde <code>menu.cpp</code></p>
+<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.23 OTA · generado desde <code>menu.cpp</code></p>
 
 <h2>Cómo se maneja</h2>
 <table class="ctl">
@@ -129,13 +129,14 @@ add(f"""
 """)
 
 # ---------------------------------------------------------------- temperatura
-TEMP = [("Objetivo", "14.0C"), ("Histeresis", "2.0C"), ("Alarma +/-", "3.0C"), ("Min encend.", "120s"), ("Forzar frio", "Auto"), ("Volver", "")]
+TEMP = [("Objetivo", "14.0C"), ("Hist. sup.", "2.0C"), ("Hist. inf.", "0.0C"), ("Alarma +/-", "3.0C"), ("Min encend.", "120s"), ("Forzar frio", "Auto"), ("Volver", "")]
 add(f"""
 <h2 class="nueva">TEMPERATURA</h2>
 <div class="pantallas">{lista("TEMPERATURA", TEMP, 0)}{lista("TEMPERATURA", TEMP, 4)}</div>
 {tabla([
- ("Objetivo", "Temperatura objetivo. La heladera prende si T &gt; objetivo + histéresis y apaga al llegar al objetivo.", "5,0 a 30,0 °C, de a 0,5"),
- ("Histeresis", "Cuánto se deja subir la temperatura antes de prender el frío.", "0,5 a 5,0 °C, de a 0,5"),
+ ("Objetivo", "Temperatura objetivo. La heladera prende si T &gt; objetivo + histéresis superior y apaga si T &le; objetivo − histéresis inferior.", "5,0 a 30,0 °C, de a 0,5"),
+ ("Hist. sup.", "Cuánto se deja subir la temperatura sobre el objetivo antes de prender el frío.", "0,5 a 5,0 °C, de a 0,5"),
+ ("Hist. inf.", "Cuánto por debajo del objetivo se deja bajar antes de apagar el frío. Con 0 apaga justo en el objetivo.", "0,0 a 5,0 °C, de a 0,5"),
  ("Alarma +/-", "Si la temperatura se aleja más que esto del objetivo, aparece ALARMA TEMPERATURA.", "1,0 a 10,0 °C, de a 0,5"),
  ("Min encend.", "Tiempo mínimo encendida la refrigeración (protege el compresor).", "0 a 600 s, de a 10"),
  ("Forzar frio", f"Fuerza la refrigeración a mano durante \"Dur forzado\" minutos y después vuelve sola a Auto. Encender respeta el mínimo apagado: si no se puede todavía, avisa <code>No se puede aun / Espera m:ss</code>.", "Auto · ON · OFF"),
@@ -143,13 +144,14 @@ add(f"""
 """)
 
 # ---------------------------------------------------------------- humedad
-HUM = [("Objetivo", "75.0%"), ("Histeresis", "3.0%"), ("Min encend.", "60s"), ("Forzar hum.", "Auto"), ("Forzar desh", "Auto"), ("Volver", "")]
+HUM = [("Objetivo", "75.0%"), ("Hist. sup.", "3.0%"), ("Hist. inf.", "3.0%"), ("Min encend.", "60s"), ("Forzar hum.", "Auto"), ("Forzar desh", "Auto"), ("Volver", "")]
 add(f"""
 <h2 class="nueva">HUMEDAD</h2>
 <div class="pantallas">{lista("HUMEDAD", HUM, 0)}{lista("HUMEDAD", HUM, 3)}</div>
 {tabla([
- ("Objetivo", "Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis. Deshumidificador: prende si HR &gt; objetivo + histéresis. Los dos apagan al llegar al objetivo.", "40,0 a 100,0 %, de a 0,5"),
- ("Histeresis", "Margen alrededor del objetivo.", "0,5 a 10,0 %, de a 0,5"),
+ ("Objetivo", "Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis inferior. Deshumidificador: prende si HR &gt; objetivo + histéresis superior. Los dos apagan al llegar al objetivo.", "40,0 a 100,0 %, de a 0,5"),
+ ("Hist. sup.", "Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.", "0,5 a 10,0 %, de a 0,5"),
+ ("Hist. inf.", "Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.", "0,5 a 10,0 %, de a 0,5"),
  ("Min encend.", "Tiempo mínimo encendidos el humidificador y el deshumidificador.", "0 a 600 s, de a 10"),
  ("Forzar hum.", "Fuerza el humidificador a mano. Prender uno apaga el otro (nunca los dos juntos).", "Auto · ON · OFF"),
  ("Forzar desh", "Fuerza el deshumidificador a mano.", "Auto · ON · OFF"),
@@ -256,7 +258,7 @@ add(f"""
 <li>Mientras dura, el control automático, el ventilador y los forzados quedan suspendidos. Un click (o mantener) lo detiene.</li>
 <li>Al terminar: <code>Test terminado / Todo en automatico</code>; AUX1 y AUX2 vuelven a como estaban.</li>
 </ul>
-<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.22 OTA")}</div>
+<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.23 OTA")}</div>
 """)
 
 # ---------------------------------------------------------------- editar / confirmar

@@ -81,7 +81,13 @@ static const BalanzaDef BALANZAS[BALANZAS_MAX] = {
 #define TEMP_SP_MAX     30.0f
 
 // ---------- Valores por defecto de lo nuevo ----------
-#define DEF_TEMP_HIST          1.0f    // histéresis de temperatura (°C)
+#define DEF_TEMP_HIST          1.0f    // histéresis superior de temperatura (°C)
+#define DEF_TEMP_HIST_INF      0.0f    // histéresis inferior de temperatura (°C): 0 = el frío apaga en el objetivo
+// Rangos de las histéresis (los mismos en control.cpp, web.cpp, menu.cpp y los deslizables de la página).
+#define HIST_HUM_MIN   0.5f
+#define HIST_HUM_MAX  10.0f
+#define HIST_TEMP_MIN  0.5f
+#define HIST_TEMP_MAX  5.0f
 #define DEF_MANUAL_MIN         15      // minutos que dura un forzado manual antes de volver a automático (5 a 120)
 #define DEF_VENT_ACTIVO        false   // el programa del ventilador arranca apagado
 #define DEF_VENT_PERIODO_H     1       // se repite cada 1 h

@@ -4,7 +4,7 @@
 Controlador de una heladera convertida en cámara de curado: ESP32 + DHT22 + 6 relés + encoder + LCD 20x4,
 con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 lee por Wi-Fi la
 **balanza** (`../balanza`) donde cuelga la **pieza testigo** y sigue su merma.
-**Versión actual: v1.0.22 OTA** (3/11/2026, se actualiza por Wi-Fi). Historial de versiones en `plan.md`.
+**Versión actual: v1.0.23 OTA** (3/11/2026, se actualiza por Wi-Fi). Historial de versiones en `plan.md`.
 
 ## Versión
 - `config.h`: `SOFTWARE_VERSION` (LCD al arrancar, LCD > Diagnostico > Acerca de, pie de la web) y
@@ -45,6 +45,7 @@ con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 l
 - Se editan en `paginas/*.html`; `pagina.h`, `pagina_bitacora.h`, `pagina_wifi.h` se **generan** con
   `python paginas/generar.py` (gzip + copia `VERSION_PROGRAMA` de `config.h`). No editar los .h a mano.
 - Estética: la del hub de domótica (colores, tarjetas redondeadas, iconos de equipos, gráficos con degradé). Los colores están como variables en `:root` de cada página (`--laton` = ámbar de acento) y en `COL_T`/`COL_H`/`RELES` del JS; si se cambia uno, cambiarlo en las tres páginas. Los iconos de las salidas son SVG en línea (`ICO_EQ`, `icEq()` en `principal.html`).
+- Histéresis: superior e inferior independientes (humedad y temperatura). Los rangos están repetidos en `hardware.h` (`HIST_*`), `control.cpp`, `web.cpp`, `menu.cpp` y los deslizables de `principal.html`: si se cambian, cambiarlos en todos. La API conserva `humHist`/`tempHist` (= la superior) porque el hub de domótica los usa; el hub todavía no conoce las claves nuevas.
 - Todo POST lleva el encabezado `X-Camara: 1` (anti-CSRF). Desde la v1.0.3 la web **no pide clave** (`WEB_SIN_CLAVE 1` en `config.h`);
   con 0 vuelve el Digest (usuario `admin`, `WEB_CLAVE` de `config.h`). `subir.mjs` y el hub se adaptan solos.
 - Para probar las páginas sin la placa: servidor simulado (node) que sirva `paginas/` y conteste las APIs.

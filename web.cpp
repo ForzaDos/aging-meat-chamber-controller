@@ -231,9 +231,13 @@ static void enviarEstado(AsyncWebServerRequest* r) {
   d["activo"]          = cfg.activo;
   d["parada"]          = controlParadaActiva();
   d["humSP"]           = cfg.humSP;
-  d["humHist"]         = cfg.humHist;
+  d["humHistSup"]      = cfg.humHistSup;
+  d["humHistInf"]      = cfg.humHistInf;
+  d["humHist"]         = cfg.humHistSup;       // nombre anterior (lo usa el hub): la superior
   d["tempSP"]          = cfg.tempSP;
-  d["tempHist"]        = cfg.tempHist;
+  d["tempHistSup"]     = cfg.tempHistSup;
+  d["tempHistInf"]     = cfg.tempHistInf;
+  d["tempHist"]        = cfg.tempHistSup;
   d["tempBanda"]       = cfg.tempBanda;
   d["minOnS"]          = cfg.minOnS;
   d["minOnTempS"]      = cfg.minOnTempS;
@@ -267,9 +271,15 @@ static void guardarConfig(AsyncWebServerRequest* r) {
   ControlCandado c;
 
   leer("humSP",     HUM_SP_MIN,  HUM_SP_MAX,  cfg.humSP);
-  leer("humHist",   0.5f, 10.0f, cfg.humHist);
+  // Nombres anteriores (el hub): "humHist" pone las dos de humedad, "tempHist" la superior de temperatura. Los nuevos mandan.
+  leer("humHist",   HIST_HUM_MIN, HIST_HUM_MAX, cfg.humHistSup);
+  if (tiene("humHist")) cfg.humHistInf = cfg.humHistSup;
+  leer("tempHist",  HIST_TEMP_MIN, HIST_TEMP_MAX, cfg.tempHistSup);
+  leer("humHistSup",  HIST_HUM_MIN,  HIST_HUM_MAX,  cfg.humHistSup);
+  leer("humHistInf",  HIST_HUM_MIN,  HIST_HUM_MAX,  cfg.humHistInf);
+  leer("tempHistSup", HIST_TEMP_MIN, HIST_TEMP_MAX, cfg.tempHistSup);
+  leer("tempHistInf", 0.0f,          HIST_TEMP_MAX, cfg.tempHistInf);
   leer("tempSP",    TEMP_SP_MIN, TEMP_SP_MAX, cfg.tempSP);
-  leer("tempHist",  0.5f,  5.0f, cfg.tempHist);
   leer("tempBanda", 1.0f, 10.0f, cfg.tempBanda);
 
   auto leerEntero = [&](const char* k, float lo, float hi, uint16_t& dst) {

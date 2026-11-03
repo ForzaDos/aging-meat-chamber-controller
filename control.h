@@ -13,9 +13,11 @@ enum : uint8_t { MAN_AUTO = 0, MAN_ON = 1, MAN_OFF = 2 };
 
 struct Config {
   float    humSP;           // % HR objetivo
-  float    humHist;         // histéresis de humedad (% HR)
+  float    humHistInf;      // histéresis inferior de humedad (% HR): el humidificador prende por debajo de objetivo - esto
+  float    humHistSup;      // histéresis superior de humedad (% HR): el deshumidificador prende por encima de objetivo + esto
   float    tempSP;          // °C objetivo
-  float    tempHist;        // histéresis de temperatura (°C)
+  float    tempHistInf;     // histéresis inferior de temperatura (°C): el frío apaga en objetivo - esto (0 = apaga en el objetivo)
+  float    tempHistSup;     // histéresis superior de temperatura (°C): el frío prende por encima de objetivo + esto
   float    tempBanda;       // ± °C tolerados antes de mostrar alarma
   uint16_t minOnS;          // segundos mínimos encendido del humidificador y el deshumidificador
   uint16_t minOnTempS;      // segundos mínimos encendido de la refrigeración
