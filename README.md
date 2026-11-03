@@ -148,7 +148,7 @@ conector USB. Y no inviertas VCC y GND del HX711: se calienta en segundos y se p
 **I'm a home charcuterie hobbyist and I built this to cure my own salami. I'm sharing it, free and open source, in case it helps other hobbyists.**
 It turns an ordinary **compressor refrigerator** into a dry-aging chamber using a cheap **ESP32**. It controls **temperature**
 (compressor), **humidity** (humidifier + dehumidifier), a **programmable fan** and **two auxiliary outputs**, and you run it from
-your phone through its own web page (no cloud, no app, no internet). It also keeps history charts and a drying diary, works with
+your phone through its own dark, touch-friendly web page (no cloud, no app, no internet). It also keeps history charts and a drying diary, works with
 up to two optional wireless scales ([firmware here](https://github.com/ForzaDos/aging-chamber-scales)) to follow the weight loss of a control piece, protects the compressor, has an emergency stop button
 and updates over Wi-Fi. **Compressor fridges only; Peltier coolers are not supported.** The device interface is in Spanish.
 **It switches mains voltage: build it only if you know how to do it safely, at your own risk.**

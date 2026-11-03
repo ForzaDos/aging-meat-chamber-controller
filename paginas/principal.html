@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#17191b">
+<meta name="theme-color" content="#0f1216">
 <title>Cámara de curado</title>
 <style>
 :root{
-  --acero:#17191b; --placa:#202326; --placa2:#2a2e32; --borde:#3a3f44;
-  --texto:#e9e4da; --tenue:#9a968c;
-  --pimenton:#e0623f; --moho:#9fcdbb; --laton:#c9a54b; --frio:#8fb8e0; --luz:#f1dc8a; --ok:#8fd694; --alarma:#ff6b57;
-  --f:"DIN Alternate","Bahnschrift","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --acero:#0f1216; --placa:#181c22; --placa2:#20252d; --borde:#2a3039;
+  --texto:#e8ebef; --tenue:#8b95a3;
+  --pimenton:#f2a83b; --moho:#5fb3f0; --laton:#f2a83b; --frio:#7cc8ff; --luz:#ffd66b; --ok:#4cc38a; --alarma:#e5484d;
+  --f:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
 html{background:var(--acero)}
-body{font:16px/1.35 var(--f);font-stretch:condensed;color:var(--texto);background:var(--acero);
+body{font:16px/1.35 var(--f);color:var(--texto);background:var(--acero);
   max-width:960px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) 12px max(28px,env(safe-area-inset-bottom))}
 
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;
@@ -25,29 +25,29 @@ h1{font-size:28px;font-weight:700;letter-spacing:.01em;line-height:1.05}
 .red{display:flex;align-items:center;gap:8px;color:var(--tenue);font-size:14px;white-space:nowrap}
 
 .led{width:12px;height:12px;border-radius:50%;background:#3b3f43;box-shadow:inset 0 0 0 1px #0008;flex:none}
-.led.on{background:var(--ok);box-shadow:0 0 9px 1px #8fd69488}
-.led.hum.on{background:var(--moho);box-shadow:0 0 9px 1px #9fcdbb88}
-.led.des.on{background:var(--laton);box-shadow:0 0 9px 1px #c9a54b88}
-.led.fri.on{background:var(--frio);box-shadow:0 0 9px 1px #8fb8e088}
-.led.luz.on{background:var(--luz);box-shadow:0 0 9px 1px #f1dc8a88}
-.led.otr.on{background:#d9d4c7;box-shadow:0 0 9px 1px #d9d4c788}
-.led.mal{background:var(--alarma);box-shadow:0 0 9px 1px #ff6b5788}
+.led.on{background:var(--ok);box-shadow:0 0 9px 1px #4cc38a88}
+.led.hum.on{background:var(--moho);box-shadow:0 0 9px 1px #5fb3f088}
+.led.des.on{background:var(--laton);box-shadow:0 0 9px 1px #f2a83b88}
+.led.fri.on{background:var(--frio);box-shadow:0 0 9px 1px #7cc8ff88}
+.led.luz.on{background:var(--luz);box-shadow:0 0 9px 1px #ffd66b88}
+.led.otr.on{background:#c9a2f0;box-shadow:0 0 9px 1px #c9a2f088}
+.led.mal{background:var(--alarma);box-shadow:0 0 9px 1px #e5484d88}
 
 /* Pausar / reanudar el control: botón discreto, de menor jerarquía que APAGAR TODO, en verde claro. Va en la barra de pestañas (siempre visible), abajo a la derecha. */
-.btnPausa{grid-column:1/-1;justify-self:end;min-height:32px;padding:0 14px;border:1px solid rgba(159,205,187,.6);border-radius:2px;background:rgba(159,205,187,.1);
-  color:#9fcdbb;font:inherit;font-size:13px;font-weight:700;line-height:1.1;cursor:pointer}
-.btnPausa.pausado{border-color:var(--laton);background:rgba(200,170,80,.14);color:var(--laton)}
+.btnPausa{grid-column:1/-1;justify-self:end;min-height:32px;padding:0 14px;border:1px solid rgba(95,179,240,.6);border-radius:12px;background:rgba(95,179,240,.1);
+  color:#5fb3f0;font:inherit;font-size:13px;font-weight:700;line-height:1.1;cursor:pointer}
+.btnPausa.pausado{border-color:var(--laton);background:rgba(242,168,59,.14);color:var(--laton)}
 .btnPausa:disabled{opacity:.5;cursor:default}
 /* Pestañas: Secadero (mirar), Ajustes (configurar) y Diario de secado. Siempre visibles arriba. */
 .pestanas{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:-12px -12px 14px;padding:10px 12px;background:var(--acero);border-bottom:1px solid var(--borde)}
 .pestanas a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:4px 8px;border:1px solid var(--borde);background:var(--placa);color:var(--tenue);font-weight:700;font-size:18px;line-height:1.1;text-align:center;text-decoration:none;letter-spacing:.02em}
-.pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1a14;pointer-events:none}
+.pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1206;pointer-events:none}
 @media (max-width:420px){.pestanas a{font-size:15px;padding:4px 4px}}
 body.sinBal .pestanas{grid-template-columns:repeat(3,1fr)}
 /* Pulsador de emergencia: chico (media pestaña), rojo, el último de la barra de pestañas. Siempre visible, en todas las páginas. */
 .pestanas{grid-template-columns:repeat(4,1fr) .85fr}
 body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .85fr}
-.btnParada{min-height:50px;padding:2px;border:2px solid #f2c400;border-radius:2px;color:#fff;font:inherit;font-size:10px;font-weight:900;line-height:1.1;
+.btnParada{min-height:50px;padding:2px;border:2px solid #f2c400;border-radius:12px;color:#fff;font:inherit;font-size:10px;font-weight:900;line-height:1.1;
   letter-spacing:.03em;text-transform:uppercase;text-align:center;cursor:pointer;background:linear-gradient(#ee2b1f,#b3140c);text-shadow:0 1px 0 rgba(0,0,0,.45)}
 .btnParada:active{filter:brightness(.85)}
 /* Con la parada activa se ve oscuro y el resplandor parpadea. */
@@ -57,8 +57,8 @@ body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .85fr}
 .btnParada:disabled{opacity:.5;cursor:default}
 @media (min-width:760px){.pestanas{grid-template-columns:repeat(4,1fr) .55fr}body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .55fr}
   .btnParada{font-size:13px}.btnParada.activa{font-size:12px}}
-.aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#3a1e1b;font-weight:600}
-.aviso.pausa{border-color:var(--laton);background:#352d18}
+.aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#2d1a1d;font-weight:600}
+.aviso.pausa{border-color:var(--laton);background:#2e2616}
 details.test{margin-top:18px;border:1px solid var(--alarma)}
 .test>summary{padding:10px 12px;color:var(--alarma);font-weight:700;cursor:pointer}
 .test .cuerpo{padding:0 12px 12px}
@@ -113,7 +113,7 @@ h3{font-size:15px;font-weight:600;color:var(--tenue);margin:4px 0 8px}
 /* Regla: franja = zona sin acción, línea de latón = objetivo, marca blanca = valor actual */
 .reg{position:relative;height:10px;background:var(--placa2);border:1px solid var(--borde)}
 .reg i{position:absolute;display:block}
-.reg .zona{top:0;bottom:0;background:#c9a54b44}
+.reg .zona{top:0;bottom:0;background:#f2a83b44}
 .reg .tick{top:-3px;bottom:-3px;width:1px;background:var(--laton)}
 .reg .marca{top:-5px;width:3px;height:18px;background:var(--texto);margin-left:-1px}
 .esc{display:flex;justify-content:space-between;font-size:12px;color:var(--tenue);margin-top:7px;font-variant-numeric:tabular-nums}
@@ -124,24 +124,24 @@ h3{font-size:15px;font-weight:600;color:var(--tenue);margin:4px 0 8px}
 .fila .nom{flex:1;font-size:17px}
 .fila .nom small{display:block;font-size:13px;color:var(--tenue)}
 .fila b{font-weight:600;color:var(--tenue);text-align:right}
-.sec{background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:2px;height:40px;padding:0 14px;font:inherit;font-weight:600;cursor:pointer}
+.sec{background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:12px;height:40px;padding:0 14px;font:inherit;font-weight:600;cursor:pointer}
 
 .modoBtn{height:34px;padding:0 12px;font-size:14px;color:var(--tenue)}
 .modoBtn::after{content:' \25BE'}
 .fila.abre .modoBtn::after{content:' \25B4'}
-.modoBtn.man{background:var(--laton);border-color:var(--laton);color:#1b1a14}
+.modoBtn.man{background:var(--laton);border-color:var(--laton);color:#1b1206}
 .modos{flex-basis:100%;display:none;grid-template-columns:repeat(3,1fr);border:1px solid var(--borde)}
 .fila.abre .modos{display:grid}
 .modos button{background:var(--placa2);color:var(--tenue);border:0;padding:10px 0;font:inherit;font-weight:600;cursor:pointer}
 .modos button+button{border-left:1px solid var(--borde)}
-.modos button.on{background:var(--laton);color:#1b1a14}
+.modos button.on{background:var(--laton);color:#1b1206}
 .modos button:disabled{opacity:.5;cursor:default}
 
 /* Historial */
 .tabs{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--borde);margin-bottom:12px}
 .tabs button{background:var(--placa2);color:var(--tenue);border:0;padding:11px 0;font:inherit;font-weight:600;cursor:pointer}
 .tabs button+button{border-left:1px solid var(--borde)}
-.tabs button.on{background:var(--laton);color:#1b1a14}
+.tabs button.on{background:var(--laton);color:#1b1206}
 @media (max-width:420px){.tabs button{font-size:13px}}
 .grafico{position:relative;height:270px}
 .stats{margin-top:12px;font-size:14px;color:var(--tenue);font-variant-numeric:tabular-nums}
@@ -173,9 +173,9 @@ h3{font-size:15px;font-weight:600;color:var(--tenue);margin:4px 0 8px}
 output{font:inherit}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:38px;background:transparent;margin:0;cursor:pointer}
 input[type=range]::-webkit-slider-runnable-track{height:8px;background:var(--placa2);border:1px solid var(--borde)}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;margin-top:-13px;background:var(--laton);border:2px solid #1b1a14;border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;margin-top:-13px;background:var(--laton);border:2px solid #1b1206;border-radius:12px}
 input[type=range]::-moz-range-track{height:8px;background:var(--placa2);border:1px solid var(--borde)}
-input[type=range]::-moz-range-thumb{width:28px;height:28px;background:var(--laton);border:2px solid #1b1a14;border-radius:2px}
+input[type=range]::-moz-range-thumb{width:28px;height:28px;background:var(--laton);border:2px solid #1b1206;border-radius:12px}
 input[type=range]:focus-visible{outline:2px solid var(--laton);outline-offset:2px}
 button:focus-visible,summary:focus-visible{outline:2px solid var(--laton);outline-offset:1px}
 .ayuda{margin:4px 0 0;font-size:14px;color:var(--tenue)}
@@ -185,13 +185,13 @@ details .ctl{margin-top:10px}
 .chk{display:flex;align-items:center;gap:10px;margin:10px 0 6px;color:var(--texto);font-size:17px}
 .chk input{width:22px;height:22px;accent-color:var(--laton);flex:none}
 .acciones{display:flex;align-items:center;gap:14px;margin-top:16px}
-.guardar{background:var(--laton);color:#1b1a14;border:0;border-radius:2px;height:48px;padding:0 26px;font:inherit;font-size:17px;font-weight:700;cursor:pointer}
+.guardar{background:var(--laton);color:#1b1206;border:0;border-radius:12px;height:48px;padding:0 26px;font:inherit;font-size:17px;font-weight:700;cursor:pointer}
 .sec:disabled,.guardar:disabled{opacity:.5;cursor:default}
 .peligro{color:var(--alarma)}
 .cuidado{color:#f0a030}
 button.sec.cuidado{border-color:#f0a030;color:#f0a030}
 button.sec.cuidado:not(:disabled):hover{background:rgba(240,160,48,.12)}
-input[type=file]::file-selector-button{margin-right:12px;padding:8px 14px;border:1px solid var(--borde);border-radius:2px;background:var(--placa2);color:var(--texto);font:inherit;font-weight:700;cursor:pointer}
+input[type=file]::file-selector-button{margin-right:12px;padding:8px 14px;border:1px solid var(--borde);border-radius:12px;background:var(--placa2);color:var(--texto);font:inherit;font-weight:700;cursor:pointer}
 .confTxt{width:100%;height:44px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);padding:0 10px;font:inherit;font-size:17px}
 .msg{color:var(--ok);font-size:15px}
 .msg.err{color:var(--alarma)}
@@ -207,7 +207,7 @@ details.panel .res{margin-left:auto;font-size:15px;font-weight:600;color:var(--t
 details.panel .res.pausa{color:var(--laton)}
 details.panel[open]>summary .res,details.panel[open]>summary .tablero{display:none}
 .tablero{flex-basis:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
-.tile{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--borde);background:var(--placa2);border-radius:2px;font-size:14px;font-weight:600;color:var(--tenue);min-width:0}
+.tile{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--borde);background:var(--placa2);border-radius:12px;font-size:14px;font-weight:600;color:var(--tenue);min-width:0}
 .tile span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tile.on{color:var(--texto);border-color:#5d636b}
 .tile .led{width:10px;height:10px}
@@ -233,11 +233,58 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 .bal .num{color:var(--laton)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--borde);background:var(--placa2);color:var(--tenue);padding:4px 10px;font-size:14px;font-weight:600}
-.chip.ok{color:var(--ok);border-color:#8fd69466}
-.chip.mal{color:var(--alarma);border-color:#ff6b5766}
+.chip.ok{color:var(--ok);border-color:#4cc38a66}
+.chip.mal{color:var(--alarma);border-color:#e5484d66}
 #diagTxt{margin-top:8px;font-size:14px;color:var(--tenue);white-space:pre-line;font-variant-numeric:tabular-nums}
 
 @media (min-width:720px){ .dos2{display:grid;grid-template-columns:1fr 1fr;gap:28px} .dos2 .grupo+.grupo{margin-top:0;padding-top:0;border-top:0} }
+
+/* ===== Estética del hub: fondo pizarra, tarjetas redondeadas, acento ámbar ===== */
+:root{--radio:16px}
+html{color-scheme:dark}
+body{-webkit-tap-highlight-color:transparent}
+header{border-bottom:1px solid var(--borde);padding:6px 2px 12px}
+h1{font-weight:600;letter-spacing:0}
+.placa{border-radius:var(--radio);box-shadow:none}
+.pestanas{background:color-mix(in srgb,var(--acero) 92%,transparent);backdrop-filter:blur(8px);border-bottom:0}
+.pestanas a{border-radius:999px;background:transparent;font-weight:600;letter-spacing:0}
+.pestanas a.act{background:var(--texto);border-color:var(--texto);color:var(--acero)}
+.btnParada{border-radius:14px}
+.btnPausa{border-color:#4cc38a99;background:#4cc38a1a;color:#4cc38a;border-radius:12px}
+.btnPausa.pausado{border-color:var(--laton);background:#f2a83b24;color:var(--laton)}
+.aviso{border-radius:12px}
+.sec,.guardar,.mini button,.modoBtn{border-radius:12px}
+.guardar{font-weight:600}
+button:active{transform:scale(.97)}
+select,input[type=text],input[type=number],input[type=date],input[type=password],textarea,.confTxt{border-radius:10px;background:var(--acero)}
+form.edit,.dato,.tile,.calGrid div,.chip{border-radius:12px}
+.tabs,.modos{border-radius:12px;overflow:hidden}
+.tabs button.on,.modos button.on{background:var(--texto);color:var(--acero)}
+.tag,.chip{border-radius:999px}
+.reg,.barra{border-radius:6px}
+.reg .zona{border-radius:6px}
+.reg .marca{border-radius:2px}
+.barra i{border-radius:6px}
+input[type=range]::-webkit-slider-runnable-track{border-radius:6px}
+input[type=range]::-webkit-slider-thumb{border-radius:50%;border:3px solid var(--acero)}
+input[type=range]::-moz-range-track{border-radius:6px}
+input[type=range]::-moz-range-thumb{border-radius:50%;border:3px solid var(--acero)}
+.num{font-weight:600}
+details.test{border-radius:12px}
+.registro li.parada{border-radius:10px}
+/* Iconos de equipos (los del hub): trazo gris apagado, color del equipo al encender */
+.ic{display:block;flex:none}
+.ic-equipo{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
+.led.sec-ic{width:38px;height:38px;border-radius:50%;background:var(--acero);box-shadow:none;display:grid;place-items:center;color:var(--tenue);transition:background .3s,box-shadow .3s}
+.led.sec-ic.on{color:var(--eq);background:color-mix(in srgb,var(--eq) 18%,var(--acero));box-shadow:0 0 14px color-mix(in srgb,var(--eq) 45%,transparent)}
+.led.sec-ic.fri{--eq:#7cc8ff}.led.sec-ic.hum{--eq:#5fb3f0}.led.sec-ic.des{--eq:#e0b36a}
+.led.sec-ic.ven{--eq:#7fd8c3}.led.sec-ic.luz{--eq:#ffd66b}.led.sec-ic.otr{--eq:#c9a2f0}
+.led.sec-ic.on.ven .ic-equipo{animation:girar 1.6s linear infinite;transform-origin:center;transform-box:fill-box}
+@keyframes girar{to{transform:rotate(360deg)}}
+.tile .led.sec-ic{width:26px;height:26px}
+.tile .led.sec-ic svg{width:15px;height:15px}
+.led.sec-ic>svg{width:24px;height:24px}
+@media (prefers-reduced-motion:reduce){.led.sec-ic.on.ven .ic-equipo{animation:none}}
 </style>
 </head>
 <body>
@@ -299,12 +346,12 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 <section class="placa">
   <details class="panel" id="p_sal" open>
   <summary><span class="tit">Salidas</span><span class="res" id="r_sal"></span><span class="tablero" id="tab_sal"></span></summary>
-  <div class="fila"><span class="led fri" id="l_fri"></span><span class="nom">Refrigeración<small id="pin3">relé 1</small></span><b id="s_fri">apagado</b><button type="button" class="sec modoBtn" data-pill="2">Auto</button><div class="modos" data-i="2"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
-  <div class="fila"><span class="led hum" id="l_hum"></span><span class="nom">Humidificador<small id="pin1">relé 2</small></span><b id="s_hum">apagado</b><button type="button" class="sec modoBtn" data-pill="0">Auto</button><div class="modos" data-i="0"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
-  <div class="fila"><span class="led des" id="l_des"></span><span class="nom">Deshumidificador<small id="pin2">relé 3</small></span><b id="s_des">apagado</b><button type="button" class="sec modoBtn" data-pill="1">Auto</button><div class="modos" data-i="1"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
-  <div class="fila"><span class="led" id="l_ven"></span><span class="nom">Ventilador<small id="pin4">relé 4</small></span><b id="s_ven">apagado</b></div>
-  <div class="fila"><span class="led luz" id="l_luz"></span><span class="nom"><span id="nm_a1">AUX1</span><small id="pin5">relé 5</small></span><button type="button" class="sec" data-cual="luz" id="b_luz">Encender</button></div>
-  <div class="fila"><span class="led otr" id="l_otr"></span><span class="nom"><span id="nm_a2">AUX2</span><small id="pin6">relé 6</small></span><button type="button" class="sec" data-cual="otros" id="b_otr">Encender</button></div>
+  <div class="fila"><span class="led fri sec-ic" id="l_fri"><svg class="ic ic-equipo" viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><g transform="rotate(0 32 32)"><line x1="32" y1="8" x2="32" y2="56"/><path d="M25 14l7 6 7-6M25 50l7-6 7 6"/></g><g transform="rotate(60 32 32)"><line x1="32" y1="8" x2="32" y2="56"/><path d="M25 14l7 6 7-6M25 50l7-6 7 6"/></g><g transform="rotate(120 32 32)"><line x1="32" y1="8" x2="32" y2="56"/><path d="M25 14l7 6 7-6M25 50l7-6 7 6"/></g></svg></span><span class="nom">Refrigeración<small id="pin3">relé 1</small></span><b id="s_fri">apagado</b><button type="button" class="sec modoBtn" data-pill="2">Auto</button><div class="modos" data-i="2"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
+  <div class="fila"><span class="led hum sec-ic" id="l_hum"><svg class="ic ic-equipo" viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><path d="M32 30c0 0-10 11-10 17a10 10 0 0 0 20 0c0-6-10-17-10-17z"/><path d="M22 20c3-3 3-7 0-10M32 18c3-3 3-7 0-10M42 20c3-3 3-7 0-10"/></svg></span><span class="nom">Humidificador<small id="pin1">relé 2</small></span><b id="s_hum">apagado</b><button type="button" class="sec modoBtn" data-pill="0">Auto</button><div class="modos" data-i="0"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
+  <div class="fila"><span class="led des sec-ic" id="l_des"><svg class="ic ic-equipo" viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><path d="M32 12c0 0-14 16-14 25a14 14 0 0 0 28 0c0-9-14-25-14-25z"/><line x1="14" y1="54" x2="50" y2="14"/></svg></span><span class="nom">Deshumidificador<small id="pin2">relé 3</small></span><b id="s_des">apagado</b><button type="button" class="sec modoBtn" data-pill="1">Auto</button><div class="modos" data-i="1"><button type="button" data-modo="auto">Auto</button><button type="button" data-modo="on">Encender</button><button type="button" data-modo="off">Apagar</button></div></div>
+  <div class="fila"><span class="led ven sec-ic" id="l_ven"><svg class="ic ic-equipo" viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><circle cx="32" cy="32" r="4"/><path transform="rotate(0 32 32)" d="M32 28c-2-8 0-17 8-18 7 0 7 9-4 18"/><path transform="rotate(120 32 32)" d="M32 28c-2-8 0-17 8-18 7 0 7 9-4 18"/><path transform="rotate(240 32 32)" d="M32 28c-2-8 0-17 8-18 7 0 7 9-4 18"/></svg></span><span class="nom">Ventilador<small id="pin4">relé 4</small></span><b id="s_ven">apagado</b></div>
+  <div class="fila"><span class="led luz sec-ic" id="l_luz"><svg class="ic ic-equipo" viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><path d="M24 40c-5-4-8-9-8-15a16 16 0 0 1 32 0c0 6-3 11-8 15v6H24z"/><line x1="26" y1="52" x2="38" y2="52"/><line x1="28" y1="58" x2="36" y2="58"/></svg></span><span class="nom"><span id="nm_a1">AUX1</span><small id="pin5">relé 5</small></span><button type="button" class="sec" data-cual="luz" id="b_luz">Encender</button></div>
+  <div class="fila"><span class="led otr sec-ic" id="l_otr"><svg class="ic ic-equipo" viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><path d="M22 10v12M42 10v12M16 22h32v10a16 16 0 0 1-32 0zM32 48v10"/></svg></span><span class="nom"><span id="nm_a2">AUX2</span><small id="pin6">relé 6</small></span><button type="button" class="sec" data-cual="otros" id="b_otr">Encender</button></div>
   <p class="ayuda" id="ayudaMan"></p>
   <details class="ren">
     <summary>Renombrar AUX1 y AUX2</summary>
@@ -349,12 +396,12 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
   <h2>Peso en vivo</h2>
   <div class="bal" style="display:flex;gap:28px;flex-wrap:wrap">
     <div style="min-width:130px">
-      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9a968c" id="bal_et0">1 kg</div>
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b95a3" id="bal_et0">1 kg</div>
       <div class="num"><span id="bal_g">--</span><small>g</small></div>
       <div class="chips" id="bal_chips"></div>
     </div>
     <div style="min-width:130px">
-      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9a968c" id="bal_et1">10 kg</div>
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b95a3" id="bal_et1">10 kg</div>
       <div class="num"><span id="bal_g2">--</span><small>g</small></div>
       <div class="chips" id="bal_chips2"></div>
     </div>
@@ -691,7 +738,36 @@ const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escritur
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
 const PERIODOS = [1, 2, 3, 4, 6, 8, 12, 24];
 const CAMPOS_F  = ['humSP','humHist','tempSP','tempHist','tempBanda','minOnS','minOnTempS','minOffS','manualMin'];
-const COL_T = '#e0623f', COL_H = '#9fcdbb';
+const COL_T = '#f2a83b', COL_H = '#5fb3f0';
+
+// Estilo de los gráficos del hub: curva suave, relleno en degradé, rejilla punteada y tooltip oscuro.
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.font.family = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+  Chart.defaults.color = '#8b95a3';
+  Chart.defaults.plugins.tooltip.backgroundColor = '#20252d';
+  Chart.defaults.plugins.tooltip.borderColor = '#2a3039';
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.cornerRadius = 10;
+  Chart.defaults.plugins.tooltip.padding = 10;
+  Chart.defaults.plugins.tooltip.titleColor = '#e8ebef';
+  Chart.defaults.plugins.tooltip.bodyColor = '#e8ebef';
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+  Chart.defaults.elements.point.hoverRadius = 5;
+}
+const REJILLA = { color: '#2a3039', borderDash: [2, 4] };
+function degrade(c) {
+  return ctx => {
+    const a = ctx.chart.chartArea;
+    if (!a) return c + '33';
+    const g = ctx.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom);
+    g.addColorStop(0, c + '61'); g.addColorStop(1, c + '00');
+    return g;
+  };
+}
+const ICO_EQ = {"fri": "<g transform=\"rotate(0 32 32)\"><line x1=\"32\" y1=\"8\" x2=\"32\" y2=\"56\"/><path d=\"M25 14l7 6 7-6M25 50l7-6 7 6\"/></g><g transform=\"rotate(60 32 32)\"><line x1=\"32\" y1=\"8\" x2=\"32\" y2=\"56\"/><path d=\"M25 14l7 6 7-6M25 50l7-6 7 6\"/></g><g transform=\"rotate(120 32 32)\"><line x1=\"32\" y1=\"8\" x2=\"32\" y2=\"56\"/><path d=\"M25 14l7 6 7-6M25 50l7-6 7 6\"/></g>", "hum": "<path d=\"M32 30c0 0-10 11-10 17a10 10 0 0 0 20 0c0-6-10-17-10-17z\"/><path d=\"M22 20c3-3 3-7 0-10M32 18c3-3 3-7 0-10M42 20c3-3 3-7 0-10\"/>", "des": "<path d=\"M32 12c0 0-14 16-14 25a14 14 0 0 0 28 0c0-9-14-25-14-25z\"/><line x1=\"14\" y1=\"54\" x2=\"50\" y2=\"14\"/>", "ven": "<circle cx=\"32\" cy=\"32\" r=\"4\"/><path transform=\"rotate(0 32 32)\" d=\"M32 28c-2-8 0-17 8-18 7 0 7 9-4 18\"/><path transform=\"rotate(120 32 32)\" d=\"M32 28c-2-8 0-17 8-18 7 0 7 9-4 18\"/><path transform=\"rotate(240 32 32)\" d=\"M32 28c-2-8 0-17 8-18 7 0 7 9-4 18\"/>", "luz": "<path d=\"M24 40c-5-4-8-9-8-15a16 16 0 0 1 32 0c0 6-3 11-8 15v6H24z\"/><line x1=\"26\" y1=\"52\" x2=\"38\" y2=\"52\"/><line x1=\"28\" y1=\"58\" x2=\"36\" y2=\"58\"/>", "otr": "<path d=\"M22 10v12M42 10v12M16 22h32v10a16 16 0 0 1-32 0zM32 48v10\"/>"};
+const icEq = (k, t = 18) => '<svg class="ic ic-equipo" viewBox="0 0 64 64" width="' + t + '" height="' + t + '" aria-hidden="true">' + (ICO_EQ[k] || ICO_EQ.otr) + '</svg>';
+
 const sucio = { f: false, fv: false, fn: false, fc: false };   // el usuario está editando ese formulario: no pisarlo con lo que llega
 const manual = { luz: false, otros: false };   // estado de los relés manuales
 const MAN_API = ['hum', 'desh', 'frio'], MAN_ID = ['hum', 'des', 'fri'];
@@ -881,7 +957,7 @@ function tickManual() {
 setInterval(tickManual, 1000);
 
 // Lo que se ve en los títulos cuando los paneles están cerrados.
-const TILE_LED = ['hum', 'des', 'fri', '', 'luz', 'otr'];
+const TILE_LED = ['hum', 'des', 'fri', 'ven', 'luz', 'otr'];
 function resumenes(e) {
   txt('#r_lect', e.sensorOk ? `${$('#temp').textContent} °C · ${$('#hum').textContent} %` : 'sin sensor');
 
@@ -890,7 +966,7 @@ function resumenes(e) {
   if (!tab.children.length) RELES.forEach((r, i) => {
     const t = document.createElement('span');
     t.className = 'tile';
-    t.innerHTML = `<span class="led ${TILE_LED[i]}"></span><span>${r.corto}</span>`;
+    t.innerHTML = `<span class="led sec-ic ${TILE_LED[i]}">${icEq(TILE_LED[i], 15)}</span><span>${r.corto}</span>`;
     tab.appendChild(t);
   });
   on.forEach((v, i) => {
@@ -1072,12 +1148,12 @@ for (const b of document.querySelectorAll('[data-cual]')) {
 
 /* ---------- Relés: nombres y colores (mismo orden que en Salidas) ---------- */
 const RELES = [
-  { nombre: 'Humidificador',    corto: 'Humidif.',   color: '#9fcdbb', bit: 1,  on: 'Humidificador encendido',    off: 'Humidificador apagado' },
-  { nombre: 'Deshumidificador', corto: 'Deshumid.',  color: '#c9a54b', bit: 2,  on: 'Deshumidificador encendido', off: 'Deshumidificador apagado' },
-  { nombre: 'Refrigeración',    corto: 'Frío',       color: '#8fb8e0', bit: 4,  on: 'Refrigeración encendida',    off: 'Refrigeración apagada' },
-  { nombre: 'Ventilador',       corto: 'Ventilador', color: '#8fd694', bit: 8,  on: 'Ventilador encendido',       off: 'Ventilador apagado' },
-  { nombre: 'AUX1',             corto: 'AUX1',       color: '#f1dc8a', bit: 32, on: 'AUX1 encendido',             off: 'AUX1 apagado' },
-  { nombre: 'AUX2',             corto: 'AUX2',       color: '#d9d4c7', bit: 16, on: 'AUX2 encendido',             off: 'AUX2 apagado' }
+  { nombre: 'Humidificador',    corto: 'Humidif.',   color: '#5fb3f0', bit: 1,  on: 'Humidificador encendido',    off: 'Humidificador apagado' },
+  { nombre: 'Deshumidificador', corto: 'Deshumid.',  color: '#e0b36a', bit: 2,  on: 'Deshumidificador encendido', off: 'Deshumidificador apagado' },
+  { nombre: 'Refrigeración',    corto: 'Frío',       color: '#7cc8ff', bit: 4,  on: 'Refrigeración encendida',    off: 'Refrigeración apagada' },
+  { nombre: 'Ventilador',       corto: 'Ventilador', color: '#7fd8c3', bit: 8,  on: 'Ventilador encendido',       off: 'Ventilador apagado' },
+  { nombre: 'AUX1',             corto: 'AUX1',       color: '#ffd66b', bit: 32, on: 'AUX1 encendido',             off: 'AUX1 apagado' },
+  { nombre: 'AUX2',             corto: 'AUX2',       color: '#c9a2f0', bit: 16, on: 'AUX2 encendido',             off: 'AUX2 apagado' }
 ];
 
 // Nombres de AUX1 (relé 5) y AUX2 (relé 6): vienen del equipo y se usan en toda la página.
@@ -1125,22 +1201,22 @@ function franjas(d, paso) {
 }
 
 function dibujarActividad(d, paso, ini, fin) {
-  const series = franjas(d, paso), rejilla = '#2a2e32';
+  const series = franjas(d, paso), rejilla = REJILLA;
   if (!chartR) {
     chartR = new Chart($('#cvR'), {
       type: 'line',
       data: { datasets: filasAct().map((r, i) => ({ label: r.nombre, data: series[i], borderColor: r.color, backgroundColor: r.color,
-        borderWidth: 10, borderCapStyle: 'butt', pointRadius: 0, spanGaps: false, tension: 0 })) },
+        borderWidth: 9, borderCapStyle: 'round', pointRadius: 0, spanGaps: false, tension: 0 })) },
       options: {
         parsing: false, animation: false, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         scales: {
-          x: { type: 'linear', grid: { color: rejilla },
-               ticks: { color: '#9a968c', maxRotation: 0, callback: v => etiqueta(v) },
+          x: { type: 'linear', grid: Object.assign({}, rejilla, { drawTicks: false }), border: { display: false },
+               ticks: { color: '#8b95a3', maxRotation: 0, callback: v => etiqueta(v) },
                afterBuildTicks: s => { const n = 5; s.ticks = Array.from({ length: n + 1 }, (_, i) => ({ value: s.min + (s.max - s.min) * i / n })); } },
-          y: { min: -0.5, max: filasAct().length - 0.5, reverse: true, grid: { color: rejilla },
+          y: { min: -0.5, max: filasAct().length - 0.5, reverse: true, grid: Object.assign({}, rejilla, { drawTicks: false }), border: { display: false },
                afterBuildTicks: s => { s.ticks = filasAct().map((_, i) => ({ value: i })); },
-               ticks: { color: '#9a968c', callback: v => (filasAct()[v] ? filasAct()[v].corto : '') } }
+               ticks: { color: '#8b95a3', callback: v => (filasAct()[v] ? filasAct()[v].corto : '') } }
         }
       }
     });
@@ -1217,25 +1293,25 @@ async function cargarHist() {
 
   const fin = Date.now(), ini = fin - SPAN[rg] * 1000;
   if (!chart) {
-    const rejilla = '#2a2e32';
+    const rejilla = REJILLA;
     chart = new Chart($('#cv'), {
       type: 'line',
       data: { datasets: [
-        { label: 'Temperatura °C', data: T, borderColor: COL_T, backgroundColor: COL_T, yAxisID: 'yT', pointRadius: 0, borderWidth: 2, tension: .25, spanGaps: false },
-        { label: 'Humedad %',      data: H, borderColor: COL_H, backgroundColor: COL_H, yAxisID: 'yH', pointRadius: 0, borderWidth: 2, tension: .25, spanGaps: false }
+        { label: 'Temperatura °C', data: T, borderColor: COL_T, backgroundColor: degrade(COL_T), fill: true, yAxisID: 'yT', pointRadius: 0, borderWidth: 2.5, cubicInterpolationMode: 'monotone', spanGaps: false },
+        { label: 'Humedad %',      data: H, borderColor: COL_H, backgroundColor: degrade(COL_H), fill: true, yAxisID: 'yH', pointRadius: 0, borderWidth: 2.5, cubicInterpolationMode: 'monotone', spanGaps: false }
       ]},
       options: {
         parsing: false, animation: false, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { labels: { color: '#9a968c', boxWidth: 12 } },
+          legend: { labels: { color: '#8b95a3', boxWidth: 12 } },
           tooltip: { callbacks: { title: it => new Date(it[0].parsed.x).toLocaleString('es-AR', { hourCycle: 'h23' }) } }
         },
         scales: {
-          x:  { type: 'linear', grid: { color: rejilla },
-                ticks: { color: '#9a968c', maxRotation: 0, callback: v => etiqueta(v) },
+          x:  { type: 'linear', grid: Object.assign({}, rejilla, { drawTicks: false }), border: { display: false },
+                ticks: { color: '#8b95a3', maxRotation: 0, callback: v => etiqueta(v) },
                 afterBuildTicks: s => { const n = 5; s.ticks = Array.from({ length: n + 1 }, (_, i) => ({ value: s.min + (s.max - s.min) * i / n })); } },
-          yT: { position: 'left',  grid: { color: rejilla }, ticks: { color: COL_T } },
+          yT: { position: 'left',  grid: Object.assign({}, rejilla, { drawTicks: false }), border: { display: false }, ticks: { color: COL_T } },
           yH: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: COL_H } }
         }
       }
@@ -1866,7 +1942,7 @@ $('#sg_terminar').onclick = async () => {
 /* Gráfico: merma (%) de cada balanza desde su inicio, con su objetivo y su proyección.
    Las casillas de arriba prenden y apagan cada balanza. */
 let histCat = [null, null], visBal = [true, true];
-const COL_BAL = ['#57b6ff', '#3ad17a'];
+const COL_BAL = ['#e7a0c8', '#a6d97c'];
 
 async function cargarPesaje() {
   if (!balHay || vistaAct !== 'bal') return;
@@ -1906,16 +1982,16 @@ function dibujarEvolucion() {
     }
   }
   if (chartP) chartP.destroy();
-  const ej = (t, pos) => ({ position: pos, title: { display: true, text: t, color: '#9a968c' },
-                            ticks: { color: '#9a968c' }, grid: { color: pos === 'left' ? '#3a3f44' : 'transparent' } });
+  const ej = (t, pos) => ({ position: pos, title: { display: true, text: t, color: '#8b95a3' },
+                            ticks: { color: '#8b95a3' }, grid: pos === 'left' ? Object.assign({}, REJILLA) : { color: 'transparent' }, border: { display: false } });
   chartP = new Chart($('#cvP'), {
     type: 'scatter', data: { datasets: ds },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      scales: { x: { type: 'linear', min: 0, title: { display: true, text: 'Día', color: '#9a968c' },
-                     ticks: { color: '#9a968c' }, grid: { color: '#3a3f44' } },
+      scales: { x: { type: 'linear', min: 0, title: { display: true, text: 'Día', color: '#8b95a3' },
+                     ticks: { color: '#8b95a3' }, grid: Object.assign({}, REJILLA), border: { display: false } },
                 y: { ...ej('Merma (%)', 'left'), min: 0 } },
-      plugins: { legend: { labels: { color: '#e9e4da', boxWidth: 14 } } }
+      plugins: { legend: { labels: { color: '#e8ebef', boxWidth: 14 } } }
     }
   });
   txt('#gp_info', !hayPuntos ? 'Todavía no hay registros: se agrega un punto cada 30 minutos con el peso quieto.'

@@ -3,29 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#17191b">
+<meta name="theme-color" content="#0f1216">
 <title>Diario de secado</title>
 <style>
 :root{
-  --acero:#17191b; --placa:#202326; --placa2:#2a2e32; --borde:#3a3f44;
-  --texto:#e9e4da; --tenue:#9a968c;
-  --pimenton:#e0623f; --moho:#9fcdbb; --laton:#c9a54b; --ok:#8fd694; --alarma:#ff6b57;
-  --f:"DIN Alternate","Bahnschrift","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --acero:#0f1216; --placa:#181c22; --placa2:#20252d; --borde:#2a3039;
+  --texto:#e8ebef; --tenue:#8b95a3;
+  --pimenton:#f2a83b; --moho:#5fb3f0; --laton:#f2a83b; --ok:#4cc38a; --alarma:#e5484d;
+  --f:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
 html{background:var(--acero)}
-body{font:16px/1.35 var(--f);font-stretch:condensed;color:var(--texto);background:var(--acero);
+body{font:16px/1.35 var(--f);color:var(--texto);background:var(--acero);
   max-width:960px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) 12px max(28px,env(safe-area-inset-bottom))}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:6px 2px 10px;border-bottom:2px solid var(--laton);margin-bottom:12px}
 h1{font-size:28px;font-weight:700;line-height:1.05}
 /* Pestañas: Secadero (mirar), Ajustes (configurar) y Diario de secado. Siempre visibles arriba. */
 .pestanas{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr) .85fr;gap:6px;margin:-12px -12px 14px;padding:10px 12px;background:var(--acero);border-bottom:1px solid var(--borde)}
 .pestanas a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:4px 8px;border:1px solid var(--borde);background:var(--placa);color:var(--tenue);font-weight:700;font-size:18px;line-height:1.1;text-align:center;text-decoration:none;letter-spacing:.02em}
-.pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1a14;pointer-events:none}
+.pestanas a.act{background:var(--laton);border-color:var(--laton);color:#1b1206;pointer-events:none}
 @media (max-width:420px){.pestanas a{font-size:15px;padding:4px 4px}}
 body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .85fr}
-.btnParada{min-height:50px;padding:2px;border:2px solid #f2c400;border-radius:2px;color:#fff;font:inherit;font-size:10px;font-weight:900;line-height:1.1;
+.btnParada{min-height:50px;padding:2px;border:2px solid #f2c400;border-radius:12px;color:#fff;font:inherit;font-size:10px;font-weight:900;line-height:1.1;
   letter-spacing:.03em;text-transform:uppercase;text-align:center;cursor:pointer;background:linear-gradient(#ee2b1f,#b3140c);text-shadow:0 1px 0 rgba(0,0,0,.45)}
 .btnParada:active{filter:brightness(.85)}
 /* Con la parada activa se ve oscuro y el resplandor parpadea. */
@@ -37,13 +37,13 @@ body.sinBal .pestanas{grid-template-columns:repeat(3,1fr) .85fr}
   .btnParada{font-size:13px}.btnParada.activa{font-size:12px}}
 body.sinBal [data-v=bal]{display:none!important}
 .tag.bal{border-color:var(--pimenton);color:var(--pimenton)}
-.aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#3a1e1b;font-weight:600}
-.aviso.ok{border-color:var(--ok);background:#1f3022}
+.aviso{padding:10px 12px;margin-bottom:12px;border-left:4px solid var(--alarma);background:#2d1a1d;font-weight:600}
+.aviso.ok{border-color:var(--ok);background:#16281f}
 .aviso.parada{border-color:#ff3b30;background:#5a1410;font-size:17px}
 /* Pausar / reanudar el control: botón discreto, de menor jerarquía que APAGAR TODO, en verde claro. Va en la barra de pestañas (siempre visible), abajo a la derecha. */
-.btnPausa{grid-column:1/-1;justify-self:end;min-height:32px;padding:0 14px;border:1px solid rgba(159,205,187,.6);border-radius:2px;background:rgba(159,205,187,.1);
-  color:#9fcdbb;font:inherit;font-size:13px;font-weight:700;line-height:1.1;cursor:pointer}
-.btnPausa.pausado{border-color:var(--laton);background:rgba(200,170,80,.14);color:var(--laton)}
+.btnPausa{grid-column:1/-1;justify-self:end;min-height:32px;padding:0 14px;border:1px solid rgba(95,179,240,.6);border-radius:12px;background:rgba(95,179,240,.1);
+  color:#5fb3f0;font:inherit;font-size:13px;font-weight:700;line-height:1.1;cursor:pointer}
+.btnPausa.pausado{border-color:var(--laton);background:rgba(242,168,59,.14);color:var(--laton)}
 .btnPausa:disabled{opacity:.5;cursor:default}
 .placa{background:var(--placa);border:1px solid var(--borde);box-shadow:inset 0 1px 0 #ffffff0d;padding:14px}
 .placa+.placa{margin-top:12px}
@@ -58,7 +58,7 @@ details.panel[open]>summary .res{display:none}
 h3{font-size:15px;font-weight:600;color:var(--tenue);margin:14px 0 8px}
 button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--laton);outline-offset:1px}
 
-select,input[type=text],input[type=number],input[type=date],textarea{width:100%;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:2px;height:44px;padding:0 10px;font:inherit;font-size:17px}
+select,input[type=text],input[type=number],input[type=date],textarea{width:100%;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:12px;height:44px;padding:0 10px;font:inherit;font-size:17px}
 textarea{height:64px;padding:8px 10px;resize:vertical}
 label{display:block;font-size:14px;color:var(--tenue);margin:0 0 4px}
 .campo{margin-bottom:10px;min-width:0}
@@ -66,11 +66,11 @@ label{display:block;font-size:14px;color:var(--tenue);margin:0 0 4px}
 .chk{display:flex;align-items:center;gap:10px;margin:6px 0 10px;font-size:17px}
 .chk input{width:22px;height:22px;accent-color:var(--laton);flex:none}
 
-.sec,.guardar{border-radius:2px;font:inherit;font-weight:700;cursor:pointer;height:42px;padding:0 14px}
+.sec,.guardar{border-radius:12px;font:inherit;font-weight:700;cursor:pointer;height:42px;padding:0 14px}
 .sec{background:var(--placa2);color:var(--texto);border:1px solid var(--borde)}
 .sec.peligro{color:var(--alarma)}
 .sec:disabled{opacity:.45;cursor:default}
-.guardar{background:var(--laton);color:#1b1a14;border:0;height:46px;padding:0 24px;font-size:17px}
+.guardar{background:var(--laton);color:#1b1206;border:0;height:46px;padding:0 24px;font-size:17px}
 .botones{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .acciones{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px}
 .ayuda{font-size:14px;color:var(--tenue);margin:4px 0 8px}
@@ -98,18 +98,64 @@ ul.lista>li:first-child{border-top:0}
 .l2{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--tenue);margin-top:3px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
 .l3{font-size:14px;color:var(--texto);margin-top:3px}
 .mini{display:inline-flex;gap:6px;margin-top:6px}
-.mini button{background:none;border:1px solid var(--borde);color:var(--tenue);border-radius:2px;height:32px;padding:0 10px;font:inherit;font-size:14px;cursor:pointer}
+.mini button{background:none;border:1px solid var(--borde);color:var(--tenue);border-radius:12px;height:32px;padding:0 10px;font:inherit;font-size:14px;cursor:pointer}
 .mini button.x{color:var(--alarma)}
 .merma{color:var(--pimenton);font-weight:700}
 .desv{color:var(--alarma)}
-.tag{font-size:12px;border:1px solid var(--laton);color:var(--laton);padding:0 5px;margin-left:6px;border-radius:2px;vertical-align:middle}
+.tag{font-size:12px;border:1px solid var(--laton);color:var(--laton);padding:0 5px;margin-left:6px;border-radius:12px;vertical-align:middle}
 
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--borde);margin-bottom:12px}
 .tabs button{background:var(--placa2);color:var(--tenue);border:0;padding:11px 0;font:inherit;font-weight:600;cursor:pointer}
 .tabs button+button{border-left:1px solid var(--borde)}
-.tabs button.on{background:var(--laton);color:#1b1a14}
+.tabs button.on{background:var(--laton);color:#1b1206}
 .grafico{position:relative;height:280px}
 .almacen{margin-top:6px;font-size:14px;color:var(--tenue)}
+
+/* ===== Estética del hub: fondo pizarra, tarjetas redondeadas, acento ámbar ===== */
+:root{--radio:16px}
+html{color-scheme:dark}
+body{-webkit-tap-highlight-color:transparent}
+header{border-bottom:1px solid var(--borde);padding:6px 2px 12px}
+h1{font-weight:600;letter-spacing:0}
+.placa{border-radius:var(--radio);box-shadow:none}
+.pestanas{background:color-mix(in srgb,var(--acero) 92%,transparent);backdrop-filter:blur(8px);border-bottom:0}
+.pestanas a{border-radius:999px;background:transparent;font-weight:600;letter-spacing:0}
+.pestanas a.act{background:var(--texto);border-color:var(--texto);color:var(--acero)}
+.btnParada{border-radius:14px}
+.btnPausa{border-color:#4cc38a99;background:#4cc38a1a;color:#4cc38a;border-radius:12px}
+.btnPausa.pausado{border-color:var(--laton);background:#f2a83b24;color:var(--laton)}
+.aviso{border-radius:12px}
+.sec,.guardar,.mini button,.modoBtn{border-radius:12px}
+.guardar{font-weight:600}
+button:active{transform:scale(.97)}
+select,input[type=text],input[type=number],input[type=date],input[type=password],textarea,.confTxt{border-radius:10px;background:var(--acero)}
+form.edit,.dato,.tile,.calGrid div,.chip{border-radius:12px}
+.tabs,.modos{border-radius:12px;overflow:hidden}
+.tabs button.on,.modos button.on{background:var(--texto);color:var(--acero)}
+.tag,.chip{border-radius:999px}
+.reg,.barra{border-radius:6px}
+.reg .zona{border-radius:6px}
+.reg .marca{border-radius:2px}
+.barra i{border-radius:6px}
+input[type=range]::-webkit-slider-runnable-track{border-radius:6px}
+input[type=range]::-webkit-slider-thumb{border-radius:50%;border:3px solid var(--acero)}
+input[type=range]::-moz-range-track{border-radius:6px}
+input[type=range]::-moz-range-thumb{border-radius:50%;border:3px solid var(--acero)}
+.num{font-weight:600}
+details.test{border-radius:12px}
+.registro li.parada{border-radius:10px}
+/* Iconos de equipos (los del hub): trazo gris apagado, color del equipo al encender */
+.ic{display:block;flex:none}
+.ic-equipo{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
+.led.sec-ic{width:38px;height:38px;border-radius:50%;background:var(--acero);box-shadow:none;display:grid;place-items:center;color:var(--tenue);transition:background .3s,box-shadow .3s}
+.led.sec-ic.on{color:var(--eq);background:color-mix(in srgb,var(--eq) 18%,var(--acero));box-shadow:0 0 14px color-mix(in srgb,var(--eq) 45%,transparent)}
+.led.sec-ic.fri{--eq:#7cc8ff}.led.sec-ic.hum{--eq:#5fb3f0}.led.sec-ic.des{--eq:#e0b36a}
+.led.sec-ic.ven{--eq:#7fd8c3}.led.sec-ic.luz{--eq:#ffd66b}.led.sec-ic.otr{--eq:#c9a2f0}
+.led.sec-ic.on.ven .ic-equipo{animation:girar 1.6s linear infinite;transform-origin:center;transform-box:fill-box}
+@keyframes girar{to{transform:rotate(360deg)}}
+.tile .led.sec-ic{width:26px;height:26px}
+.tile .led.sec-ic svg{width:15px;height:15px}
+@media (prefers-reduced-motion:reduce){.led.sec-ic.on.ven .ic-equipo{animation:none}}
 </style>
 </head>
 <body>
@@ -243,7 +289,15 @@ const hoy = () => { const d = new Date(); return d.getFullYear() + '-' + p2(d.ge
 const msd = f => { const [a, b, c] = f.split('-').map(Number); return Date.UTC(a, b - 1, c); };
 const dias = (a, b) => Math.round((msd(b) - msd(a)) / 864e5);
 const nuevoId = p => p + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
-const COLORES = ['#e0623f', '#9fcdbb', '#c9a54b', '#8fb8e0', '#f1dc8a', '#d98fd0', '#8fd694', '#d9d4c7'];
+const COLORES = ['#f2a83b', '#5fb3f0', '#e0b36a', '#7cc8ff', '#ffd66b', '#e7a0c8', '#4cc38a', '#c9a2f0'];
+// Estilo de los gráficos del hub: curva suave, rejilla punteada y tooltip oscuro.
+if (typeof Chart !== 'undefined') {
+  const D = Chart.defaults;
+  D.font.family = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif'; D.color = '#8b95a3';
+  Object.assign(D.plugins.tooltip, { backgroundColor: '#20252d', borderColor: '#2a3039', borderWidth: 1, cornerRadius: 10, padding: 10, titleColor: '#e8ebef', bodyColor: '#e8ebef' });
+  D.plugins.legend.labels.usePointStyle = true; D.plugins.legend.labels.pointStyle = 'circle';
+}
+const REJILLA = { color: '#2a3039', borderDash: [2, 4] };
 
 let M = new Map();          // k -> objeto vigente
 let malas = 0, cargadoOk = false;   // cargadoOk: el diario se leyó bien de la placa
@@ -443,7 +497,7 @@ function dibujarGrafico() {
     R.piezas.forEach((p, i) => {
       const pts = [{ x: Math.max(0, dias(t.f, p.f)), y: 0 }];
       R.regs.filter(r => r.p === p.k && r.w != null).forEach(r => pts.push({ x: dias(t.f, r.f), y: +mermaDe(p.p0, r.w).toFixed(2) }));
-      ds.push({ label: p.n, data: pts, borderColor: COLORES[i % 8], backgroundColor: COLORES[i % 8], showLine: true, tension: 0.2, pointRadius: 3 });
+      ds.push({ label: p.n, data: pts, borderColor: COLORES[i % 8], backgroundColor: COLORES[i % 8], showLine: true, cubicInterpolationMode: 'monotone', pointRadius: 3 });
     });
     // Una curva por balanza con seguimiento (el día 0 es el inicio de la tanda).
     const t0 = msd(t.f);
@@ -452,10 +506,10 @@ function dibujarGrafico() {
       const p0 = b.h.p0;
       ds.unshift({ label: 'Balanza ' + b.nombre,
         data: b.h.pts.map(q => ({ x: +((q[0] * 1000 - t0) / 864e5).toFixed(3), y: +((p0 - q[1]) / p0 * 100).toFixed(2) })),
-        borderColor: ['#e0623f', '#57b6ff'][k % 2], backgroundColor: ['#e0623f', '#57b6ff'][k % 2],
-        showLine: true, tension: 0.2, pointRadius: 0, borderWidth: 2.5 });
+        borderColor: ['#f2a83b', '#e7a0c8'][k % 2], backgroundColor: ['#f2a83b', '#e7a0c8'][k % 2],
+        showLine: true, cubicInterpolationMode: 'monotone', pointRadius: 0, borderWidth: 2.5 });
     });
-    if (t.mo) ds.push({ label: 'Objetivo', data: [{ x: 0, y: t.mo }, { x: hasta, y: t.mo }], borderColor: '#9a968c', borderDash: [6, 4], showLine: true, pointRadius: 0 });
+    if (t.mo) ds.push({ label: 'Objetivo', data: [{ x: 0, y: t.mo }, { x: hasta, y: t.mo }], borderColor: '#8b95a3', borderDash: [6, 4], showLine: true, pointRadius: 0 });
     ay.textContent = 'Eje horizontal: días desde el inicio de la tanda.';
   } else {
     const h = modoG === 'hum';
@@ -468,9 +522,9 @@ function dibujarGrafico() {
     // escalonado: repetir el valor anterior justo antes de cada cambio
     const esc2 = [];
     lin.forEach((q, i) => { if (i > 0) esc2.push({ x: q.x, y: lin[i - 1].y }); esc2.push(q); });
-    ds.push({ label: 'Receta', data: esc2, borderColor: '#c9a54b', backgroundColor: '#c9a54b', showLine: true, pointRadius: 0, borderDash: [6, 4] });
+    ds.push({ label: 'Receta', data: esc2, borderColor: '#e0b36a', backgroundColor: '#e0b36a', showLine: true, pointRadius: 0, borderDash: [6, 4] });
     ds.push({ label: 'Medida', data: R.regs.filter(r => r[h ? 'mh' : 'mt'] != null).map(r => ({ x: dias(t.f, r.f), y: r[h ? 'mh' : 'mt'] })),
-              borderColor: h ? '#9fcdbb' : '#e0623f', backgroundColor: h ? '#9fcdbb' : '#e0623f', showLine: true, tension: 0.2, pointRadius: 4 });
+              borderColor: h ? '#5fb3f0' : '#f2a83b', backgroundColor: h ? '#5fb3f0' : '#f2a83b', showLine: true, cubicInterpolationMode: 'monotone', pointRadius: 4 });
     ay.textContent = 'Línea punteada: lo que pide la receta. Puntos: lo que midió la cámara cada día anotado.';
   }
   if (chart) chart.destroy();
@@ -479,10 +533,10 @@ function dibujarGrafico() {
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       scales: {
-        x: { type: 'linear', min: 0, title: { display: true, text: 'Día', color: '#9a968c' }, ticks: { color: '#9a968c' }, grid: { color: '#3a3f44' } },
-        y: { title: { display: true, text: yTxt, color: '#9a968c' }, ticks: { color: '#9a968c' }, grid: { color: '#3a3f44' } }
+        x: { type: 'linear', min: 0, title: { display: true, text: 'Día', color: '#8b95a3' }, ticks: { color: '#8b95a3' }, grid: Object.assign({}, REJILLA), border: { display: false } },
+        y: { title: { display: true, text: yTxt, color: '#8b95a3' }, ticks: { color: '#8b95a3' }, grid: Object.assign({}, REJILLA), border: { display: false } }
       },
-      plugins: { legend: { labels: { color: '#e9e4da', boxWidth: 14 } } }
+      plugins: { legend: { labels: { color: '#e8ebef', boxWidth: 14 } } }
     }
   });
 }

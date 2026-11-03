@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#17191b">
+<meta name="theme-color" content="#0f1216">
 <title>Red Wi-Fi</title>
 <style>
-:root{--acero:#17191b;--placa:#202326;--placa2:#2a2e32;--borde:#3a3f44;--texto:#e9e4da;--tenue:#9a968c;--laton:#c9a54b;--ok:#8fd694;--alarma:#ff6b57;
-  --f:"DIN Alternate","Bahnschrift","Roboto Condensed","Arial Narrow",system-ui,sans-serif}
+:root{--acero:#0f1216;--placa:#181c22;--placa2:#20252d;--borde:#2a3039;--texto:#e8ebef;--tenue:#8b95a3;--laton:#f2a83b;--ok:#4cc38a;--alarma:#e5484d;
+  --f:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
 html{background:var(--acero)}
-body{font:16px/1.35 var(--f);font-stretch:condensed;color:var(--texto);background:var(--acero);max-width:640px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) 12px 28px}
+body{font:16px/1.35 var(--f);color:var(--texto);background:var(--acero);max-width:640px;margin:0 auto;padding:max(12px,env(safe-area-inset-top)) 12px 28px}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:6px 2px 10px;border-bottom:2px solid var(--laton);margin-bottom:12px}
 h1{font-size:28px;font-weight:700;line-height:1.05}
 .volver{color:var(--laton);font-weight:700;font-size:17px;text-decoration:none;white-space:nowrap;padding:8px 0}
@@ -23,21 +23,67 @@ h2{font-size:15px;font-weight:600;color:var(--tenue);margin-bottom:10px}
 .dato span{color:var(--tenue)}
 .dato b{font-weight:600;text-align:right;word-break:break-all}
 ul{list-style:none;margin-top:10px}
-li button{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:46px;padding:8px 12px;margin-bottom:6px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:2px;font:inherit;font-size:17px;cursor:pointer;text-align:left}
-li button.sel{border-color:var(--laton);background:#352d18}
+li button{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:46px;padding:8px 12px;margin-bottom:6px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:12px;font:inherit;font-size:17px;cursor:pointer;text-align:left}
+li button.sel{border-color:var(--laton);background:#2e2616}
 li small{color:var(--tenue);font-size:13px;white-space:nowrap;margin-left:8px}
 label{display:block;font-size:14px;color:var(--tenue);margin:12px 0 4px}
-input[type=text],input[type=password]{width:100%;height:46px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:2px;padding:0 10px;font:inherit;font-size:17px}
+input[type=text],input[type=password]{width:100%;height:46px;background:var(--placa2);color:var(--texto);border:1px solid var(--borde);border-radius:12px;padding:0 10px;font:inherit;font-size:17px}
 .chk{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:15px;color:var(--tenue)}
 .chk input{width:20px;height:20px;accent-color:var(--laton)}
-.sec,.guardar{border-radius:2px;font:inherit;font-weight:700;cursor:pointer;height:44px;padding:0 18px}
+.sec,.guardar{border-radius:12px;font:inherit;font-weight:700;cursor:pointer;height:44px;padding:0 18px}
 .sec{background:var(--placa2);color:var(--texto);border:1px solid var(--borde)}
-.guardar{background:var(--laton);color:#1b1a14;border:0;height:48px;font-size:17px;width:100%;margin-top:14px}
+.guardar{background:var(--laton);color:#1b1206;border:0;height:48px;font-size:17px;width:100%;margin-top:14px}
 .guardar:disabled,.sec:disabled{opacity:.5;cursor:default}
 .ayuda{font-size:14px;color:var(--tenue);margin-top:10px}
-.msg{margin-top:12px;padding:10px 12px;border-left:4px solid var(--laton);background:#352d18;font-weight:600}
-.msg.ok{border-color:var(--ok);background:#1f3022}
-.msg.mal{border-color:var(--alarma);background:#3a1e1b}
+.msg{margin-top:12px;padding:10px 12px;border-left:4px solid var(--laton);background:#2e2616;font-weight:600}
+.msg.ok{border-color:var(--ok);background:#16281f}
+.msg.mal{border-color:var(--alarma);background:#2d1a1d}
+
+/* ===== Estética del hub: fondo pizarra, tarjetas redondeadas, acento ámbar ===== */
+:root{--radio:16px}
+html{color-scheme:dark}
+body{-webkit-tap-highlight-color:transparent}
+header{border-bottom:1px solid var(--borde);padding:6px 2px 12px}
+h1{font-weight:600;letter-spacing:0}
+.placa{border-radius:var(--radio);box-shadow:none}
+.pestanas{background:color-mix(in srgb,var(--acero) 92%,transparent);backdrop-filter:blur(8px);border-bottom:0}
+.pestanas a{border-radius:999px;background:transparent;font-weight:600;letter-spacing:0}
+.pestanas a.act{background:var(--texto);border-color:var(--texto);color:var(--acero)}
+.btnParada{border-radius:14px}
+.btnPausa{border-color:#4cc38a99;background:#4cc38a1a;color:#4cc38a;border-radius:12px}
+.btnPausa.pausado{border-color:var(--laton);background:#f2a83b24;color:var(--laton)}
+.aviso{border-radius:12px}
+.sec,.guardar,.mini button,.modoBtn{border-radius:12px}
+.guardar{font-weight:600}
+button:active{transform:scale(.97)}
+select,input[type=text],input[type=number],input[type=date],input[type=password],textarea,.confTxt{border-radius:10px;background:var(--acero)}
+form.edit,.dato,.tile,.calGrid div,.chip{border-radius:12px}
+.tabs,.modos{border-radius:12px;overflow:hidden}
+.tabs button.on,.modos button.on{background:var(--texto);color:var(--acero)}
+.tag,.chip{border-radius:999px}
+.reg,.barra{border-radius:6px}
+.reg .zona{border-radius:6px}
+.reg .marca{border-radius:2px}
+.barra i{border-radius:6px}
+input[type=range]::-webkit-slider-runnable-track{border-radius:6px}
+input[type=range]::-webkit-slider-thumb{border-radius:50%;border:3px solid var(--acero)}
+input[type=range]::-moz-range-track{border-radius:6px}
+input[type=range]::-moz-range-thumb{border-radius:50%;border:3px solid var(--acero)}
+.num{font-weight:600}
+details.test{border-radius:12px}
+.registro li.parada{border-radius:10px}
+/* Iconos de equipos (los del hub): trazo gris apagado, color del equipo al encender */
+.ic{display:block;flex:none}
+.ic-equipo{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
+.led.sec-ic{width:38px;height:38px;border-radius:50%;background:var(--acero);box-shadow:none;display:grid;place-items:center;color:var(--tenue);transition:background .3s,box-shadow .3s}
+.led.sec-ic.on{color:var(--eq);background:color-mix(in srgb,var(--eq) 18%,var(--acero));box-shadow:0 0 14px color-mix(in srgb,var(--eq) 45%,transparent)}
+.led.sec-ic.fri{--eq:#7cc8ff}.led.sec-ic.hum{--eq:#5fb3f0}.led.sec-ic.des{--eq:#e0b36a}
+.led.sec-ic.ven{--eq:#7fd8c3}.led.sec-ic.luz{--eq:#ffd66b}.led.sec-ic.otr{--eq:#c9a2f0}
+.led.sec-ic.on.ven .ic-equipo{animation:girar 1.6s linear infinite;transform-origin:center;transform-box:fill-box}
+@keyframes girar{to{transform:rotate(360deg)}}
+.tile .led.sec-ic{width:26px;height:26px}
+.tile .led.sec-ic svg{width:15px;height:15px}
+@media (prefers-reduced-motion:reduce){.led.sec-ic.on.ven .ic-equipo{animation:none}}
 </style>
 </head>
 <body>

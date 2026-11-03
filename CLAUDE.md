@@ -44,6 +44,7 @@ con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 l
 ## Páginas web
 - Se editan en `paginas/*.html`; `pagina.h`, `pagina_bitacora.h`, `pagina_wifi.h` se **generan** con
   `python paginas/generar.py` (gzip + copia `VERSION_PROGRAMA` de `config.h`). No editar los .h a mano.
+- Estética: la del hub de domótica (colores, tarjetas redondeadas, iconos de equipos, gráficos con degradé). Los colores están como variables en `:root` de cada página (`--laton` = ámbar de acento) y en `COL_T`/`COL_H`/`RELES` del JS; si se cambia uno, cambiarlo en las tres páginas. Los iconos de las salidas son SVG en línea (`ICO_EQ`, `icEq()` en `principal.html`).
 - Todo POST lleva el encabezado `X-Camara: 1` (anti-CSRF). Desde la v1.0.3 la web **no pide clave** (`WEB_SIN_CLAVE 1` en `config.h`);
   con 0 vuelve el Digest (usuario `admin`, `WEB_CLAVE` de `config.h`). `subir.mjs` y el hub se adaptan solos.
 - Para probar las páginas sin la placa: servidor simulado (node) que sirva `paginas/` y conteste las APIs.
