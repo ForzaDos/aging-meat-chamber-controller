@@ -371,14 +371,17 @@ static void enviarEventos(AsyncWebServerRequest* r) {
 static void enviarHistorial(AsyncWebServerRequest* r) {
   String rg = r->hasParam("rango") ? r->getParam("rango")->value() : "1d";
   uint8_t nivel = 0;
+  uint16_t ultimos = 0;                                  // 6 h y 12 h salen del nivel de 1 punto por minuto
   if      (rg == "1w") nivel = 1;
   else if (rg == "1m") nivel = 2;
   else if (rg == "3m") nivel = 3;
   else if (rg == "1h") nivel = 4;
+  else if (rg == "6h")  ultimos = 360;
+  else if (rg == "12h") ultimos = 720;
 
-  AsyncResponseStream* res = r->beginResponseStream("application/json", historialJsonTam(nivel));   // tamaño máximo: una sola reserva
+  AsyncResponseStream* res = r->beginResponseStream("application/json", historialJsonTam(nivel, ultimos));   // tamaño máximo: una sola reserva
   res->addHeader("Cache-Control", "no-store");
-  historialJson(nivel, *res);
+  historialJson(nivel, *res, ultimos);
   r->send(res);
 }
 
@@ -470,6 +473,7 @@ static void enviarResumen(AsyncWebServerRequest* r) {
 // Borra datos guardados. Exige confirmar=BORRAR.
 // /api/borrar          -> historial y registro de relés
 // /api/borrar/registro -> solo el registro de relés
+// /api/borrar/historial -> solo el historial de 1 mes o 3 meses (nivel=1m|3m)
 // /api/borrar/bitacora -> solo el diario de secado
 #if USAR_BALANZA
 // Peso de las balanzas (por Wi-Fi). Sin "g" = no hay peso válido (desconectada, sin HX711 o tarando).
@@ -664,6 +668,13 @@ static void borrarDatos(AsyncWebServerRequest* r) {           // historial y reg
   if (!borradoConfirmado(r)) return;
   historialBorrar();
   eventosBorrar();
+  r->send(200, "application/json", "{\"ok\":true}");
+}
+static void borrarHistorialNivel(AsyncWebServerRequest* r) {  // solo el historial de 1 mes o de 3 meses (nivel=1m | 3m)
+  if (!borradoConfirmado(r)) return;
+  const String n = r->hasParam("nivel", true) ? r->getParam("nivel", true)->value() : "";
+  if (n != "1m" && n != "3m") { r->send(400, "application/json", "{\"ok\":false}"); return; }
+  historialBorrarNivel(n == "1m" ? 2 : 3);
   r->send(200, "application/json", "{\"ok\":true}");
 }
 static void borrarRegistro(AsyncWebServerRequest* r) {        // solo el registro de relés
@@ -923,6 +934,7 @@ void webInit() {
   server.on(RUTA("/api/borrar"),        HTTP_POST, borrarDatos);
   server.on(RUTA("/api/borrar/bitacora"), HTTP_POST, borrarBitacoraTodo);
   server.on(RUTA("/api/borrar/registro"), HTTP_POST, borrarRegistro);
+  server.on(RUTA("/api/borrar/historial"), HTTP_POST, borrarHistorialNivel);
   server.on(RUTA("/api/estado"),    HTTP_GET,  enviarEstado);
   server.on(RUTA("/api/config"),    HTTP_POST, guardarConfig);
   server.on(RUTA("/api/manual"),    HTTP_POST, cambiarManual);

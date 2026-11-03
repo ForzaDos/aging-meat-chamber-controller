@@ -138,7 +138,7 @@ h3{font-size:15px;font-weight:600;color:var(--tenue);margin:4px 0 8px}
 .modos button:disabled{opacity:.5;cursor:default}
 
 /* Historial */
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--borde);margin-bottom:12px}
+.tabs{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--borde);margin-bottom:12px}
 .tabs button{background:var(--placa2);color:var(--tenue);border:0;padding:11px 0;font:inherit;font-weight:600;cursor:pointer}
 .tabs button+button{border-left:1px solid var(--borde)}
 .tabs button.on{background:var(--laton);color:#1b1206}
@@ -369,9 +369,11 @@ details.test{border-radius:12px}
   <details class="panel" id="p_hist" open>
   <summary><span class="tit">Historial</span></summary>
   <div class="tabs" id="tabs">
-    <button data-r="1h">1 hora</button>
+    <button data-r="1h">1 h</button>
+    <button data-r="6h">6 h</button>
+    <button data-r="12h">12 h</button>
     <button data-r="1d" class="on">1 día</button>
-    <button data-r="1w">1 semana</button>
+    <button data-r="1w">1 sem.</button>
     <button data-r="1m">1 mes</button>
     <button data-r="3m">3 meses</button>
   </div>
@@ -730,6 +732,13 @@ details.test{border-radius:12px}
       <div class="acciones"><button type="button" class="sec peligro" id="borrarBtn" disabled>Borrar historial y registro</button><span class="msg" id="borrarMsg"></span></div>
     </details>
     <details style="margin-top:12px">
+      <summary class="peligro">Borrar solo el historial de 1 mes o de 3 meses</summary>
+      <p class="ayuda">Vacía el gráfico de 1 mes o el de 3 meses (cada uno por separado) y libera su archivo en la memoria del equipo. Sirve para empezar un secado nuevo sin arrastrar datos viejos. No se puede deshacer. No toca el historial de hasta 1 semana, el registro de relés, el diario ni los ajustes.</p>
+      <div class="ctl"><div class="ctl-top"><span>Para confirmar escribí BORRAR</span></div>
+        <input type="text" id="borrarHTxt" autocomplete="off" autocapitalize="characters" class="confTxt"></div>
+      <div class="acciones"><button type="button" class="sec peligro" id="borrarH1" disabled>Borrar 1 mes</button><button type="button" class="sec peligro" id="borrarH3" disabled>Borrar 3 meses</button><span class="msg" id="borrarHMsg"></span></div>
+    </details>
+    <details style="margin-top:12px">
       <summary class="peligro">Borrar el diario de secado (tandas, piezas y anotaciones)</summary>
       <p class="ayuda">Borra todas las tandas, piezas y registros del diario. No se puede deshacer. Antes conviene bajar una copia desde la página del diario. El historial y los ajustes se conservan.</p>
       <div class="ctl"><div class="ctl-top"><span>Para confirmar escribí BORRAR</span></div>
@@ -741,7 +750,7 @@ details.test{border-radius:12px}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.23 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.24 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
@@ -1278,11 +1287,11 @@ function dibujarActividad(d, paso, ini, fin) {
 }
 
 /* ---------- Historial ---------- */
-const SPAN = { '1h': 3600, '1d': 86400, '1w': 604800, '1m': 2592000, '3m': 7776000 };
+const SPAN = { '1h': 3600, '6h': 21600, '12h': 43200, '1d': 86400, '1w': 604800, '1m': 2592000, '3m': 7776000 };
 
 function etiqueta(v) {
   const d = new Date(v);
-  if (rango === '1h' || rango === '1d') return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  if (rango === '1h' || rango === '6h' || rango === '12h' || rango === '1d') return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   if (rango === '1w') return d.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' });
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 }
@@ -2083,6 +2092,23 @@ function borradoConfig(txt, btn, msg, url, pregunta, ok) {
 }
 borradoConfig('#borrarTxt', '#borrarBtn', '#borrarMsg', '/api/borrar',
   'Se borran el historial y el registro de relés. No se puede deshacer. ¿Seguro?', 'Datos borrados');
+// Historial de 1 mes o de 3 meses por separado: un cuadro de confirmación y dos botones.
+$('#borrarHTxt').addEventListener('input', e => {
+  const ok = e.target.value.trim().toUpperCase() === 'BORRAR';
+  $('#borrarH1').disabled = $('#borrarH3').disabled = !ok;
+});
+for (const [btn, nivel, nombre] of [['#borrarH1', '1m', '1 mes'], ['#borrarH3', '3m', '3 meses']]) {
+  $(btn).addEventListener('click', async () => {
+    if (!confirm('Se borra el historial de ' + nombre + '. No se puede deshacer. ¿Seguro?')) return;
+    const m = $('#borrarHMsg');
+    try {
+      const r = await fetch('/api/borrar/historial', { method: 'POST', headers: HX, body: new URLSearchParams({ confirmar: 'BORRAR', nivel }) });
+      m.className = r.ok ? 'msg' : 'msg err';
+      m.textContent = r.ok ? 'Historial de ' + nombre + ' borrado' : 'No se pudo borrar';
+      if (r.ok) { $('#borrarHTxt').value = ''; $('#borrarH1').disabled = $('#borrarH3').disabled = true; cargarHist(); }
+    } catch (e) { m.className = 'msg err'; m.textContent = 'Sin conexión'; }
+  });
+}
 borradoConfig('#borrarBitTxt', '#borrarBitBtn', '#borrarBitMsg', '/api/borrar/bitacora',
   'Se borra TODO el diario de secado (tandas, piezas y registros). No se puede deshacer. ¿Seguro?', 'Diario borrado');
 

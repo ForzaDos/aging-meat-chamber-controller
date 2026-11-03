@@ -158,20 +158,22 @@ uint16_t historialCantidad(uint8_t nivel) {
 
 // Tamaño máximo de la respuesta, para reservar el búfer de una sola vez (si crece de a pedazos
 // fragmenta la memoria). Por punto: k (5) + t (6) + h (5) + f (2) + 4 comas.
-size_t historialJsonTam(uint8_t nivel) {
+size_t historialJsonTam(uint8_t nivel, uint16_t ultimos) {
   if (nivel >= NIVELES) nivel = 0;
-  const uint16_t cnt = niv[nivel].buf ? niv[nivel].count : 0;
+  uint16_t cnt = niv[nivel].buf ? niv[nivel].count : 0;
+  if (ultimos && cnt > ultimos) cnt = ultimos;
   const uint16_t g = (cnt > MAX_PUNTOS_JSON) ? (uint16_t)((cnt + MAX_PUNTOS_JSON - 1) / MAX_PUNTOS_JSON) : 1;
   return (size_t)((cnt + g - 1) / g) * 28 + 96;   // 28 B por punto: [k,t,h] con k de hasta 7 dígitos tras apagones largos
 }
 
-void historialJson(uint8_t nivel, Print& out) {
+void historialJson(uint8_t nivel, Print& out, uint16_t ultimos) {
   if (nivel >= NIVELES) nivel = 0;
   Nivel& L = niv[nivel];
   const uint16_t N = PUNTOS[nivel];
 
   xSemaphoreTake(mtx, portMAX_DELAY);
-  const uint16_t cnt = L.buf ? L.count : 0;
+  uint16_t cnt = L.buf ? L.count : 0;
+  if (ultimos && cnt > ultimos) cnt = ultimos;                // solo los últimos N registros
   const uint16_t ini = (uint16_t)((L.head + N - cnt) % N);   // posición del registro más viejo
   const uint32_t t0  = cnt ? L.buf[ini].ts : 0;
   const uint16_t g   = (cnt > MAX_PUNTOS_JSON) ? (uint16_t)((cnt + MAX_PUNTOS_JSON - 1) / MAX_PUNTOS_JSON) : 1;
@@ -248,13 +250,23 @@ HistResumen historialResumen(uint32_t desde, uint32_t hasta) {
   return r;
 }
 
+// Vacía un nivel (RAM y archivo). Se llama con el mutex tomado.
+static void vaciarNivel(int i) {
+  Nivel& L = niv[i];
+  if (L.buf) memset(L.buf, 0, (size_t)PUNTOS[i] * sizeof(Registro));
+  L.head = 0; L.count = 0; L.sumT = L.sumH = 0; L.n = 0; L.flags = 0; L.sucio = false;
+  if (ARCHIVO[i]) LittleFS.remove(ARCHIVO[i]);
+}
+
 void historialBorrar() {
   xSemaphoreTake(mtx, portMAX_DELAY);
-  for (int i = 0; i < NIVELES; i++) {
-    Nivel& L = niv[i];
-    if (L.buf) memset(L.buf, 0, (size_t)PUNTOS[i] * sizeof(Registro));
-    L.head = 0; L.count = 0; L.sumT = L.sumH = 0; L.n = 0; L.flags = 0; L.sucio = false;
-    if (ARCHIVO[i]) LittleFS.remove(ARCHIVO[i]);
-  }
+  for (int i = 0; i < NIVELES; i++) vaciarNivel(i);
+  xSemaphoreGive(mtx);
+}
+
+void historialBorrarNivel(uint8_t nivel) {
+  if (nivel >= NIVELES_FLASH) return;
+  xSemaphoreTake(mtx, portMAX_DELAY);
+  vaciarNivel(nivel);
   xSemaphoreGive(mtx);
 }

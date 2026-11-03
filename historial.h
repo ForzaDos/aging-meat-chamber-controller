@@ -14,8 +14,8 @@ void historialMuestra(float temp, float hum, uint8_t flags); // llamar con cada 
                                                              // flags: bit0 hum, bit1 deshum, bit2 frío, bit3 ventilador, bit4 otros, bit5 luz
 void historialLoop();                                        // volcado periódico a flash
 void historialVolcar();                                      // vuelca ya lo pendiente (antes de un reinicio)
-void historialJson(uint8_t nivel, Print& out);               // serie lista para Chart.js
-size_t historialJsonTam(uint8_t nivel);                      // bytes máximos de esa respuesta
+void historialJson(uint8_t nivel, Print& out, uint16_t ultimos = 0);   // serie lista para Chart.js (ultimos > 0: solo los últimos N registros)
+size_t historialJsonTam(uint8_t nivel, uint16_t ultimos = 0);   // bytes máximos de esa respuesta
 uint16_t historialCantidad(uint8_t nivel);                   // registros guardados en ese nivel (diagnóstico)
 
 // Resumen de la cámara entre dos instantes (epoch UTC). Elige el nivel más fino que todavía
@@ -28,3 +28,4 @@ struct HistResumen {
 };
 HistResumen historialResumen(uint32_t desde, uint32_t hasta);
 void historialBorrar();                                      // borra todo el historial (RAM y flash)
+void historialBorrarNivel(uint8_t nivel);                    // borra un solo nivel (2 = 1 mes, 3 = 3 meses): empezar un secado nuevo o liberar flash
