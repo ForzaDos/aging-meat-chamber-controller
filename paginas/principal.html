@@ -289,6 +289,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
       <h2>Peso</h2>
       <div class="num" style="color:var(--laton)"><span id="sb_peso">--</span><small>g</small></div>
       <div class="obj" id="sb_falta"></div>
+      <div class="obj" id="sb_peso2"></div>
     </div>
   </div>
   <div class="botonera"><a class="sec" href="#balanza" style="display:inline-flex;align-items:center;text-decoration:none">Ver todo en Balanza</a></div>
@@ -335,10 +336,28 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 </section>
 
 <section class="placa" data-v="bal">
+  <h2>Balanza</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button type="button" class="sec balSelB" data-i="0" style="flex:1">1 kg</button>
+    <button type="button" class="sec balSelB" data-i="1" style="flex:1">10 kg</button>
+  </div>
+  <p class="nota">Elegí la balanza para ver el peso, la pieza testigo, la calibración y la conexión.
+     Cada una guarda su propio seguimiento. Las que no están conectadas se muestran como “sin conexión”.</p>
+</section>
+
+<section class="placa" data-v="bal">
   <h2>Peso en vivo</h2>
-  <div class="bal">
-    <div class="num"><span id="bal_g">--</span><small>g</small></div>
-    <div class="chips" id="bal_chips"></div>
+  <div class="bal" style="display:flex;gap:28px;flex-wrap:wrap">
+    <div style="min-width:130px">
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9a968c" id="bal_et0">1 kg</div>
+      <div class="num"><span id="bal_g">--</span><small>g</small></div>
+      <div class="chips" id="bal_chips"></div>
+    </div>
+    <div style="min-width:130px">
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9a968c" id="bal_et1">10 kg</div>
+      <div class="num"><span id="bal_g2">--</span><small>g</small></div>
+      <div class="chips" id="bal_chips2"></div>
+    </div>
   </div>
   <div class="aviso pausa" id="bal_av" hidden></div>
   <div class="ctl balT"><span>Temperatura de la tara</span><input type="number" class="confTxt" id="bal_ttara" step="0.1" inputmode="decimal" placeholder="°C"><button type="button" class="sec bal_traer" data-para="#bal_ttara">Traer de la cámara</button></div>
@@ -378,6 +397,10 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 
 <section class="placa" data-v="bal">
   <h2>Evolución de la pieza testigo</h2>
+  <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin:2px 0 8px;font-size:14px">
+    <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="gpBal" data-i="0" checked> <span id="gp_n0">1 kg</span></label>
+    <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="gpBal" data-i="1" checked> <span id="gp_n1">10 kg</span></label>
+  </div>
   <div class="grafico"><canvas id="cvP"></canvas></div>
   <p class="ayuda" id="gp_info">Un punto cada 30 minutos (promedio del peso quieto). La línea punteada es la proyección al ritmo actual.</p>
 </section>
@@ -422,7 +445,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
     <div><span>Ajuste (R²)</span><b id="bk_ar2">--</b></div>
   </div>
   <div class="botonera"><button type="button" class="sec" id="bk_aprender">Empezar</button><button type="button" class="sec peligro" id="bk_cancelar" hidden>Cancelar</button></div>
-  <p class="ayuda">Los coeficientes a mano y la actualización del programa de la balanza están en su propia página: <a id="bk_link" href="http://balanza.local" target="_blank" rel="noopener" style="color:var(--laton)">balanza.local</a>.</p>
+  <p class="ayuda">Los coeficientes a mano y la actualización del programa de la balanza están en su propia página: <a id="bk_link" href="http://balanza.local" target="_blank" rel="noopener" style="color:var(--laton)">pagina de la balanza</a>.</p>
   </details>
 </section>
 
@@ -662,7 +685,7 @@ body.sinBal #s_bal,body.sinBal [data-v=bal]{display:none!important}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.16 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.22 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
@@ -1515,6 +1538,20 @@ $('#calBtnCan').addEventListener('click', () => {
 // Se consulta aparte del estado (cada 1 s) para que el peso se vea al momento. Sin balanza en el
 // equipo (/api/balanza da 404) la sección y la pestaña quedan ocultas y se deja de preguntar.
 let balHay = true, balPend = false, balEspera = '', balUlt = null, chartP = null, tandasDiario = [];
+let balI = 0, balCat = [], balCap = 1100;   // balanza elegida, todas las balanzas y su capacidad
+document.querySelectorAll('.balSelB').forEach(b => {
+  b.onclick = () => {
+    balI = +b.dataset.i;
+    document.querySelectorAll('.balSelB').forEach(x => {
+      const on = +x.dataset.i === balI;
+      x.style.background = on ? 'var(--laton)' : '';
+      x.style.color = on ? '#101010' : '';
+    });
+    const d = balCat[balI] || balCat[0];
+    if (d) pintarBalanza(d);
+    cargarHistBalanza(true);
+  };
+});
 const BT_EST = ['apagada', 'buscando en la red…', 'no contesta', 'conectada'];
 function balMsg(t, err) { const m = $('#bal_msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); }
 const chip = (t, c) => `<span class="chip ${c || ''}">${t}</span>`;
@@ -1525,22 +1562,43 @@ function textoFalta(sg) {
   return sg.falta <= 0 ? '¡llegó a la merma objetivo!' : `faltan ~${Math.ceil(sg.falta)} días`;
 }
 
+// Peso y estado de CADA balanza, siempre a la vista (no depende de cuál esté elegida).
+function pintarPesos() {
+  const cols = [['#bal_g', '#bal_chips', '#bal_et0', '#gp_n0'], ['#bal_g2', '#bal_chips2', '#bal_et1', '#gp_n1']];
+  for (let i = 0; i < 2; i++) {
+    const d = balCat.find(x => x.i === i);
+    const [g, ch, et, gp] = cols[i];
+    if (!d) { txt(g, '--'); $(ch).innerHTML = chip('sin datos', 'mal'); continue; }
+    if (et) txt(et, d.nombre || ('balanza ' + i));
+    if (gp) txt(gp, d.nombre || ('balanza ' + i));
+    txt(g, d.ocup ? '···' : (d.g == null ? '--' : fijo(d.g, 1)));
+    let c = '';
+    const bt = d.red || {};
+    if (!bt.activo)  c = chip('apagada', 'mal');
+    else if (!d.con) c = chip('sin conexión', 'mal');
+    else if (d.err)  c = chip('no lee la celda', 'mal');
+    else if (d.ocup) c = chip('midiendo…');
+    else             c = d.est ? chip('quieto', 'ok') : chip('moviéndose');
+    if (d.sob) c += chip('SOBRECARGA', 'mal');
+    if (d.con && !d.cal) c += chip('sin calibrar', 'mal');
+    $(ch).innerHTML = c;
+  }
+}
+
 function pintarBalanza(d) {
+  balCap = d.capacidad || 1100;
+  const gcal = $('#bal_gcal'); if (gcal) gcal.max = Math.round(balCap);
+  const fp0 = $('#fs_p0');     if (fp0)  fp0.max  = Math.round(balCap);
+  const lnk = $('#bk_link'); if (lnk && d.host) { lnk.href = 'http://' + d.host + '.local'; lnk.textContent = d.host + '.local'; }
+  const sel = document.querySelector('.balSelB[data-i="' + balI + '"]');
+  if (sel) { sel.style.background = 'var(--laton)'; sel.style.color = '#101010'; }
+  if (d.nombre && sel) { sel.title = d.nombre; sel.textContent = d.nombre; }
   balUlt = d;
   document.body.classList.remove('sinBal');
   const sg = d.seg || {}, bt = d.red || {};
 
-  // Peso en vivo
-  txt('#bal_g', d.ocup ? '···' : fijo(d.g, 1));
-  let c = '';
-  if (!bt.activo)  c = chip('conexión apagada', 'mal');
-  else if (!d.con) c = chip('sin conexión: ' + BT_EST[bt.estado || 1], 'mal');
-  else if (d.err)  c = chip('la balanza no lee la celda (cables del HX711)', 'mal');
-  else if (d.ocup) c = chip('midiendo…');
-  else             c = d.est ? chip('quieto', 'ok') : chip('moviéndose');
-  if (d.sob) c += chip('SOBRECARGA', 'mal');
-  if (d.con && !d.cal) c += chip('sin calibrar', 'mal');
-  $('#bal_chips').innerHTML = c;
+  // El peso de las dos se dibuja siempre (pintarPesos); acá quedan los paneles de la elegida.
+  pintarPesos();
   for (const b of document.querySelectorAll('#bal_tara, #bal_cal, #bal_reset, #bk_comp, #bk_aprender, #bk_cancelar')) b.disabled = !d.con || !!d.ocup;
   txt('#r_bcal', d.con ? (d.cal ? 'calibrada' : 'sin calibrar') : '');
 
@@ -1636,13 +1694,20 @@ async function leerBalanza(cadaSeg) {
   balUltPedido = Date.now();
   balPend = true;
   try {
-    const r = await fetch('/api/balanza', { cache: 'no-store' });
+    const r = await fetch('/api/balanzas', { cache: 'no-store' });
     if (r.status === 404) { balHay = false; document.body.classList.add('sinBal'); if (vistaAct === 'bal') location.hash = '#secadero'; return; }
-    if (r.ok) pintarBalanza(await r.json());
+    if (r.ok) {
+      const j = await r.json();
+      balCat = j.balanzas || [];
+      const d = balCat[balI] || balCat[0];
+      if (d) pintarBalanza(d);
+      const otra = balCat.find(x => x.i !== balI && x.con);
+      txt('#sb_peso2', otra ? (otra.nombre + ' ' + fijo(otra.g, 1) + ' g') : '');
+    }
   } catch (_) {} finally { balPend = false; }
 }
 async function postBal(url, p) {
-  return fetch(url, { method: 'POST', headers: HX, body: new URLSearchParams(p) });
+  return fetch(url, { method: 'POST', headers: HX, body: new URLSearchParams(Object.assign({ i: balI }, p)) });
 }
 async function ordenBalanza(o, t) {
   balMsg(o === 'T' ? 'Tarando, no toques la balanza…' : o[0] === 'C' ? 'Calibrando, no toques la balanza…' : '', false);
@@ -1664,7 +1729,7 @@ $('#bal_tara').onclick = () => {
 };
 $('#bal_cal').onclick = () => {
   const g = parseFloat($('#bal_gcal').value.replace(',', '.'));
-  if (!(g > 0 && g <= 1000)) { balMsg('Escribí los gramos del peso conocido (1 a 1000)', true); return; }
+  if (!(g > 0 && g <= balCap)) { balMsg('Escribí los gramos del peso conocido (1 a ' + Math.round(balCap) + ')', true); return; }
   const t = balTemp('#bal_tcal');
   if (t === null) return;
   ordenBalanza('C' + g, t);
@@ -1798,42 +1863,68 @@ $('#sg_terminar').onclick = async () => {
   leerBalanza();
 };
 
-/* Gráfico: merma (%) y peso (g) por día desde el inicio, con la proyección al ritmo actual */
+/* Gráfico: merma (%) de cada balanza desde su inicio, con su objetivo y su proyección.
+   Las casillas de arriba prenden y apagan cada balanza. */
+let histCat = [null, null], visBal = [true, true];
+const COL_BAL = ['#57b6ff', '#3ad17a'];
+
 async function cargarPesaje() {
   if (!balHay || vistaAct !== 'bal') return;
   if (typeof Chart === 'undefined') { txt('#gp_info', 'No se pudo cargar la librería de gráficos. Recargá la página.'); return; }
-  let h;
-  try { h = await (await fetch('/api/balanza/hist', { cache: 'no-store' })).json(); } catch (_) { return; }
-  const ini = h.ini || (h.pts.length ? h.pts[0][0] : 0);
-  const dia = t => +((t - ini) / 86400).toFixed(3);
-  const merma = h.pts.map(p => ({ x: dia(p[0]), y: +((h.p0 - p[1]) / h.p0 * 100).toFixed(2) }));
-  const peso  = h.pts.map(p => ({ x: dia(p[0]), y: p[1] }));
-  const ds = [
-    { label: 'Merma (%)', data: merma, yAxisID: 'y', borderColor: COL_T, backgroundColor: COL_T, showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2 },
-    { label: 'Peso (g)', data: peso, yAxisID: 'y2', borderColor: '#c9a54b', backgroundColor: '#c9a54b', showLine: true, pointRadius: 0, borderWidth: 1.5, tension: 0.2 },
-  ];
-  const sg = (balUlt && balUlt.seg) || {};
-  let hasta = merma.length ? merma[merma.length - 1].x : 1;
-  if (sg.activo && sg.falta > 0 && merma.length) {
-    const u = merma[merma.length - 1];
-    hasta = Math.max(hasta, u.x + sg.falta);
-    ds.push({ label: 'Proyección', data: [u, { x: u.x + sg.falta, y: h.obj }], yAxisID: 'y', borderColor: COL_T, borderDash: [4, 4], showLine: true, pointRadius: 0, borderWidth: 1 });
+  for (let i = 0; i < 2; i++) {
+    try { histCat[i] = await (await fetch('/api/balanza/hist?i=' + i, { cache: 'no-store' })).json(); }
+    catch (_) { histCat[i] = null; }
   }
-  if (h.obj) ds.push({ label: 'Objetivo', data: [{ x: 0, y: h.obj }, { x: Math.max(hasta, 1), y: h.obj }], yAxisID: 'y', borderColor: '#9a968c', borderDash: [6, 4], showLine: true, pointRadius: 0, borderWidth: 1 });
+  dibujarEvolucion();
+}
+
+function dibujarEvolucion() {
+  const ds = [];
+  let maxDia = 1, hayPuntos = false;
+  for (let i = 0; i < 2; i++) {
+    if (!visBal[i]) continue;
+    const h = histCat[i];
+    if (!h || !h.pts || h.pts.length < 1) continue;
+    hayPuntos = true;
+    const b = balCat.find(x => x.i === i) || {};
+    const nom = b.nombre || ('balanza ' + i);
+    const sg = b.seg || {};
+    const ini = h.ini || h.pts[0][0];
+    const dia = tt => +((tt - ini) / 86400).toFixed(3);
+    const merma = h.pts.map(pp => ({ x: dia(pp[0]), y: +((h.p0 - pp[1]) / h.p0 * 100).toFixed(2) }));
+    const u = merma[merma.length - 1];
+    maxDia = Math.max(maxDia, u.x);
+    ds.push({ label: nom + ' · merma (%)', data: merma, yAxisID: 'y', borderColor: COL_BAL[i],
+              backgroundColor: COL_BAL[i], showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2 });
+    if (h.obj) ds.push({ label: nom + ' · objetivo ' + h.obj + '%',
+      data: [{ x: 0, y: h.obj }, { x: Math.max(maxDia, 1), y: h.obj }], yAxisID: 'y',
+      borderColor: COL_BAL[i], borderDash: [5, 4], showLine: true, pointRadius: 0, borderWidth: 1 });
+    if (sg.activo && sg.falta > 0 && !isNaN(u.y)) {
+      maxDia = Math.max(maxDia, u.x + sg.falta);
+      ds.push({ label: nom + ' · proyección', data: [u, { x: u.x + sg.falta, y: h.obj }], yAxisID: 'y',
+                borderColor: COL_BAL[i], borderDash: [2, 3], showLine: true, pointRadius: 0, borderWidth: 1 });
+    }
+  }
   if (chartP) chartP.destroy();
-  const ej = (t, pos) => ({ position: pos, title: { display: true, text: t, color: '#9a968c' }, ticks: { color: '#9a968c' }, grid: { color: pos === 'left' ? '#3a3f44' : 'transparent' } });
+  const ej = (t, pos) => ({ position: pos, title: { display: true, text: t, color: '#9a968c' },
+                            ticks: { color: '#9a968c' }, grid: { color: pos === 'left' ? '#3a3f44' : 'transparent' } });
   chartP = new Chart($('#cvP'), {
     type: 'scatter', data: { datasets: ds },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      scales: { x: { type: 'linear', min: 0, title: { display: true, text: 'Día', color: '#9a968c' }, ticks: { color: '#9a968c' }, grid: { color: '#3a3f44' } },
-                y: { ...ej('Merma (%)', 'left'), min: 0 }, y2: ej('Peso (g)', 'right') },
+      scales: { x: { type: 'linear', min: 0, title: { display: true, text: 'Día', color: '#9a968c' },
+                     ticks: { color: '#9a968c' }, grid: { color: '#3a3f44' } },
+                y: { ...ej('Merma (%)', 'left'), min: 0 } },
       plugins: { legend: { labels: { color: '#e9e4da', boxWidth: 14 } } }
     }
   });
-  txt('#gp_info', h.pts.length < 2 ? 'Todavía no hay registros: se agrega un punto cada 30 minutos con el peso quieto.'
-    : 'Un punto cada 30 minutos (promedio del peso quieto). La línea punteada roja es la proyección al ritmo actual.');
+  txt('#gp_info', !hayPuntos ? 'Todavía no hay registros: se agrega un punto cada 30 minutos con el peso quieto.'
+    : 'Merma de cada balanza. Prendé o apagá cada una con las casillas de arriba; cada gráfico arranca en el día 0 de su propio seguimiento.');
 }
+
+document.querySelectorAll('.gpBal').forEach(chk => {
+  chk.onchange = () => { visBal[+chk.dataset.i] = chk.checked; dibujarEvolucion(); };
+});
 
 leerBalanza();
 setInterval(() => leerBalanza(true), 1000);

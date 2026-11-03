@@ -1,7 +1,7 @@
 # Plan — Cámara de curado
 
 ## Estado
-**v1.0.16 OTA en uso (30/10/2026)**, en el laboratorio sin producto. Clima, relés, LCD con menú, web con
+**v1.0.22 OTA en uso (3/11/2026)**, en la heladera sin producto (relés con cosas reales conectadas). Clima, relés, LCD con menú, web con
 historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualización por Wi-Fi (OTA).
 
 ## Versiones
@@ -82,6 +82,10 @@ historial y Diario de secado, balanza de la pieza testigo por Wi-Fi y actualizac
 
 - v1.0.16 OTA (30/10): Diagnóstico: Reiniciar en naranja y con confirmación escrita (REINICIAR); el borrado dice exactamente qué datos borra; selector de archivo del OTA con el estilo de la página.
 - v1.0.16 OTA (30/10): Diario de secado: la pestaña Balanza ya no desaparece unos segundos al entrar (la página arrancaba sin ella y la mostraba recién al contestar la balanza; ahora solo la oculta si el equipo contesta 404).
+- v1.0.17 a v1.0.19 OTA (31/10): dos balanzas (la de 1 kg y la de 10 kg, `BALANZAS[]` en hardware.h): una tarea las recorre, cada una con su seguimiento, su archivo de historial y su espacio de NVS (la 0 conserva los de siempre); `/api/balanzas`, `?i=N` en la web, menú Balanza del LCD con selector y la web con una pestaña por balanza.
+- v1.0.20 OTA (31/10): revisión de la v1.0.19. Menú: la pantalla de conexión pasaba un `String` a un `%s` (podía colgar el LCD). Web: los POST de balanza (`/api/balanza`, `/seg`, `/red`) exigen `i` (antes asumían la 0 y podían tarar la de 1 kg con la pieza testigo colgada). La cámara comprueba quién contesta: la 10 kg tiene que decir `host` en `/api/peso` y si contesta otra placa se descarta la IP; se sacó el segundo nombre `balanza-2` de la de 1 kg. Banderas entre tareas `volatile`. Hub: `peso` = balanza 0, `peso10` = balanza 1, la pieza testigo va en `pesoT`.
+- v1.0.21 OTA (2/11): vigía de la web. El servidor web se colgó con el Wi-Fi vivo (ping y TCP andaban, ningún pedido contestaba) y no había cómo recuperarlo sin desenchufar. Una vez por minuto la cámara se pide a sí misma `/api/estado`; con 5 fallas seguidas se reinicia (motivo "reinicio automatico: la web no respondia"). Solo actúa si el pedido a sí misma funcionó alguna vez desde el arranque, y nunca con Wi-Fi caído, OTA, test ni calibración. Sin probar en un cuelgue real. Señal Wi-Fi débil donde está (-72 a -81 dBm): falta repetidor.
+- v1.0.22 OTA (3/11): revisión de lo que hizo DeepSeek. El Diario de secado se llamaba a sí mismo sin fin cuando ninguna balanza tenía seguimiento activo (`dibujarGrafico` ↔ `cargarHistBalanza`): ahora el registro de peso se pide una vez por conjunto de seguimientos. Principal: `sel` nulo al pintar la balanza elegida. `subir.mjs` ya no trae la ruta del workspace de DeepSeek.
 
 ## Cuelgue del 30/10/2026: causa hallada (arreglo pendiente de aprobación)
 - Datos: el historial deja de registrar entre las 01:04 y las 01:15; reinicio por watchdog a las 01:12:08 (v1.0.6), con la parada activa

@@ -12,13 +12,15 @@
 #define TIMEOUT_MENU_MS  20000UL
 #define TIMEOUT_BAL_MS   300000UL   // la pantalla de la balanza se puede dejar mirando 5 min
 
+static uint8_t balSel = 0;            // balanza que se opera desde el menú (índice de BALANZAS[])
+
 enum : uint8_t { M_OFF, M_LISTA, M_EDIT, M_CONF, M_MSG, M_INFO, M_WIFI, M_TEST, M_CAL, M_BAL, M_PARADA };
 // Tipos de entrada. Los primeros son valores editables; los últimos son submenús o acciones.
 enum : uint8_t { T_TEMP, T_HUM, T_HTEMP, T_HHUM, T_VACT, T_VPER, T_VDUR, T_LUZ, T_OTROS, T_PAUSA,
                  T_FHUM, T_FDESH, T_FFRIO, T_MANMIN, T_MINON, T_MINONT, T_BANDA, T_OFFT, T_OFFH,
                  T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_IP, T_SUB_CAL, T_VOLVER, T_SALIR, T_VERIP, T_WIFI, T_TEST, T_CALIB,
                  T_TSUMA, T_TTODOS, T_ACERCA, T_SUB_TIEMPOS, T_MINOFF, T_SUB_TEST, T_TUNO,
-                 T_SUB_BAL, T_BVER, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_BSEG, T_PARADA, T_N };
+                 T_SUB_BAL, T_BVER, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_BSEG, T_PARADA, T_BSEL, T_N };
 
 struct Item { const char* corto; const char* largo; };
 static const Item ITEMS[T_N] = {
@@ -67,6 +69,7 @@ static const Item ITEMS[T_N] = {
   { "Olvidar IP", "Olvidar la balanza" },
   { "Seguimiento","Seguimiento merma" },
   { "APAGAR TODO","APAGAR TODO" },          // cambia a REANUDAR mientras esté la parada (ver corto/largo)
+  { "Balanza",    "Balanza a usar" },       // elige cuál de las balanzas se opera
 };
 
 // Nombre a mostrar: AUX1 y AUX2 usan el nombre elegido en la web.
@@ -96,7 +99,7 @@ static const uint8_t L_DIAG[]  = { T_VERIP, T_WIFI, T_TEST, T_ACERCA, T_VOLVER }
 static const uint8_t L_CAL[]   = { T_OFFT, T_OFFH, T_CALIB, T_VOLVER };
 static const uint8_t L_TIEMPOS[] = { T_MINOFF, T_MANMIN, T_VOLVER };
 static const uint8_t L_TEST[]  = { T_TUNO, T_TSUMA, T_TTODOS, T_VOLVER };
-static const uint8_t L_BAL[]   = { T_BVER, T_BSEG, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_VOLVER };
+static const uint8_t L_BAL[]   = { T_BSEL, T_BVER, T_BSEG, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_VOLVER };
 static const Lista LISTAS[LI_N] = {
   { "MENU",        L_PRINC,   sizeof(L_PRINC),   LI_PRINC },
   { "TEMPERATURA", L_TEMP,    sizeof(L_TEMP),    LI_PRINC },
@@ -126,6 +129,8 @@ static const char* const ETQ_ONOFF[] = { "OFF", "ON" };
 static const char* const ETQ_VACT[]  = { "Apagado", "Activo" };
 static const char* const ETQ_PAUSA[] = { "Activo", "PAUSA" };
 static const char* const ETQ_SEG[]   = { "Sigue", "PAUSA" };   // seguimiento de la pieza testigo
+static const char* const ETQ_BAL[]   = { "1 kg", "10 kg" };   // una por balanza (BALANZAS[])
+static_assert(BALANZAS_MAX == sizeof(ETQ_BAL) / sizeof(ETQ_BAL[0]), "ETQ_BAL: una etiqueta por balanza");
 static const char* const ETQ_FORZ[]  = { "Auto", "ON", "OFF" };
 static const char* const ETQ_PER[]   = { "1 h", "2 h", "3 h", "4 h", "6 h", "8 h", "12 h", "24 h" };
 
@@ -159,6 +164,7 @@ static Campo campo(uint8_t t) {
     case T_BBLE:   return { true, 0, 1, 1, 0, "", 2, ETQ_ONOFF };
     case T_PAUSA:  return { true, 0, 1, 1, 0, "", 2, ETQ_PAUSA };
     case T_BSEG:   return { true, 0, 1, 1, 0, "", 2, ETQ_SEG };
+    case T_BSEL:   return { true, 0, (float)(BALANZAS_MAX - 1), 1, 0, "", BALANZAS_MAX, ETQ_BAL };
     default:       return { true, 0, 2, 1, 0, "", 3, ETQ_FORZ };   // T_FHUM, T_FDESH, T_FFRIO
   }
 }
@@ -189,8 +195,9 @@ static float valorActual(uint8_t t) {
     case T_MINONT: return cfg.minOnTempS;
     case T_MINOFF: return cfg.minOffS;
 #if USAR_BALANZA
-    case T_BBLE:   return balanzaEstado().activo ? 1 : 0;
-    case T_BSEG:   return pesajeEstado().pausado ? 1 : 0;
+    case T_BSEL:   return balSel;
+    case T_BBLE:   return balanzaEstado(balSel).activo ? 1 : 0;
+    case T_BSEG:   return pesajeEstado(balSel).pausado ? 1 : 0;
 #endif
     default:       return 0;
   }
@@ -228,8 +235,9 @@ static uint32_t aplicarValor(uint8_t t, float v) {
     case T_LUZ:    controlSetLuz(i != 0); return 0;
     case T_OTROS:  controlSetOtros(i != 0); return 0;
 #if USAR_BALANZA
-    case T_BBLE:   balanzaActivar(i != 0); return 0;
-    case T_BSEG:   pesajePausar(i != 0); return 0;
+    case T_BSEL:   balSel = (uint8_t)i; return 0;
+    case T_BBLE:   balanzaActivar(i != 0, balSel); return 0;
+    case T_BSEG:   pesajePausar(i != 0, balSel); return 0;
 #endif
     case T_PAUSA: {
       const bool antes = cfg.activo;
@@ -267,7 +275,7 @@ static uint8_t  testModoMenu = TEST_UNO;   // qué test se eligió en Diagnósti
 static bool     testVisto = false;    // ya se vio el test activo (para saber cuándo terminó)
 static bool     confSi = false;       // selección actual del SI/NO (siempre arranca en NO)
 static bool     volverOff = false;    // true si se entró por el atajo de pausa
-static uint8_t  balPant = 0;         // balanza: 0 peso y merma, 1 estado de la conexión, 2 confirmar "olvidar"
+static uint8_t  balPant = 0;          // balanza: 0 peso y merma, 1 estado de la conexión, 2 confirmar "olvidar"
 static uint32_t ultAct = 0, msgHasta = 0, ultGiro = 0;
 static char     msgTxt[2][21];
 
@@ -366,10 +374,10 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
         else if (t == T_BESTADO)  { balPant = 1; estado = M_BAL; }
         else if (t == T_BOLV)     { balPant = 2; confSi = false; estado = M_BAL; }
 #if USAR_BALANZA
-        else if (t == T_BSEG && !pesajeEstado().activo) { volverOff = false; mostrarMensaje("Sin seguimiento", "Empezar en la web", ahora, 2000); }
+        else if (t == T_BSEG && !pesajeEstado(balSel).activo) { volverOff = false; mostrarMensaje("Sin seguimiento", "Empezar en la web", ahora, 2000); }
 #endif
 #if USAR_BALANZA
-        else if (t == T_BRECON)   { balanzaReconectar(); volverOff = false; mostrarMensaje("Buscando la", "balanza en la red", ahora, 1500); }
+        else if (t == T_BRECON)   { balanzaReconectar(balSel); volverOff = false; mostrarMensaje("Buscando la", "balanza en la red", ahora, 1500); }
 #endif
         else if (t == T_PARADA)   { paradaPaso = controlParadaActiva() ? 3 : 1; confSi = false; estado = M_PARADA; }
         else if (t == T_CALIB)    { calPaso = calibActivo() ? 10 : 2; confSi = false; estado = M_CAL; }
@@ -410,7 +418,7 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
         if (boton == BTN_LARGO || (boton == BTN_CLICK && !confSi)) { estado = M_LISTA; break; }
         if (boton == BTN_CLICK) {
 #if USAR_BALANZA
-          balanzaOlvidar();
+          balanzaOlvidar(balSel);
 #endif
           volverOff = false;
           mostrarMensaje("Balanza olvidada", "buscando de nuevo", ahora, 2000);
@@ -750,24 +758,29 @@ void menuLineas(char l[4][21], uint8_t filas) {
   }
 }
 
-// Pantallas de la balanza:
-//   BALANZA   conectada        CONEXION   ACTIVADA       Olvidar la balanza?
-//   Merma  12.3% obj 30%       Estado: conectada         Se busca de nuevo
-//   Peso   523.4 g  quieto     -60dBm Excelente          por su nombre
-//   Dia 12   faltan ~14 d      IP 192.168.18.90              [NO]      SI
+// Pantallas de la balanza. Con varias balanzas, la pantalla principal las muestra a todas
+// (peso, merma y días que faltan); la de conexión y las órdenes son de la elegida en "Balanza".
+//    BALANZA  1 kg  10 kg        CONEXION   ACTIVADA
+//    Peso   523.4  1023.0        Estado: conectada
+//    Merma   12.3     3.2        -60dBm Excelente
+//    Falta     14      21        IP 192.168.18.96
 void menuLineasBalanza(char l[4][21], uint8_t filas) {
 #if USAR_BALANZA
-  const BalanzaEstado b = balanzaEstado();
+  if (balSel >= balanzaCantidad()) balSel = 0;
+  const BalanzaEstado b = balanzaEstado(balSel);
+  const PesajeEstado s = pesajeEstado(balSel);
   static const char* const EST[4] = { "apagada", "buscando", "sin respuesta", "conectada" };
+
   if (balPant == 2) {
     if (filas >= 4) {
       snprintf(l[0], 21, "Olvidar la balanza?");
-      snprintf(l[1], 21, "Se busca de nuevo");
-      snprintf(l[2], 21, "por su nombre");
+      snprintf(l[1], 21, "%.20s", balanzaNombre(balSel));
+      snprintf(l[2], 21, "Se busca de nuevo");
       snprintf(l[3], 21, "%s", siNo(filas));
-    } else { snprintf(l[0], 21, "Olvidar balanza?"); snprintf(l[1], 21, "%s", siNo(filas)); }
+    } else { snprintf(l[0], 21, "%s olvidar?", balanzaNombre(balSel)); snprintf(l[1], 21, "%s", siNo(filas)); }
     return;
   }
+
   if (balPant == 1) {
     char senal[24];
     if (b.conectada && b.rssi) textoSenal(senal, sizeof(senal), b.rssi); else snprintf(senal, sizeof(senal), "Senal --");
@@ -775,39 +788,54 @@ void menuLineasBalanza(char l[4][21], uint8_t filas) {
       snprintf(l[0], 21, "CONEXION %11s", b.activo ? "ACTIVADA" : "APAGADA");
       snprintf(l[1], 21, "Estado: %s", EST[b.estadoCon & 3]);
       snprintf(l[2], 21, "%s", senal);
-      if (b.vinculada[0]) snprintf(l[3], 21, "IP %s", b.vinculada); else snprintf(l[3], 21, "%.20s", BALANZA_HOST ".local ?");
+      if (b.vinculada[0]) snprintf(l[3], 21, "IP %s", b.vinculada);
+      else                snprintf(l[3], 21, "%.14s.local ?", balanzaHost(balSel));
     } else {
-      snprintf(l[0], 21, "Balanza %s", b.activo ? "activada" : "apagada");
+      snprintf(l[0], 21, "%.10s %s", balanzaNombre(balSel), b.activo ? "ON" : "OFF");
       snprintf(l[1], 21, "%s", EST[b.estadoCon & 3]);
     }
     return;
   }
-  const PesajeEstado s = pesajeEstado();
-  char merma[21], peso[21], pie[21];
-  if (s.activo && !isnan(s.merma)) snprintf(merma, sizeof(merma), "Merma %5.1f%% obj%3.0f%%", s.merma, s.objetivo);
-  else if (s.activo)               snprintf(merma, sizeof(merma), "Merma  --  obj%3.0f%%", s.objetivo);
-  else                             snprintf(merma, sizeof(merma), "Sin seguimiento");
-  if (b.hayPeso)                   snprintf(peso, sizeof(peso), "Peso %6.1f g %s", b.gramos, (b.flags & BAL_ESTABLE) ? "quieto" : "");
-  else if (s.activo && !isnan(s.peso)) snprintf(peso, sizeof(peso), "Peso %6.1f g (ult)", s.peso);
-  else                             snprintf(peso, sizeof(peso), "Peso   --");
-  if (!s.activo)                   snprintf(pie, sizeof(pie), "Empezar en la web");
-  else if (s.pausado)              snprintf(pie, sizeof(pie), "Dia %-3u EN PAUSA", (unsigned)s.dias);
-  else if (s.descolgada)           snprintf(pie, sizeof(pie), "Pieza descolgada?");
-  else if (!isnan(s.falta) && s.falta <= 0) snprintf(pie, sizeof(pie), "Dia %u OBJETIVO OK", (unsigned)s.dias);
-  else if (!isnan(s.falta))        snprintf(pie, sizeof(pie), "Dia %-3u faltan ~%ud", (unsigned)s.dias, (unsigned)ceilf(s.falta));
-  else                             snprintf(pie, sizeof(pie), "Dia %-3u estimando..", (unsigned)s.dias);
+
+  // Pantalla principal: todas las balanzas
+  auto pesoCol = [](char* dst, size_t n, const BalanzaEstado& x) {
+    if (x.hayPeso) snprintf(dst, n, "%7.1f", x.gramos);
+    else           snprintf(dst, n, "%7s", x.conectada ? "---" : "no");
+  };
+  auto mermaCol = [](char* dst, size_t n, uint8_t ix) {
+    const PesajeEstado e = pesajeEstado(ix);
+    if (e.activo && !isnan(e.merma)) snprintf(dst, n, "%5.1f%%", e.merma);
+    else if (e.activo)               snprintf(dst, n, "%6s", "--");
+    else                             snprintf(dst, n, "%6s", "sin");
+  };
+  auto faltaCol = [](char* dst, size_t n, uint8_t ix) {
+    const PesajeEstado e = pesajeEstado(ix);
+    if (!e.activo)                          snprintf(dst, n, "%6s", "-");
+    else if (e.pausado)                     snprintf(dst, n, "%6s", "pausa");
+    else if (!isnan(e.falta) && e.falta <= 0) snprintf(dst, n, "%6s", "listo");
+    else if (!isnan(e.falta))               snprintf(dst, n, "%5ud", (unsigned)ceilf(e.falta));
+    else                                    snprintf(dst, n, "%6s", "...");
+  };
+
   if (filas >= 4) {
-    snprintf(l[0], 21, "BALANZA %12s", EST[b.conectada ? 3 : (b.estadoCon & 3)]);
-    snprintf(l[1], 21, "%s", merma);
-    snprintf(l[2], 21, "%s", peso);
-    snprintf(l[3], 21, "%s", pie);
+    char p0[10], p1[10], m0[10], m1[10], f0[10], f1[10];
+    pesoCol(p0, sizeof(p0), balanzaEstado(0));  mermaCol(m0, sizeof(m0), 0);  faltaCol(f0, sizeof(f0), 0);
+    if (balanzaCantidad() > 1) {
+      pesoCol(p1, sizeof(p1), balanzaEstado(1)); mermaCol(m1, sizeof(m1), 1); faltaCol(f1, sizeof(f1), 1);
+    } else { snprintf(p1, sizeof(p1), "%7s", ""); snprintf(m1, sizeof(m1), "%6s", ""); snprintf(f1, sizeof(f1), "%6s", ""); }
+    snprintf(l[0], 21, "BALANZA  %5s %5s", balanzaNombre(0), balanzaCantidad() > 1 ? balanzaNombre(1) : "");
+    snprintf(l[1], 21, "%-6s%s%s", "Peso", p0, p1);
+    snprintf(l[2], 21, "%-6s%s%s", "Merma", m0, m1);
+    snprintf(l[3], 21, "%-6s%s%s", "Falta", f0, f1);
   } else {
-    if (s.activo && !isnan(s.merma)) snprintf(l[0], 21, "Merma %.1f/%.0f%%", s.merma, s.objetivo);
-    else snprintf(l[0], 21, "%s", merma);
-    if (!b.hayPeso)                          snprintf(l[1], 21, "%s", EST[b.estadoCon & 3]);
-    else if (!s.activo || isnan(s.falta))    snprintf(l[1], 21, "%.1f g", b.gramos);
-    else if (s.falta <= 0)                   snprintf(l[1], 21, "%.0fg LISTO", b.gramos);
-    else                                     snprintf(l[1], 21, "%.0fg faltan~%ud", b.gramos, (unsigned)ceilf(s.falta));
+    // 16x2: la elegida, como antes
+    if (b.hayPeso)                     snprintf(l[0], 21, "%.10s %6.1fg", balanzaNombre(balSel), b.gramos);
+    else if (s.activo && !isnan(s.peso)) snprintf(l[0], 21, "%.10s %6.1fg", balanzaNombre(balSel), s.peso);
+    else                               snprintf(l[0], 21, "%.10s   -- g", balanzaNombre(balSel));
+    if (s.activo && !isnan(s.falta) && s.falta <= 0) snprintf(l[1], 21, "Merma %.0f%% listo", s.merma);
+    else if (s.activo && !isnan(s.falta))            snprintf(l[1], 21, "Merma %.1f%% %ud", s.merma, (unsigned)ceilf(s.falta));
+    else if (s.activo && !isnan(s.merma))            snprintf(l[1], 21, "Merma %.1f%%", s.merma);
+    else                                            snprintf(l[1], 21, "%s", EST[b.estadoCon & 3]);
   }
 #else
   (void)filas;

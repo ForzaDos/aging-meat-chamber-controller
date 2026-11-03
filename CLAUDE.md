@@ -4,7 +4,7 @@
 Controlador de una heladera convertida en cámara de curado: ESP32 + DHT22 + 6 relés + encoder + LCD 20x4,
 con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 lee por Wi-Fi la
 **balanza** (`../balanza`) donde cuelga la **pieza testigo** y sigue su merma.
-**Versión actual: v1.0.16 OTA** (30/10/2026, se actualiza por Wi-Fi). Historial de versiones en `plan.md`.
+**Versión actual: v1.0.22 OTA** (3/11/2026, se actualiza por Wi-Fi). Historial de versiones en `plan.md`.
 
 ## Versión
 - `config.h`: `SOFTWARE_VERSION` (LCD al arrancar, LCD > Diagnostico > Acerca de, pie de la web) y
@@ -27,8 +27,8 @@ con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 l
   Nunca abrir el serie en el primer minuto después de un OTA: el programa nuevo todavía no está
   confirmado y el reinicio lo hace volver al anterior (pasó el 24/10/2026).
 - Pines: `config.h` (DHT22) y `hardware.h` (relés, encoder, LCD, balanza).
-- Desde el 24/10/2026 está en el **laboratorio, sin producto** (relés sin nada conectado): se puede probar.
-  Cuando vuelva a tener producto es un equipo EN USO: al subir, los relés se apagan unos segundos. Si algo
+- Desde el 2/11/2026 está en la **heladera, sin producto, con los relés conectados a cosas reales**: avisar y pedir OK antes de comandos,
+  reinicios o subidas (del 24/10 al 2/11 estuvo en el laboratorio sin nada conectado). Con producto es un equipo EN USO: al subir, los relés se apagan unos segundos. Si algo
   falla después de subir, el rollback del OTA vuelve solo al anterior; si no, volver YA a una versión que
   funcione (por ejemplo `USAR_BALANZA 0`) y recién después investigar.
 
@@ -38,6 +38,7 @@ con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 l
   (24/10/2026): ~96 KB libres, bloque ~51 KB, mínimo ~88 KB.
 - **Bluetooth no entra**: NimBLE hizo abortar al arrancar mDNS (lock_init_generic sin memoria). Por eso
   la balanza va por Wi-Fi. No volver a meter BLE sin liberar RAM antes.
+- Vigía de la web (v1.0.21): se reinicia sola si `/api/estado` (pedido a sí misma, 1 por minuto) falla 5 veces seguidas.
 - Hay un reinicio automático si el bloque libre mayor queda < 30 KB por 10 min (`camara_curado.ino`).
 
 ## Páginas web
@@ -47,25 +48,50 @@ con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 l
   con 0 vuelve el Digest (usuario `admin`, `WEB_CLAVE` de `config.h`). `subir.mjs` y el hub se adaptan solos.
 - Para probar las páginas sin la placa: servidor simulado (node) que sirva `paginas/` y conteste las APIs.
 
-## Balanza (v41)
-- `balanza.cpp/.h`: tarea propia; busca `BALANZA_HOST.local` por mDNS, guarda la IP en NVS
-  ("balanzaRed"), GET `/api/peso?cam=1` cada 1 s, POST `/api/orden`. Estados `CON_*`.
-- `pesaje.cpp/.h`: seguimiento de la pieza testigo (NVS "pesaje": p0, objetivo, inicio, tanda);
-  un punto cada 30 min en `/pesaje.bin` (8 bytes, máx. 8000); ritmo de merma de las últimas 72 h
-  (mínimo 12 h) y días que faltan. Necesita hora NTP.
+## Balanzas (v41; dos desde la v1.0.17)
+- **Dos balanzas** (hardware.h, tabla `BALANZAS[]`): índice 0 = la de 1 kg del secadero
+  (`balanza.local`, NVS "balanzaRed"/"pesaje", archivo `/pesaje.bin` — lo ya registrado sigue igual);
+  índice 1 = la de 10 kg (`balanza10k.local`, NVS "balanzaRed1"/"pesaje1", archivo `/pesaje1.bin`).
+  `BALANZAS[i].alt` es un segundo nombre por si mDNS le agregó sufijo ("balanza10k-2").
+- `balanza.cpp/.h`: **una sola tarea** que recorre las balanzas (una tarea por balanza no entra en RAM);
+  busca por mDNS, guarda la IP en NVS, GET `/api/peso?cam=1`, POST `/api/orden`. Estados `CON_*`.
+  La web y el LCD leen el estado cacheado: una balanza caída nunca bloquea una respuesta.
+- `pesaje.cpp/.h`: **un seguimiento por balanza** (cada una con su pieza testigo, su objetivo, su tanda);
+  un punto cada 30 min en su archivo; ritmo de merma de las últimas 72 h (mínimo 12 h) y días que
+  faltan. Necesita hora NTP. El tope de `p0` es la capacidad de esa celda (1100 g / 11000 g).
 - La pieza de la balanza es **siempre la testigo**: en el Diario, la tanda vinculada toma la merma,
   el ritmo y los días de la balanza (aunque haya otras piezas marcadas como testigo).
-- LCD: la pantalla principal **no se toca**. Todo va en Menú > Balanza (peso/merma, seguimiento
-  Sigue/PAUSA, conexión ON/OFF, estado, buscar, olvidar IP). Tarar y calibrar solo desde la web.
+- LCD: la pantalla principal **no se toca**. Menú > Balanza muestra las dos (peso, merma y días que
+  faltan) y el primer ítem, "Balanza", elige cuál se opera: las órdenes (seguimiento Sigue/PAUSA,
+  conexión ON/OFF, estado, buscar, olvidar IP) son de la elegida. Tarar y calibrar solo desde la web.
+- Web: **el peso de las dos balanzas se ve siempre** (dos columnas en "Peso en vivo", cada una con sus
+  chips de estado). Abajo, un selector 1 kg / 10 kg decide cuál operan los paneles de trabajo (pieza
+  testigo, calibración, temperatura, conexión). Los gráficos (Evolución y el Diario) dibujan una curva
+  por balanza y tienen **casillas para prender y apagar cada una**. El panel chico del Secadero muestra
+  el peso de la otra balanza conectada. El Diario vincula la tanda con la balanza que tenga esa pieza
+  testigo (cualquiera de las dos).
 - Pausa del seguimiento (v42): para descolgar la testigo (limpieza, inspección). Web (Balanza) y LCD;
   NVS "pau"/"pauD"; con la pieza descolgada (peso < 15 % del inicial) no se registran puntos.
-- API: `GET /api/balanza`, `POST /api/balanza` (o=T|C<g>|R|A|AF|AX|M1|M0, t=<°C> opcional para T y C),
-  `POST /api/balanza/red`, `POST /api/balanza/seg`, `GET /api/balanza/hist` (ver `web.h`).
+- API: `GET /api/balanzas` (todas, cada una con su `seg`; es la que usa la web),
+  `GET /api/balanza?i=N` (una sola, forma plana de siempre, compatibilidad),
+  `POST /api/balanza` (o=T|C<g>|R|A|AF|AX|M1|M0, t=<°C> opcional para T y C),
+  `POST /api/balanza/red`, `POST /api/balanza/seg`, `GET /api/balanza/hist?i=N`.
+  Los POST aceptan `i=N` (0 por defecto) para elegir la balanza; el tope de calibración es la
+  capacidad de esa celda.
+- **Si una balanza no está conectada** el JSON la devuelve igual con `con:false` y sin `g`: la web la
+  muestra como "sin conexión" y el resto de la página sigue funcionando (probado apagando una desde
+  `POST /api/balanza/red accion=off`).
 - Temperatura (v43): la cámara manda `est.temp` en cada consulta (`/api/peso?cam=1&t=`) y la balanza
   compensa la deriva de la celda. `/api/balanza` trae el objeto `temp` (celda, aire, corr, comp, kc, ks,
   tara, calib, avn, av, apr). En la web: aviso arriba del peso, temperatura de tara/calibración con
   "Traer de la cámara" y el panel "Temperatura y compensación" (aprender la deriva). Coeficientes a mano y
   OTA de la balanza: en su propia página (balanza.local).
+
+- **Rendimiento (v1.0.19)**: la tarea de balanzas corre con prioridad 0 (la del idle) y, si una
+  balanza no contesta, se la consulta cada 10 s y se busca por mDNS cada 60 s (tope 1,2 s). Antes,
+  con una balanza apagada, la búsqueda por mDNS bloqueaba 2 s y la web tenía picos de 2-10 s por
+  pedido: el hub de domótica la daba por "no responde" (su timeout es 5 s). Ahora /api/estado
+  responde en 20-80 ms y la página en 65-80 ms.
 
 ## Actualización por Wi-Fi (v44)
 - `POST /api/ota` (multipart con el .bin) en `web.cpp`. La librería pasa el archivo ANTES de los

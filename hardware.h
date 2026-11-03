@@ -43,13 +43,26 @@ inline uint8_t numeroRele(uint8_t pin) {
 // Cambios de pines por cada click del eje: 2 es lo habitual. Si hacen falta 2 clicks por paso, poné 1; si un click da 2 pasos, poné 4.
 #define ENC_TRANSICIONES 2
 
-// ---------- Balanza por Wi-Fi (proyecto "balanza") ----------
-// 1 = busca la balanza en la red de la casa (BALANZA_HOST.local), lee el peso y sigue la merma de la
-//     pieza testigo (menú Balanza del LCD, pestaña Balanza de la web y Diario de secado).
+// ---------- Balanzas por Wi-Fi (proyectos "balanza" y "balanza_c3_10kg") ----------
+// 1 = busca las balanzas en la red de la casa (BALANZA_HOST.local), lee el peso y sigue la merma de
+//     la pieza testigo de CADA una (menú Balanza del LCD, pestaña Balanza de la web y Diario de secado).
 // 0 = sin balanza.
 // (Se probó por Bluetooth, pero a esta placa no le alcanza la memoria para Bluetooth + Wi-Fi + web.)
+//
+// Tabla de balanzas: índice 0 es la histórica (la de 1 kg, NVS "balanzaRed"/"pesaje" y archivo
+// /pesaje.bin, así no se pierde nada de lo ya registrado). Las que siguen usan "balanzaRed1"/
+// "pesaje1" y /pesaje1.bin, etc. El orden manda en la web y en el menú del LCD.
 #define USAR_BALANZA     1
-#define BALANZA_HOST     "balanza"     // nombre de la balanza en la red (HOSTNAME de balanza/config.h)
+#define BALANZAS_MAX     2
+#define BALANZA_HOST     "balanza"         // nombre de la balanza en la red (HOSTNAME de balanza/config.h)
+// host = nombre en la red; alt = segundo nombre por si mDNS le agregó un sufijo ("balanza10k-2"):
+// pasa cuando dos placas publican el mismo nombre y la segunda se renombra sola.
+// exigeId: la placa tiene que decir su nombre ("host" en /api/peso); si contesta otra, o ninguna, no se la usa.
+struct BalanzaDef { const char* host; const char* alt; const char* nombre; float capacidad; bool exigeId; };
+static const BalanzaDef BALANZAS[BALANZAS_MAX] = {
+  { BALANZA_HOST, nullptr,        "1 kg",  1100.0f, false },   // celda de 1 kg (tope 1,1 kg, como siempre)
+  { "balanza10k", "balanza10k-2", "10 kg", 11000.0f, true }, // celda de 10 kg (proyecto balanza_c3_10kg)
+};
 
 // ---------- Pantalla I2C ----------
 //   0 = sin pantalla

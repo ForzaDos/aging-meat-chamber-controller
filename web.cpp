@@ -91,17 +91,20 @@ static void cambiarClave(AsyncWebServerRequest* r) {
 // Sobrevive a un reinicio por software (no a un corte de luz): permite saber que el reinicio fue por memoria baja.
 static RTC_NOINIT_ATTR uint32_t marcaReinicioMem;
 #define MARCA_MEM 0x4D454D31u
+#define MARCA_WEB 0x57454231u
 void webMarcarReinicioPorMemoria() { marcaReinicioMem = MARCA_MEM; }
 
 static const char* motivoReinicio() {
   static bool leido = false;      // la marca se consume una sola vez: sobrevive a cualquier reinicio por software
-  static bool pormem = false;
+  static bool pormem = false, porweb = false;
   if (!leido) {
     leido = true;
     pormem = (esp_reset_reason() == ESP_RST_SW && marcaReinicioMem == MARCA_MEM);
+    porweb = (esp_reset_reason() == ESP_RST_SW && marcaReinicioMem == MARCA_WEB);
     marcaReinicioMem = 0;
   }
   if (pormem) return "reinicio automatico por memoria baja";
+  if (porweb) return "reinicio automatico: la web no respondia";
   switch (esp_reset_reason()) {
     case ESP_RST_POWERON:   return "encendido normal";
     case ESP_RST_EXT:       return "boton de reinicio";
@@ -459,12 +462,18 @@ static void enviarResumen(AsyncWebServerRequest* r) {
 // /api/borrar/registro -> solo el registro de relés
 // /api/borrar/bitacora -> solo el diario de secado
 #if USAR_BALANZA
-// Peso de la balanza (por Wi-Fi). Sin "g" = no hay peso válido (desconectada, sin HX711 o tarando).
-static void enviarBalanza(AsyncWebServerRequest* r) {
-  const BalanzaEstado b = balanzaEstado();
-  JsonDocument d;
-  d["con"] = b.conectada;
-  if (b.hayPeso) d["g"] = roundf(b.gramos * 10.0f) / 10.0f;
+// Peso de las balanzas (por Wi-Fi). Sin "g" = no hay peso válido (desconectada, sin HX711 o tarando).
+// El peso y el seguimiento de cada una van juntos en /api/balanzas; /api/balanza queda por
+// compatibilidad y devuelve UNA balanza (la 0 si no se pide ?i=N) con la forma plana de siempre.
+static void balanzaAJson(JsonObject d, uint8_t ix) {
+  const BalanzaEstado b = balanzaEstado(ix);
+  auto dec = [](float v, float f) { return roundf(v * f) / f; };
+  d["i"]         = ix;
+  d["host"]      = balanzaHost(ix);
+  d["nombre"]    = balanzaNombre(ix);
+  d["capacidad"] = balanzaCapacidad(ix);
+  d["con"]       = b.conectada;
+  if (b.hayPeso) d["g"] = dec(b.gramos, 10);
   if (b.conectada) {
     d["est"]  = !!(b.flags & BAL_ESTABLE);
     d["sob"]  = !!(b.flags & BAL_SOBRECARGA);
@@ -473,10 +482,9 @@ static void enviarBalanza(AsyncWebServerRequest* r) {
     d["ocup"] = !!(b.flags & BAL_OCUPADA);
     d["rssi"] = b.rssi;
   }
-  d["msg"] = b.respuesta;
+  d["msg"] = String(b.respuesta);
 
   // Temperatura y compensación (la calcula la balanza con la temperatura de esta placa)
-  auto dec = [](float v, float f) { return roundf(v * f) / f; };
   if (b.conectada) {
     JsonObject tp = d["temp"].to<JsonObject>();
     if (!isnan(b.tCelda)) tp["celda"] = dec(b.tCelda, 10);
@@ -488,7 +496,7 @@ static void enviarBalanza(AsyncWebServerRequest* r) {
     if (!isnan(b.tTara)) tp["tara"]  = dec(b.tTara, 10);
     if (!isnan(b.tCal))  tp["calib"] = dec(b.tCal, 10);
     tp["avn"] = b.avisoNivel;
-    tp["av"]  = b.aviso;
+    tp["av"]  = String(b.aviso);
     if (b.aprendiendo) {
       JsonObject a = tp["apr"].to<JsonObject>();
       a["n"] = b.aprN;
@@ -502,11 +510,14 @@ static void enviarBalanza(AsyncWebServerRequest* r) {
   JsonObject red = d["red"].to<JsonObject>();
   red["activo"] = b.activo;
   red["estado"] = b.estadoCon;                // CON_*: 0 apagada, 1 buscando, 2 sin respuesta, 3 conectada
-  red["ip"]     = b.vinculada;
-  red["host"]   = BALANZA_HOST ".local";
+  red["ip"]     = String(b.vinculada);
+  red["host"]   = String(balanzaHost(ix)) + ".local";
+}
 
-  const PesajeEstado s = pesajeEstado();
-  JsonObject sg = d["seg"].to<JsonObject>();
+// Seguimiento (pieza testigo) de una balanza.
+static void segAJson(JsonObject sg, uint8_t ix) {
+  auto dec = [](float v, float f) { return roundf(v * f) / f; };
+  const PesajeEstado s = pesajeEstado(ix);
   sg["activo"] = s.activo;
   sg["pausa"]  = s.pausado;
   if (s.pausado) sg["pausaDesde"] = s.pausaDesde;
@@ -514,8 +525,8 @@ static void enviarBalanza(AsyncWebServerRequest* r) {
   sg["p0"]     = s.p0;
   sg["obj"]    = s.objetivo;
   sg["ini"]    = s.inicio;
-  sg["tanda"]  = s.tanda;
-  sg["nombre"] = s.nombre;
+  sg["tanda"]  = String(s.tanda);
+  sg["nombre"] = String(s.nombre);
   sg["puntos"] = s.puntos;
   sg["dias"]   = dec(s.dias, 100);
   sg["vivo"]   = s.enVivo;
@@ -523,61 +534,111 @@ static void enviarBalanza(AsyncWebServerRequest* r) {
   if (!isnan(s.merma)) sg["merma"] = dec(s.merma, 100);
   if (!isnan(s.ritmo)) sg["ritmo"] = dec(s.ritmo, 1000);
   if (!isnan(s.falta)) sg["falta"] = dec(s.falta, 10);
+}
+
+// Índice de balanza pedido (?i= o i en el POST). Fuera de rango o ausente = 0 (la de siempre).
+static uint8_t indicePedido(AsyncWebServerRequest* r) {
+  String v;
+  if (r->hasParam("i", true))   v = r->getParam("i", true)->value();
+  else if (r->hasParam("i"))    v = r->getParam("i")->value();
+  const int i = v.toInt();
+  if (!v.length() || i < 0 || i >= balanzaCantidad()) return 0;
+  return (uint8_t)i;
+}
+
+// Para los POST: el índice es OBLIGATORIO. Sin "i" (o fuera de rango) se rechaza: asumir la 0 podía
+// tarar o calibrar la balanza de 1 kg con la pieza testigo colgada.
+static bool indiceObligatorio(AsyncWebServerRequest* r, uint8_t& ix) {
+  if (!r->hasParam("i", true)) return false;
+  const String v = r->getParam("i", true)->value();
+  const int i = v.toInt();
+  if (!v.length() || i < 0 || i >= balanzaCantidad()) return false;
+  ix = (uint8_t)i;
+  return true;
+}
+
+static void enviarBalanza(AsyncWebServerRequest* r) {
+  const uint8_t ix = indicePedido(r);
+  JsonDocument d;
+  balanzaAJson(d.to<JsonObject>(), ix);
+  segAJson(d["seg"].to<JsonObject>(), ix);
+  d["hora"] = (uint32_t)time(nullptr);
+  enviarJson(r, d);
+}
+
+// Todas las balanzas, cada una con su seguimiento. Una balanza caída va con con=false y sin "g":
+// la web la muestra como desconectada y no falla.
+static void enviarBalanzas(AsyncWebServerRequest* r) {
+  JsonDocument d;
+  JsonArray arr = d["balanzas"].to<JsonArray>();
+  for (uint8_t i = 0; i < balanzaCantidad(); i++) {
+    JsonObject o = arr.add<JsonObject>();
+    balanzaAJson(o, i);
+    segAJson(o["seg"].to<JsonObject>(), i);
+  }
   d["hora"] = (uint32_t)time(nullptr);
   enviarJson(r, d);
 }
 
 static void ordenConexion(AsyncWebServerRequest* r) {
+  uint8_t ix;
+  if (!indiceObligatorio(r, ix)) { r->send(400, "application/json", "{\"ok\":false,\"falta\":\"i\"}"); return; }
   const String a = r->hasParam("accion", true) ? r->getParam("accion", true)->value() : String("");
-  if      (a == "on")         balanzaActivar(true);
-  else if (a == "off")        balanzaActivar(false);
-  else if (a == "reconectar") balanzaReconectar();
-  else if (a == "olvidar")    balanzaOlvidar();
+  if      (a == "on")         balanzaActivar(true, ix);
+  else if (a == "off")        balanzaActivar(false, ix);
+  else if (a == "reconectar") balanzaReconectar(ix);
+  else if (a == "olvidar")    balanzaOlvidar(ix);
   else { r->send(400, "application/json", "{\"ok\":false}"); return; }
   r->send(200, "application/json", "{\"ok\":true}");
 }
 
 // Seguimiento de la pieza testigo. Los números que no vienen no se cambian (al editar).
 static void ordenSeguimiento(AsyncWebServerRequest* r) {
+  uint8_t ix;
+  if (!indiceObligatorio(r, ix)) { r->send(400, "application/json", "{\"ok\":false,\"falta\":\"i\"}"); return; }
   auto texto = [&](const char* k) { return r->hasParam(k, true) ? r->getParam(k, true)->value() : String(""); };
   auto numero = [&](const char* k) { return r->hasParam(k, true) ? texto(k).toFloat() : NAN; };
   const String a = texto("accion");
   bool ok;
   if (a == "iniciar")
-    ok = pesajeIniciar(numero("p0"), numero("obj"), (uint32_t)texto("ini").toInt(), texto("tanda").c_str(), texto("nombre").c_str());
+    ok = pesajeIniciar(numero("p0"), numero("obj"), (uint32_t)texto("ini").toInt(), texto("tanda").c_str(), texto("nombre").c_str(), ix);
   else if (a == "editar")
     ok = pesajeEditar(numero("p0"), numero("obj"),
                       r->hasParam("tanda", true) ? texto("tanda").c_str() : nullptr,
-                      r->hasParam("nombre", true) ? texto("nombre").c_str() : nullptr);
-  else if (a == "terminar") { pesajeTerminar(); ok = true; }
-  else if (a == "pausar")   ok = pesajePausar(true);
-  else if (a == "retomar")  ok = pesajePausar(false);
+                      r->hasParam("nombre", true) ? texto("nombre").c_str() : nullptr, ix);
+  else if (a == "terminar") { pesajeTerminar(ix); ok = true; }
+  else if (a == "pausar")   ok = pesajePausar(true, ix);
+  else if (a == "retomar")  ok = pesajePausar(false, ix);
   else ok = false;
   r->send(ok ? 200 : 400, "application/json", ok ? "{\"ok\":true}" : "{\"ok\":false}");
 }
 
 static void enviarPesaje(AsyncWebServerRequest* r) {
-  AsyncResponseStream* res = r->beginResponseStream("application/json", pesajeJsonTam());
+  const uint8_t ix = indicePedido(r);
+  AsyncResponseStream* res = r->beginResponseStream("application/json", pesajeJsonTam(ix));
   res->addHeader("Cache-Control", "no-store");
-  pesajeJson(*res);
+  pesajeJson(*res, ix);
   r->send(res);
 }
 
 // o=T | o=R | o=C<gramos> | o=A | o=AF | o=AX | o=M1 | o=M0, y t=<°C> opcional para T y C
 // (temperatura de la tara / calibración; sin t usa la que estima la balanza). 409 si no está conectada.
+// ?i=N elige la balanza (0 por defecto). El tope de calibración es la capacidad de esa celda.
 static void ordenBalanza(AsyncWebServerRequest* r) {
   if (!r->hasParam("o", true)) { r->send(400, "application/json", "{\"ok\":false}"); return; }
+  uint8_t ix;
+  if (!indiceObligatorio(r, ix)) { r->send(400, "application/json", "{\"ok\":false,\"falta\":\"i\"}"); return; }
   const String o = r->getParam("o", true)->value();
   const float g = o.substring(1).toFloat();
   const bool valida = o == "T" || o == "R" || o == "A" || o == "AF" || o == "AX" || o == "M1" || o == "M0" ||
-                      (o.length() > 1 && o.length() < 12 && o[0] == 'C' && g > 0 && g <= 1000);
+                      (o.length() > 1 && o.length() < 12 && o[0] == 'C' && g > 0 && g <= balanzaCapacidad(ix));
   float t = NAN;
   if (r->hasParam("t", true) && r->getParam("t", true)->value().length()) {
     t = r->getParam("t", true)->value().toFloat();
     if (!(t > -30 && t < 70)) { r->send(400, "application/json", "{\"ok\":false}"); return; }
   }
   if (!valida) { r->send(400, "application/json", "{\"ok\":false}"); return; }
-  if (!balanzaOrden(o.c_str(), (o == "T" || o[0] == 'C') ? t : NAN)) { r->send(409, "application/json", "{\"ok\":false,\"sinConexion\":true}"); return; }
+  if (!balanzaOrden(o.c_str(), (o == "T" || o[0] == 'C') ? t : NAN, ix)) { r->send(409, "application/json", "{\"ok\":false,\"sinConexion\":true}"); return; }
   r->send(200, "application/json", "{\"ok\":true}");
 }
 #endif
@@ -698,6 +759,42 @@ static void ordenReiniciar(AsyncWebServerRequest* r) {
 // Lo llama el núcleo al arrancar: la confirmación del programa nuevo se hace después, en webLoop().
 extern "C" bool verifyRollbackLater() { return true; }
 
+// Vigía de la web: el servidor puede colgarse con el Wi-Fi vivo (ping y conexión andan, pero ningún pedido
+// recibe respuesta) y entonces nadie lo recupera. Una vez por minuto la cámara se pide a sí misma /api/estado;
+// si 5 pedidos seguidos no responden, se reinicia. Cautelas: solo si alguna vez respondió desde el arranque
+// (si el pedido a sí misma no anduviera nunca, no reinicia jamás), y nunca con Wi-Fi caído, OTA, test ni calibración.
+// Al reiniciar los relés quedan apagados y el clima espera el tiempo mínimo apagado (como en cualquier reinicio).
+static bool webRespondeAhora() {
+  WiFiClient c;
+  c.setTimeout(3);
+  if (!c.connect(WiFi.localIP(), 80, 3000)) return false;
+  c.print("GET /api/estado HTTP/1.0\r\nHost: x\r\nConnection: close\r\n\r\n");
+  const uint32_t t0 = millis();
+  while (!c.available() && c.connected() && millis() - t0 < 3000UL) delay(5);
+  const bool ok = c.available() && c.readStringUntil('\n').startsWith("HTTP/");   // cualquier código HTTP cuenta: el servidor atiende
+  c.stop();
+  return ok;
+}
+
+static void vigilarWeb() {
+  static uint32_t ult = 0;
+  static uint8_t fallas = 0;
+  static bool respondioAlgunaVez = false;
+  if (millis() - ult < 60000UL) return;
+  ult = millis();
+  if (WiFi.status() != WL_CONNECTED || otaReq || reiniciarEn || controlTestActivo() || calibActivo()) { fallas = 0; return; }
+  if (webRespondeAhora()) { fallas = 0; respondioAlgunaVez = true; return; }
+  if (!respondioAlgunaVez) return;
+  Serial.printf("Vigia de la web: sin respuesta (%u de 5)\n", fallas + 1);
+  if (++fallas < 5) return;
+  Serial.println("La web no responde: reinicio automatico");
+  historialVolcar();
+  eventosVolcar();
+  marcaReinicioMem = MARCA_WEB;
+  delay(200);
+  ESP.restart();
+}
+
 void webLoop() {
   // Reinicio después de una actualización (se da tiempo a que salga la respuesta).
   if (reiniciarEn && millis() - reiniciarEn > 2000UL) {
@@ -707,6 +804,7 @@ void webLoop() {
     delay(200);
     ESP.restart();
   }
+  vigilarWeb();
   // Programa recién cargado por OTA: se confirma cuando lleva 1 minuto andando y con Wi-Fi.
   // Si a los 10 minutos sigue sin Wi-Fi (y no es el modo configuración), se vuelve al anterior.
   static bool revisado = false;
@@ -831,6 +929,7 @@ void webInit() {
   server.on(RUTA("/api/reiniciar"), HTTP_POST, ordenReiniciar);
 #if USAR_BALANZA
   server.on(RUTA("/api/balanza"),   HTTP_GET,  enviarBalanza);
+  server.on(RUTA("/api/balanzas"),  HTTP_GET,  enviarBalanzas);
   server.on(RUTA("/api/balanza"),   HTTP_POST, ordenBalanza);
   server.on(RUTA("/api/balanza/red"),  HTTP_POST, ordenConexion);
   server.on(RUTA("/api/balanza/seg"),  HTTP_POST, ordenSeguimiento);

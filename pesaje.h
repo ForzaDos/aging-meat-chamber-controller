@@ -3,11 +3,11 @@
 #include "hardware.h"
 
 // =====================================================================
-//  Seguimiento de la pieza testigo colgada en la balanza (por Wi-Fi).
-//  - Peso inicial, merma objetivo y la tanda del Diario a la que pertenece (NVS "pesaje").
-//    La pieza de la balanza es SIEMPRE la testigo: su merma es la de la tanda.
-//  - Registro del peso: un punto cada PESAJE_INTERVALO_S (promedio del intervalo) en
-//    /pesaje.bin, que se vacía al empezar un seguimiento nuevo. Necesita la hora de red (NTP).
+//  Seguimiento de la pieza testigo colgada en CADA balanza (por Wi-Fi).
+//  - Peso inicial, merma objetivo y la tanda del Diario a la que pertenece (NVS "pesaje",
+//    "pesaje1", ...). Cada balanza puede tener su propia pieza testigo.
+//  - Registro del peso: un punto cada PESAJE_INTERVALO_S (promedio del intervalo) en /pesaje.bin,
+//    /pesaje1.bin, ... que se vacía al empezar un seguimiento nuevo. Necesita la hora de red (NTP).
 //  - Estimación: ritmo de merma de las últimas PESAJE_VENTANA_H horas (los primeros días, desde
 //    el inicio) y los días que faltan para la merma objetivo a ese ritmo.
 // =====================================================================
@@ -38,19 +38,20 @@ struct PesajeEstado {
 };
 
 #if USAR_BALANZA
-void         pesajeInit();              // en setup(), después de LittleFS.begin()
-void         pesajeLoop();              // en cada vuelta del loop()
-PesajeEstado pesajeEstado();            // se puede llamar desde cualquier tarea
-// Empieza un seguimiento nuevo (borra el registro anterior). inicio = 0 -> ahora.
-// false si los datos no sirven (p0 de 1 a 1100 g, objetivo de 1 a 80 %) o no hay hora de red ni inicio.
-bool         pesajeIniciar(float p0, float objetivo, uint32_t inicio, const char* tanda, const char* nombre);
+void         pesajeInit();                       // en setup(), después de LittleFS.begin()
+void         pesajeLoop();                       // en cada vuelta del loop() (recorre todas las balanzas)
+PesajeEstado pesajeEstado(uint8_t i = 0);        // se puede llamar desde cualquier tarea
+// Empieza un seguimiento nuevo en la balanza i (borra el registro anterior). inicio = 0 -> ahora.
+// false si los datos no sirven (p0 de 1 g a la capacidad de esa celda, objetivo de 1 a 80 %) o no
+// hay hora de red ni inicio.
+bool         pesajeIniciar(float p0, float objetivo, uint32_t inicio, const char* tanda, const char* nombre, uint8_t i = 0);
 // Cambia datos del seguimiento en curso sin borrar el registro (NAN / nullptr = no cambiar).
-bool         pesajeEditar(float p0, float objetivo, const char* tanda, const char* nombre);
-void         pesajeTerminar();          // deja de registrar (el registro queda para verlo)
+bool         pesajeEditar(float p0, float objetivo, const char* tanda, const char* nombre, uint8_t i = 0);
+void         pesajeTerminar(uint8_t i = 0);      // deja de registrar (el registro queda para verlo)
 // Pausa / retoma el seguimiento en curso (queda guardado). La merma queda en el último peso
 // registrado y el ritmo se sigue calculando por fecha real. false si no hay seguimiento.
-bool         pesajePausar(bool pausar);
+bool         pesajePausar(bool pausar, uint8_t i = 0);
 // Registro como JSON: {"p0":..,"obj":..,"ini":..,"pts":[[epoch,gramos],...]} (como mucho ~600 puntos).
-void         pesajeJson(Print& out);
-size_t       pesajeJsonTam();
+void         pesajeJson(Print& out, uint8_t i = 0);
+size_t       pesajeJsonTam(uint8_t i = 0);
 #endif

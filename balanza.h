@@ -3,13 +3,17 @@
 #include "hardware.h"
 
 // =====================================================================
-//  Balanza por Wi-Fi. La balanza es otra placa (proyecto "balanza") con la celda de carga, en la
-//  misma red de la casa. Esta placa la busca por su nombre (BALANZA_HOST.local, hardware.h),
-//  le pide el peso una vez por segundo (GET /api/peso) y le manda tarar / calibrar (POST /api/orden).
-//  Todo corre en una tarea propia: una balanza que no contesta no frena el control de clima.
+//  Balanzas por Wi-Fi. Cada balanza es otra placa (proyecto "balanza" y "balanza_c3_10kg") con su
+//  celda de carga, en la misma red de la casa. Esta placa las busca por nombre (BALANZAS[i].host +
+//  ".local", hardware.h), les pide el peso (GET /api/peso) y les manda tarar / calibrar
+//  (POST /api/orden).
 //
-//  Vinculación: la dirección IP encontrada se guarda y se usa directo. Si deja de contestar se vuelve
-//  a buscar por nombre (por si el router le cambió la IP). "Olvidar" borra la IP guardada.
+//  Todo corre en UNA tarea propia que recorre las balanzas: una balanza que no contesta no frena el
+//  control de clima ni la web (la web lee el estado cacheado, nunca hace la consulta).
+//
+//  Vinculación: la dirección IP encontrada se guarda (NVS "balanzaRed", "balanzaRed1", ...) y se usa
+//  directo. Si deja de contestar se vuelve a buscar por nombre (por si el router le cambió la IP).
+//  "Olvidar" borra la IP guardada.
 // =====================================================================
 
 // Banderas del peso (las arma esta placa con lo que contesta la balanza).
@@ -49,14 +53,19 @@ struct BalanzaEstado {
 };
 
 #if USAR_BALANZA
-void          balanzaInit();                  // en setup(), después de wifiInit()
-BalanzaEstado balanzaEstado();                // copia del estado (se puede llamar desde cualquier tarea)
+uint8_t       balanzaCantidad();                        // cuántas hay configuradas
+const char*   balanzaHost(uint8_t i);                   // nombre en la red ("balanza10k")
+const char*   balanzaNombre(uint8_t i);                 // etiqueta para la web / LCD ("1 kg")
+float         balanzaCapacidad(uint8_t i);              // tope de la celda en gramos
+
+void          balanzaInit();                            // en setup(), después de wifiInit()
+BalanzaEstado balanzaEstado(uint8_t i = 0);             // copia del estado (se puede llamar desde cualquier tarea)
 // Envía una orden ("T" tarar, "C500" calibrar con 500 g, "R" borrar calibración, "A"/"AF"/"AX"
 // aprender la deriva / terminar / cancelar, "M1"/"M0" compensación sí/no). t = temperatura de la
 // tara o calibración (NAN = la que estima la balanza con los datos de esta placa). false si la
 // balanza no está conectada o todavía hay otra orden sin enviar.
-bool          balanzaOrden(const char* orden, float t = NAN);
-void          balanzaActivar(bool on);        // habilita / deshabilita la conexión (queda guardado)
-void          balanzaReconectar();            // vuelve a buscar la balanza por nombre
-void          balanzaOlvidar();               // borra la IP guardada (y la busca de nuevo)
+bool          balanzaOrden(const char* orden, float t = NAN, uint8_t i = 0);
+void          balanzaActivar(bool on, uint8_t i = 0);   // habilita / deshabilita la conexión (queda guardado)
+void          balanzaReconectar(uint8_t i = 0);         // vuelve a buscar la balanza por nombre
+void          balanzaOlvidar(uint8_t i = 0);            // borra la IP guardada (y la busca de nuevo)
 #endif

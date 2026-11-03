@@ -4,13 +4,18 @@
 //   y si algún día el OTA no anda, se sube por USB:  node subir.mjs COM3
 // - La web no pide clave (WEB_SIN_CLAVE 1 en config.h). Si la activás (0), la clave sale de CAMARA_CLAVE o de WEB_CLAVE.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
-const CLI = 'C:/Program Files/Arduino IDE/resources/app/lib/backend/resources/arduino-cli.exe';
+// arduino-cli: se puede fijar con ARDUINO_CLI; si no, se usa el del Arduino IDE.
+const CLI = [
+  process.env.ARDUINO_CLI,
+  'C:/Program Files/Arduino IDE/resources/app/lib/backend/resources/arduino-cli.exe',
+].filter(Boolean).find((r) => existsSync(r));
+if (!CLI) throw new Error('No encuentro arduino-cli: pasalo en la variable ARDUINO_CLI');
 const FQBN = 'esp32:esp32:esp32:PartitionScheme=custom';
 const MAXIMO = 0x170000; // tamaño de cada lugar para el programa (partitions.csv)
 const BUILD = join(AQUI, 'build', 'ota');

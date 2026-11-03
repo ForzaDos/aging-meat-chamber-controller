@@ -209,6 +209,7 @@ ul.lista>li:first-child{border-top:0}
       <button type="button" data-g="hum">Humedad</button>
       <button type="button" data-g="temp">Temperatura</button>
     </div>
+    <div id="togBal" style="display:flex;gap:20px;flex-wrap:wrap;margin:4px 0 8px;font-size:14px"></div>
     <div class="grafico"><canvas id="cv"></canvas></div>
     <p class="ayuda" id="ayudaG"></p>
   </details>
@@ -249,8 +250,12 @@ let malas = 0, cargadoOk = false;   // cargadoOk: el diario se leyó bien de la 
 let selTanda = null;
 let editT = null, editP = null, editR = null;
 let modoG = 'merma', chart = null;
-let SEG = null, HISTB = null;   // seguimiento de la pieza testigo en la balanza y su registro de peso
-const segDe = t => SEG && SEG.tanda && t && SEG.tanda === t.k ? SEG : null;   // la balanza pesa la testigo de esta tanda
+let HISTS = [], visBal = {};   // registro de peso de cada balanza (para graficarlas todas)
+let histCargada = false, segClave = '';   // el registro se pide una vez por conjunto de balanzas con seguimiento
+let SEG = null, HISTB = null;   // seguimiento de la pieza testigo y su registro de peso (de la balanza elegida)
+let SEGS = [];                  // seguimiento de TODAS las balanzas (cada una con su pieza testigo)
+// La tanda se vincula con la balanza que tenga esa pieza testigo (puede ser cualquiera).
+const segDe = t => SEGS.find(s => s.tanda && t && s.tanda === t.k) || null;
 
 function aviso(txt, ok) {
   const a = $('#aviso');
@@ -431,7 +436,7 @@ function dibujarGrafico() {
   if (!t) { if (chart) { chart.destroy(); chart = null; } return; }
   const R = resumenTanda(t);
   const hasta = Math.max(num(t.do) || 0, R.dia, ...R.regs.map(r => dias(t.f, r.f)), 1);
-  if (R.bal && modoG === 'merma' && !HISTB) cargarHistBalanza();
+  if (modoG === 'merma' && SEGS.length && !histCargada) cargarHistBalanza();   // sin seguimiento no hay nada que pedir (y dibujarGrafico se llamaría a sí misma sin fin)
   let ds = [], yTxt = '';
   if (modoG === 'merma') {
     yTxt = 'Merma (%)';
@@ -440,11 +445,16 @@ function dibujarGrafico() {
       R.regs.filter(r => r.p === p.k && r.w != null).forEach(r => pts.push({ x: dias(t.f, r.f), y: +mermaDe(p.p0, r.w).toFixed(2) }));
       ds.push({ label: p.n, data: pts, borderColor: COLORES[i % 8], backgroundColor: COLORES[i % 8], showLine: true, tension: 0.2, pointRadius: 3 });
     });
-    if (R.bal && HISTB && HISTB.pts.length) {
-      const t0 = msd(t.f), p0 = HISTB.p0;
-      ds.unshift({ label: 'Balanza (testigo)', data: HISTB.pts.map(p => ({ x: +((p[0] * 1000 - t0) / 864e5).toFixed(3), y: +((p0 - p[1]) / p0 * 100).toFixed(2) })),
-                   borderColor: '#e0623f', backgroundColor: '#e0623f', showLine: true, tension: 0.2, pointRadius: 0, borderWidth: 2.5 });
-    }
+    // Una curva por balanza con seguimiento (el día 0 es el inicio de la tanda).
+    const t0 = msd(t.f);
+    HISTS.forEach((b, k) => {
+      if (visBal[b.i] === false || !b.h || !b.h.pts || !b.h.pts.length) return;
+      const p0 = b.h.p0;
+      ds.unshift({ label: 'Balanza ' + b.nombre,
+        data: b.h.pts.map(q => ({ x: +((q[0] * 1000 - t0) / 864e5).toFixed(3), y: +((p0 - q[1]) / p0 * 100).toFixed(2) })),
+        borderColor: ['#e0623f', '#57b6ff'][k % 2], backgroundColor: ['#e0623f', '#57b6ff'][k % 2],
+        showLine: true, tension: 0.2, pointRadius: 0, borderWidth: 2.5 });
+    });
     if (t.mo) ds.push({ label: 'Objetivo', data: [{ x: 0, y: t.mo }, { x: hasta, y: t.mo }], borderColor: '#9a968c', borderDash: [6, 4], showLine: true, pointRadius: 0 });
     ay.textContent = 'Eje horizontal: días desde el inicio de la tanda.';
   } else {
@@ -687,23 +697,46 @@ $('#archivo').onchange = async ev => {
 // ---------- Balanza: pieza testigo ----------
 async function leerSeg() {
   try {
-    const r = await fetch('/api/balanza', { cache: 'no-store' });
+    const r = await fetch('/api/balanzas', { cache: 'no-store' });
     if (r.status === 404) { document.body.classList.add('sinBal'); return false; }   // el equipo no tiene balanza
     if (!r.ok) return false;
     document.body.classList.remove('sinBal');
-    SEG = (await r.json()).seg || null;
-    if (SEG && !SEG.activo) SEG = null;
+    const j = await r.json();
+    SEGS = (j.balanzas || [])
+      .filter(b => b.seg && b.seg.activo)
+      .map(b => Object.assign({ i: b.i, balNombre: b.nombre, balCon: b.con }, b.seg));
+    SEG = SEGS[0] || null;          // por compatibilidad: la primera con seguimiento
+    const clave = SEGS.map(x => x.i + ':' + x.tanda).join(',');
+    if (clave !== segClave) { segClave = clave; histCargada = false; }   // empezó o terminó un seguimiento: se vuelve a pedir
     return true;
   } catch (e) { return false; }
 }
 async function cargarHistBalanza() {
-  try { HISTB = await (await fetch('/api/balanza/hist', { cache: 'no-store' })).json(); dibujarGrafico(); } catch (e) {}
+  histCargada = true;
+  HISTS = [];
+  for (const s of SEGS) {
+    try {
+      const h = await (await fetch('/api/balanza/hist?i=' + s.i, { cache: 'no-store' })).json();
+      HISTS.push({ i: s.i, nombre: s.balNombre || ('balanza ' + s.i), h });
+    } catch (e) { /* esa balanza no contesta: se omite */ }
+  }
+  HISTB = HISTS.length ? HISTS[0].h : null;
+  const caja = $('#togBal');
+  if (caja) {
+    caja.innerHTML = HISTS.map(b =>
+      '<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="togB" data-i="' + b.i + '"' +
+      (visBal[b.i] === false ? '' : ' checked') + '> <span>' + b.nombre + '</span></label>').join('');
+    caja.querySelectorAll('.togB').forEach(chk => {
+      chk.onchange = () => { visBal[+chk.dataset.i] = chk.checked; dibujarGrafico(); };
+    });
+  }
+  dibujarGrafico();
 }
 // Si la tanda vinculada cambió su merma objetivo o su nombre, la balanza se pone igual.
 async function sincronizarSeg() {
   const t = SEG && M.get(SEG.tanda);
   if (!t || t.a !== 'tanda') return;
-  const p = { accion: 'editar' };
+  const p = { accion: 'editar', i: SEG.i };
   if (t.mo > 0 && Math.abs(t.mo - SEG.obj) > 0.001) p.obj = t.mo;
   if (String(t.n).slice(0, 40) !== SEG.nombre) p.nombre = String(t.n).slice(0, 40);
   if (Object.keys(p).length === 1) return;
