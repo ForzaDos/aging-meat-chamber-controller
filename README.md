@@ -56,7 +56,8 @@ está pensado para los ciclos de un compresor y para protegerlo.
 - Una **fuente de 5 V** (2 A o más)
 - Cables, borneras, una caja y un cable de 220 V con ficha. Y una llave térmica o fusible en la entrada.
 
-Para la **balanza** (opcional): una ESP32, una celda de carga de 1 kg tipo barra, un módulo HX711 y una fuente de 5 V.
+Para las **balanzas** (opcionales, hasta dos): una ESP32, una celda de carga (1 kg tipo barra, o de 10 kg), un módulo HX711 y una fuente de 5 V cada una.
+El programa, el cableado y la calibración de cada una están en [**aging-chamber-scales**](https://github.com/ForzaDos/aging-chamber-scales).
 
 <details>
 <summary><b>Cómo montarlo: conexiones, 220 V y cuidados</b></summary>
@@ -93,7 +94,9 @@ Si el tuyo es al revés, cambialo en `config.h`. Con otra placa, los pines se ca
 - El termostato propio de la heladera tiene que quedar **anulado o en el punto más frío**, para que no interfiera.
 - Dejá el sensor DHT22 **dentro de la cámara**, lejos del humidificador y de la salida de aire frío.
 
-### 3. La balanza
+### 3. Las balanzas
+
+El programa de las balanzas (1 kg y 10 kg) está en [aging-chamber-scales](https://github.com/ForzaDos/aging-chamber-scales). Cableado de la de 1 kg (NodeMCU ESP32S); la de 10 kg usa una ESP32-C3 y otros pines, y está explicada en ese repositorio:
 
 | HX711 | Se conecta a (ESP32) |
 |---|---|
@@ -146,7 +149,7 @@ conector USB. Y no inviertas VCC y GND del HX711: se calienta en segundos y se p
 It turns an ordinary **compressor refrigerator** into a dry-aging chamber using a cheap **ESP32**. It controls **temperature**
 (compressor), **humidity** (humidifier + dehumidifier), a **programmable fan** and **two auxiliary outputs**, and you run it from
 your phone through its own web page (no cloud, no app, no internet). It also keeps history charts and a drying diary, works with
-an optional wireless scale to follow the weight loss of a control piece, protects the compressor, has an emergency stop button
+up to two optional wireless scales ([firmware here](https://github.com/ForzaDos/aging-chamber-scales)) to follow the weight loss of a control piece, protects the compressor, has an emergency stop button
 and updates over Wi-Fi. **Compressor fridges only; Peltier coolers are not supported.** The device interface is in Spanish.
 **It switches mains voltage: build it only if you know how to do it safely, at your own risk.**
 
