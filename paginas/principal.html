@@ -269,6 +269,18 @@ input[type=range]::-webkit-slider-runnable-track{border-radius:6px}
 input[type=range]::-webkit-slider-thumb{border-radius:50%;border:3px solid var(--acero)}
 input[type=range]::-moz-range-track{border-radius:6px}
 input[type=range]::-moz-range-thumb{border-radius:50%;border:3px solid var(--acero)}
+/* Solo la perilla se agarra: un toque en la barra (o un dedo que pasa al deslizar la página) no mueve el valor */
+input[type=range]{touch-action:pan-y;pointer-events:none}
+input[type=range]::-webkit-slider-thumb{pointer-events:auto}
+input[type=range]::-moz-range-thumb{pointer-events:auto}
+.paso{display:flex;gap:10px;margin-top:6px}
+.paso button{flex:1;min-height:46px;font-size:17px;touch-action:manipulation}
+.zoomb{grid-template-columns:1.7fr 1fr 1fr 1fr}
+.zoomb span{display:flex;align-items:center;justify-content:center;padding:0 6px;font-size:13px;font-weight:600;color:var(--tenue);background:var(--placa2);border-right:1px solid var(--borde)}
+.leyenda{margin:6px 0 12px;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;background:var(--placa2);font-size:14px;color:var(--tenue)}
+.leyenda b{color:var(--texto)}
+.leyenda p{margin:0 0 6px}
+.leyenda p:last-child{margin-bottom:0}
 .num{font-weight:600}
 details.test{border-radius:12px}
 .registro li.parada{border-radius:10px}
@@ -376,6 +388,12 @@ details.test{border-radius:12px}
     <button data-r="1w">1 sem.</button>
     <button data-r="1m">1 mes</button>
     <button data-r="3m">3 meses</button>
+  </div>
+  <div class="tabs zoomb" id="zoomTabs" title="Auto ajusta la escala vertical a los datos. ×2 y ×4 alejan el gráfico: el alto mínimo que muestra pasa a ser el doble o el cuádruple (útil cuando casi no hay variación).">
+    <span>Escala vertical</span>
+    <button data-z="1" class="on">Auto</button>
+    <button data-z="2">×2</button>
+    <button data-z="4">×4</button>
   </div>
   <div class="grafico"><canvas id="cv"></canvas></div>
   <div class="stats" id="stats"></div>
@@ -529,11 +547,13 @@ details.test{border-radius:12px}
         </div>
         <div class="ctl">
           <div class="ctl-top"><span>Histéresis inferior (humidificador)</span><b>− <output id="o_humHistInf"></output> %</b></div>
-          <input type="range" name="humHistInf" min="0.5" max="10" step="0.5" data-fmt="1">
+          <input type="range" name="humHistInf" min="0.5" max="10" step="0.5" data-fmt="1" hidden>
+          <div class="paso"><button type="button" class="sec" data-p="humHistInf" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="humHistInf" data-d="1">+ 0,5</button></div>
         </div>
         <div class="ctl">
           <div class="ctl-top"><span>Histéresis superior (deshumidificador)</span><b>+ <output id="o_humHistSup"></output> %</b></div>
-          <input type="range" name="humHistSup" min="0.5" max="10" step="0.5" data-fmt="1">
+          <input type="range" name="humHistSup" min="0.5" max="10" step="0.5" data-fmt="1" hidden>
+          <div class="paso"><button type="button" class="sec" data-p="humHistSup" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="humHistSup" data-d="1">+ 0,5</button></div>
         </div>
         <p class="ayuda" id="ayudaH"></p>
       </div>
@@ -545,11 +565,13 @@ details.test{border-radius:12px}
         </div>
         <div class="ctl">
           <div class="ctl-top"><span>Histéresis superior (prende el frío)</span><b>+ <output id="o_tempHistSup"></output> °C</b></div>
-          <input type="range" name="tempHistSup" min="0.5" max="5" step="0.5" data-fmt="1">
+          <input type="range" name="tempHistSup" min="0.5" max="5" step="0.5" data-fmt="1" hidden>
+          <div class="paso"><button type="button" class="sec" data-p="tempHistSup" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="tempHistSup" data-d="1">+ 0,5</button></div>
         </div>
         <div class="ctl">
           <div class="ctl-top"><span>Histéresis inferior (apaga el frío)</span><b>− <output id="o_tempHistInf"></output> °C</b></div>
-          <input type="range" name="tempHistInf" min="0" max="5" step="0.5" data-fmt="1">
+          <input type="range" name="tempHistInf" min="0" max="5" step="0.5" data-fmt="1" hidden>
+          <div class="paso"><button type="button" class="sec" data-p="tempHistInf" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="tempHistInf" data-d="1">+ 0,5</button></div>
         </div>
         <div class="ctl">
           <div class="ctl-top"><span>Alarma si se aparta más de</span><b>± <output id="o_tempBanda"></output> °C</b></div>
@@ -559,18 +581,29 @@ details.test{border-radius:12px}
       </div>
     </div>
     <details>
-      <summary>Tiempos mínimos de los relés de clima</summary>
+      <summary>Tiempos de protección de los relés de clima</summary>
+      <div class="leyenda">
+        <p><b>Para qué sirven:</b> evitan que un equipo prenda y apague a cada rato, lo que lo desgasta (sobre todo el compresor de la heladera). Valen para el humidificador, el deshumidificador y el frío, y se cuentan desde el último cambio de cada uno.</p>
+        <p><b>Ejemplo:</b> si la humedad llega al objetivo a los 30 s de haber prendido el humidificador y el mínimo encendido es 120 s, el humidificador sigue prendido hasta cumplir los 120 s.</p>
+      </div>
       <div class="ctl">
-        <div class="ctl-top"><span>Mínimo encendido: humedad</span><b><output id="o_minOnS"></output> s</b></div>
+        <div class="ctl-top"><span>Mínimo prendido: humidificador y deshumidificador</span><b><output id="o_minOnS"></output> s</b></div>
         <input type="range" name="minOnS" min="0" max="600" step="10" data-fmt="0">
+        <p class="ayuda">Una vez que prende, no se apaga antes de este tiempo, aunque la humedad ya llegó al objetivo.</p>
       </div>
       <div class="ctl">
-        <div class="ctl-top"><span>Mínimo encendido: temperatura (frío)</span><b><output id="o_minOnTempS"></output> s</b></div>
+        <div class="ctl-top"><span>Mínimo prendido: frío (compresor)</span><b><output id="o_minOnTempS"></output> s</b></div>
         <input type="range" name="minOnTempS" min="0" max="600" step="10" data-fmt="0">
+        <p class="ayuda">Lo mismo para el compresor: una vez que arranca, trabaja al menos este tiempo.</p>
       </div>
       <div class="ctl">
-        <div class="ctl-top"><span>Mínimo apagado</span><b><output id="o_minOffS"></output> s</b></div>
+        <div class="ctl-top"><span>Mínimo apagado (descanso)</span><b><output id="o_minOffS"></output> s</b></div>
         <input type="range" name="minOffS" min="0" max="600" step="10" data-fmt="0">
+        <p class="ayuda">Después de apagarse, el relé espera este tiempo antes de volver a prender, aunque ya haga falta. El compresor siempre descansa al menos 3 min (180 s), aunque pongas menos.</p>
+      </div>
+      <div class="leyenda">
+        <p id="ayudaTm"></p>
+        <p><b>Mientras espera</b> la humedad o la temperatura pueden pasarse un poco de los límites: es normal. <b>Cuándo no esperan:</b> el forzado manual, la parada de emergencia, la pausa y el apagado del frío cuando hace demasiado frío. <b>Al arrancar</b> el equipo, todos los relés cuentan como recién apagados.</p>
       </div>
     </details>
     <details>
@@ -750,7 +783,7 @@ details.test{border-radius:12px}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.24 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.25 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
@@ -760,6 +793,8 @@ const COL_T = '#f2a83b', COL_H = '#5fb3f0';
 let UMB = null;   // umbrales vigentes { t: [inferior, objetivo, superior], h: [...] }, los carga pintar()
 let verTip = true;   // ventana flotante con los valores del gráfico
 try { verTip = localStorage.getItem('camTip') !== '0'; } catch (e) {}
+let zoomV = 1;   // escala vertical de los gráficos: 1 = automática, 2 y 4 = alejar
+try { zoomV = [1, 2, 4].includes(+localStorage.getItem('camZoom')) ? +localStorage.getItem('camZoom') : 1; } catch (e) {}
 const EVENTOS_TIP = ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'];
 // Franja de la histéresis y línea del objetivo, detrás de las curvas (temperatura y humedad, cada una en su eje).
 const plugUmbrales = {
@@ -806,15 +841,6 @@ if (typeof Chart !== 'undefined') {
   Chart.defaults.elements.point.hoverRadius = 5;
 }
 const REJILLA = { color: '#2a3039', borderDash: [2, 4] };
-function degrade(c) {
-  return ctx => {
-    const a = ctx.chart.chartArea;
-    if (!a) return c + '33';
-    const g = ctx.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom);
-    g.addColorStop(0, c + '61'); g.addColorStop(1, c + '00');
-    return g;
-  };
-}
 const ICO_EQ = {"fri": "<g transform=\"rotate(0 32 32)\"><line x1=\"32\" y1=\"8\" x2=\"32\" y2=\"56\"/><path d=\"M25 14l7 6 7-6M25 50l7-6 7 6\"/></g><g transform=\"rotate(60 32 32)\"><line x1=\"32\" y1=\"8\" x2=\"32\" y2=\"56\"/><path d=\"M25 14l7 6 7-6M25 50l7-6 7 6\"/></g><g transform=\"rotate(120 32 32)\"><line x1=\"32\" y1=\"8\" x2=\"32\" y2=\"56\"/><path d=\"M25 14l7 6 7-6M25 50l7-6 7 6\"/></g>", "hum": "<path d=\"M32 30c0 0-10 11-10 17a10 10 0 0 0 20 0c0-6-10-17-10-17z\"/><path d=\"M22 20c3-3 3-7 0-10M32 18c3-3 3-7 0-10M42 20c3-3 3-7 0-10\"/>", "des": "<path d=\"M32 12c0 0-14 16-14 25a14 14 0 0 0 28 0c0-9-14-25-14-25z\"/><line x1=\"14\" y1=\"54\" x2=\"50\" y2=\"14\"/>", "ven": "<circle cx=\"32\" cy=\"32\" r=\"4\"/><path transform=\"rotate(0 32 32)\" d=\"M32 28c-2-8 0-17 8-18 7 0 7 9-4 18\"/><path transform=\"rotate(120 32 32)\" d=\"M32 28c-2-8 0-17 8-18 7 0 7 9-4 18\"/><path transform=\"rotate(240 32 32)\" d=\"M32 28c-2-8 0-17 8-18 7 0 7 9-4 18\"/>", "luz": "<path d=\"M24 40c-5-4-8-9-8-15a16 16 0 0 1 32 0c0 6-3 11-8 15v6H24z\"/><line x1=\"26\" y1=\"52\" x2=\"38\" y2=\"52\"/><line x1=\"28\" y1=\"58\" x2=\"36\" y2=\"58\"/>", "otr": "<path d=\"M22 10v12M42 10v12M16 22h32v10a16 16 0 0 1-32 0zM32 48v10\"/>"};
 const icEq = (k, t = 18) => '<svg class="ic ic-equipo" viewBox="0 0 64 64" width="' + t + '" height="' + t + '" aria-hidden="true">' + (ICO_EQ[k] || ICO_EQ.otr) + '</svg>';
 
@@ -889,6 +915,11 @@ function ayuda() {
   const v = n => +f.elements[n].value;
   txt('#ayudaH', `Humidifica por debajo de ${num(v('humSP') - v('humHistInf'), 1)} % y deshumidifica por encima de ${num(v('humSP') + v('humHistSup'), 1)} %. Ambos se detienen en ${num(v('humSP'), 1)} %.`);
   txt('#ayudaT', `Enfría por encima de ${num(v('tempSP') + v('tempHistSup'), 1)} °C y se detiene en ${num(v('tempSP') - v('tempHistInf'), 1)} °C.` + (v('tempHistInf') >= v('tempBanda') ? ' Ojo: ese punto cae dentro de la zona de alarma.' : ''));
+
+  const cicloHum = v('minOnS') + v('minOffS'), cicloFrio = v('minOnTempS') + Math.max(v('minOffS'), 180);
+  const cada = c => c < 60 ? `${c} s` : tiempo(c);
+  const porHora = c => c > 0 ? ` (hasta ${Math.floor(3600 / c)} veces por hora)` : '';
+  $('#ayudaTm').innerHTML = `<b>Con estos valores:</b> el humidificador o el deshumidificador prenden como mucho una vez cada ${cada(cicloHum)}${porHora(cicloHum)} y el compresor una vez cada ${cada(cicloFrio)}${porHora(cicloFrio)}.`;
 
   const per = PERIODOS[+fv.elements.ventPer.value], dur = +fv.elements.ventDuracionMin.value, anc = +fv.elements.ventAnclaMin.value;
   let a;
@@ -1299,14 +1330,15 @@ function etiqueta(v) {
 // Escala vertical automática pero con un alto mínimo, centrada en los datos:
 // así las oscilaciones chicas se ven chicas y un desvío grande igual entra.
 // Los bordes se redondean a "paso" para que las marcas queden en números redondos.
-function escalaMin(a, altoMin, paso, lo, hi, extra) {
+function escalaMin(a, altoMin, paso, lo, hi, extra, zoom) {
   const v = a.filter(x => x.y != null).map(x => x.y);
   if (!v.length) return { min: undefined, max: undefined };
   if (extra) v.push(...extra);   // los umbrales también tienen que entrar en el gráfico
   let min = Math.min(...v), max = Math.max(...v);
   const margen = (max - min) * 0.08;                     // un poco de aire arriba y abajo
   min -= margen; max += margen;
-  if (max - min < altoMin) { const c = (min + max) / 2; min = c - altoMin / 2; max = c + altoMin / 2; }
+  const alto = altoMin * (zoom || 1);                    // "alejar" (×2, ×4) sube el alto mínimo; un rango más grande no se toca
+  if (max - min < alto) { const c = (min + max) / 2; min = c - alto / 2; max = c + alto / 2; }
   min = Math.floor(min / paso) * paso; max = Math.ceil(max / paso) * paso;
   if (lo != null && min < lo) { max = Math.min(hi ?? Infinity, max + (lo - min)); min = lo; }
   if (hi != null && max > hi) { min = Math.max(lo ?? -Infinity, min - (max - hi)); max = hi; }
@@ -1357,8 +1389,8 @@ async function cargarHist() {
     chart = new Chart($('#cv'), {
       type: 'line',
       data: { datasets: [
-        { label: 'Temperatura °C', data: T, borderColor: COL_T, backgroundColor: degrade(COL_T), fill: true, yAxisID: 'yT', pointRadius: 0, borderWidth: 2.5, cubicInterpolationMode: 'monotone', spanGaps: false },
-        { label: 'Humedad %',      data: H, borderColor: COL_H, backgroundColor: degrade(COL_H), fill: true, yAxisID: 'yH', pointRadius: 0, borderWidth: 2.5, cubicInterpolationMode: 'monotone', spanGaps: false }
+        { label: 'Temperatura °C', data: T, borderColor: COL_T, backgroundColor: COL_T, fill: false, yAxisID: 'yT', pointRadius: 0, borderWidth: 2.5, cubicInterpolationMode: 'monotone', spanGaps: false },
+        { label: 'Humedad %',      data: H, borderColor: COL_H, backgroundColor: COL_H, fill: false, yAxisID: 'yH', pointRadius: 0, borderWidth: 2.5, cubicInterpolationMode: 'monotone', spanGaps: false }
       ]},
       plugins: [plugUmbrales],
       options: {
@@ -1383,8 +1415,8 @@ async function cargarHist() {
   chart.data.datasets[1].data = H;
   chart.options.scales.x.min = ini;
   chart.options.scales.x.max = fin;
-  Object.assign(chart.options.scales.yT, escalaMin(T, ALTO_MIN_T, 0.5, undefined, undefined, UMB && UMB.t));
-  Object.assign(chart.options.scales.yH, escalaMin(H, ALTO_MIN_H, 1, 0, 100, UMB && UMB.h));
+  Object.assign(chart.options.scales.yT, escalaMin(T, ALTO_MIN_T, 0.5, undefined, undefined, UMB && UMB.t, zoomV));
+  Object.assign(chart.options.scales.yH, escalaMin(H, ALTO_MIN_H, 1, 0, 100, UMB && UMB.h, zoomV));
   chart.update();
   dibujarActividad(d, paso, ini, fin);
 
@@ -1402,6 +1434,26 @@ $('#tabs').addEventListener('click', ev => {
   rango = b.dataset.r;
   document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
   cargarHist();
+});
+
+function marcarZoom() {
+  document.querySelectorAll('#zoomTabs button').forEach(x => x.classList.toggle('on', +x.dataset.z === zoomV));
+}
+marcarZoom();
+$('#zoomTabs').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  zoomV = +b.dataset.z;
+  try { localStorage.setItem('camZoom', String(zoomV)); } catch (e) {}
+  marcarZoom();
+  cargarHist();
+});
+
+// Histéresis: botones − / + en vez de slider (el input queda oculto y guarda el valor)
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-p]'); if (!b) return;
+  const el = b.form.elements[b.dataset.p];
+  if (b.dataset.d === '1') el.stepUp(); else el.stepDown();
+  el.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
 /* ---------- Registro de relés ---------- */
