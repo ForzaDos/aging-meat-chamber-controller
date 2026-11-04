@@ -85,7 +85,11 @@ static const BalanzaDef BALANZAS[BALANZAS_MAX] = {
 #define DEF_TEMP_HIST_INF      0.0f    // histéresis inferior de temperatura (°C): 0 = el frío apaga en el objetivo
 // Rangos de las histéresis (los mismos en control.cpp, web.cpp, menu.cpp y los deslizables de la página).
 #define HIST_HUM_MIN   0.5f
-#define HIST_HUM_MAX  10.0f
+#define HIST_HUM_MAX  40.0f
+// Espera de confirmación (s) antes de prender el humidificador o el deshumidificador: la humedad tiene que
+// quedarse más allá del límite todo ese tiempo. Filtra caídas o subidas de segundos (por ejemplo al arrancar el frío).
+#define DEF_ESPERA_HUM_S   60
+#define ESPERA_MAX_S      300
 #define HIST_TEMP_MIN  0.5f
 #define HIST_TEMP_MAX  5.0f
 #define DEF_MANUAL_MIN         15      // minutos que dura un forzado manual antes de volver a automático (5 a 120)

@@ -21,7 +21,7 @@ enum : uint8_t { T_TEMP, T_HUM, T_HTEMP, T_HHUM, T_VACT, T_VPER, T_VDUR, T_LUZ, 
                  T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_IP, T_SUB_CAL, T_VOLVER, T_SALIR, T_VERIP, T_WIFI, T_TEST, T_CALIB,
                  T_TSUMA, T_TTODOS, T_ACERCA, T_SUB_TIEMPOS, T_MINOFF, T_SUB_TEST, T_TUNO,
                  T_SUB_BAL, T_BVER, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_BSEG, T_PARADA, T_BSEL,
-                 T_HTEMPI, T_HHUMI, T_N };
+                 T_HTEMPI, T_HHUMI, T_ESPH, T_ESPD, T_N };
 
 struct Item { const char* corto; const char* largo; };
 static const Item ITEMS[T_N] = {
@@ -73,6 +73,8 @@ static const Item ITEMS[T_N] = {
   { "Balanza",    "Balanza a usar" },       // elige cuál de las balanzas se opera
   { "Hist. inf.", "Hist. temp. inferior" },
   { "Hist. inf.", "Hist. hum. inferior" },
+  { "Espera hum.", "Espera prender hum." },
+  { "Espera desh", "Espera prender desh." },
 };
 
 // Nombre a mostrar: AUX1 y AUX2 usan el nombre elegido en la web.
@@ -92,7 +94,7 @@ static const uint8_t L_PRINC[] = { T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_O
                                    T_SUB_TIEMPOS, T_SUB_CAL, T_IP, T_PARADA, T_SALIR };
 #endif
 static const uint8_t L_TEMP[]  = { T_TEMP, T_HTEMP, T_HTEMPI, T_BANDA, T_MINONT, T_FFRIO, T_VOLVER };
-static const uint8_t L_HUM[]   = { T_HUM, T_HHUM, T_HHUMI, T_MINON, T_FHUM, T_FDESH, T_VOLVER };
+static const uint8_t L_HUM[]   = { T_HUM, T_HHUM, T_HHUMI, T_ESPH, T_ESPD, T_MINON, T_FHUM, T_FDESH, T_VOLVER };
 static const uint8_t L_VENT[]  = { T_VACT, T_VPER, T_VDUR, T_VOLVER };
 #if TEST_AVANZADO
 static const uint8_t L_DIAG[]  = { T_VERIP, T_WIFI, T_SUB_TEST, T_ACERCA, T_VOLVER };   // test: submenú con los 3 modos
@@ -162,7 +164,9 @@ static Campo campo(uint8_t t) {
     case T_MINONT: return { false, 0, 600, 10, 0, "s", 0, nullptr };
     case T_MANMIN: return { false, MANUAL_MIN_MIN, MANUAL_MIN_MAX, 5, 0, "min", 0, nullptr };
     case T_MINOFF: return { false, 0, 600, 10, 0, "s", 0, nullptr };
-    case T_VACT:   return { true, 0, 1, 1, 0, "", 2, ETQ_VACT };
+    case T_ESPH:
+    case T_ESPD:   return { false, 0, ESPERA_MAX_S, 5, 0, "s", 0, nullptr };
+    case T_VACT:  return { true, 0, 1, 1, 0, "", 2, ETQ_VACT };
     case T_VPER:   return { true, 0, 7, 1, 0, "", 8, ETQ_PER };
     case T_LUZ:
     case T_OTROS:
@@ -201,6 +205,8 @@ static float valorActual(uint8_t t) {
     case T_MINON:  return cfg.minOnS;
     case T_MINONT: return cfg.minOnTempS;
     case T_MINOFF: return cfg.minOffS;
+    case T_ESPH:   return cfg.humEsperaS;
+    case T_ESPD:   return cfg.deshEsperaS;
 #if USAR_BALANZA
     case T_BSEL:   return balSel;
     case T_BBLE:   return balanzaEstado(balSel).activo ? 1 : 0;
@@ -261,6 +267,8 @@ static uint32_t aplicarValor(uint8_t t, float v) {
     case T_MINON:  cfg.minOnS     = (uint16_t)(v + 0.5f); break;
     case T_MINONT: cfg.minOnTempS = (uint16_t)(v + 0.5f); break;
     case T_MINOFF: cfg.minOffS    = (uint16_t)(v + 0.5f); break;
+    case T_ESPH:   cfg.humEsperaS  = (uint16_t)(v + 0.5f); break;
+    case T_ESPD:   cfg.deshEsperaS = (uint16_t)(v + 0.5f); break;
     default: return 0;
   }
   controlGuardarConfig();

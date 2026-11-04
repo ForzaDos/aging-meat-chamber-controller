@@ -25,6 +25,7 @@ Estado est;
 static Preferences prefs;
 static uint32_t cambioHum = 0, cambioDesh = 0, cambioFrio = 0;   // millis() del último cambio
 static uint32_t ultimaLecturaOk = 0;
+static uint32_t pideHumDesde = 0, pideDeshDesde = 0;             // millis() desde que la humedad pasó el límite de encendido (0 = no lo pasó)
 static uint32_t manualFin[3] = {0, 0, 0};                         // millis() en que vence cada forzado
 
 // Límites absolutos (hardware.h, SEG_*), con la lectura sin ajuste. Los calcula controlActualizar().
@@ -136,6 +137,8 @@ void controlInit() {
   cfg.tempHistSup     = prefs.isKey("tempHistSup") ? prefs.getFloat("tempHistSup", tempVieja) : tempVieja;
   cfg.tempHistInf     = prefs.getFloat("tempHistInf", DEF_TEMP_HIST_INF);
   cfg.tempBanda       = prefs.getFloat("tempBanda", DEF_TEMP_BANDA);
+  cfg.humEsperaS      = prefs.getUShort("humEsp",   DEF_ESPERA_HUM_S);
+  cfg.deshEsperaS     = prefs.getUShort("deshEsp",  DEF_ESPERA_HUM_S);
   cfg.minOnS          = prefs.getUShort("minOnS",   DEF_MIN_ON_S);
   cfg.minOnTempS      = prefs.getUShort("minOnT",   DEF_MIN_ON_S);
   cfg.minOffS         = prefs.getUShort("minOffS",  DEF_MIN_OFF_S);
@@ -159,6 +162,8 @@ void controlInit() {
   cfg.tempHistSup = limitar(cfg.tempHistSup, HIST_TEMP_MIN, HIST_TEMP_MAX, DEF_TEMP_HIST);
   cfg.tempHistInf = limitar(cfg.tempHistInf, 0.0f,          HIST_TEMP_MAX, DEF_TEMP_HIST_INF);
   cfg.tempBanda = limitar(cfg.tempBanda, 1.0f, 10.0f, DEF_TEMP_BANDA);
+  if (cfg.humEsperaS  > ESPERA_MAX_S) cfg.humEsperaS  = ESPERA_MAX_S;
+  if (cfg.deshEsperaS > ESPERA_MAX_S) cfg.deshEsperaS = ESPERA_MAX_S;
   if (cfg.minOnS  > 600) cfg.minOnS  = 600;
   if (cfg.minOnTempS > 600) cfg.minOnTempS = 600;
   if (cfg.minOffS > 600) cfg.minOffS = 600;
@@ -183,6 +188,8 @@ void controlGuardarConfig() {
   prefs.putFloat("tempHistSup", cfg.tempHistSup);
   prefs.putFloat("tempHist",    cfg.tempHistSup);
   prefs.putFloat("tempBanda", cfg.tempBanda);
+  prefs.putUShort("humEsp",   cfg.humEsperaS);
+  prefs.putUShort("deshEsp",  cfg.deshEsperaS);
   prefs.putUShort("minOnS",   cfg.minOnS);
   prefs.putUShort("minOnT",   cfg.minOnTempS);
   prefs.putUShort("minOffS",  cfg.minOffS);
@@ -339,7 +346,10 @@ void controlActualizar(float t, float h, bool ok) {
 
   est.alarmaTemp = est.sensorOk && fabsf(est.temp - cfg.tempSP) > cfg.tempBanda;
   if (otaOn && millis() - otaIni > OTA_MAX_MS) controlOta(false);   // la carga quedó colgada
-  if (testOn || otaOn || paradaOn) return;   // test de relés, actualización o parada de emergencia: el automático no toca nada
+  if (testOn || otaOn || paradaOn) {         // test de relés, actualización o parada de emergencia: el automático no toca nada
+    pideHumDesde = pideDeshDesde = 0;
+    return;
+  }
 
   ventilador();   // no depende del sensor; solo se detiene con la pausa
 
@@ -369,7 +379,8 @@ void controlActualizar(float t, float h, bool ok) {
   if (!cfg.activo || !est.sensorOk || calibActivo()) {
     // Pausa manual, sensor muerto o sensor en el frasco de calibración: clima apagado, sin esperar tiempos mínimos.
     // Excepción: en pausa, si hace demasiado calor el frío enciende igual (respetando el mínimo apagado).
-    if (aHum)  aplicar(est.releHum,  PIN_RELE_HUM,  EV_HUM,  false, cambioHum,  true);
+    pideHumDesde = pideDeshDesde = 0;   // la espera de confirmación empieza de cero al volver
+    if (aHum) aplicar(est.releHum,  PIN_RELE_HUM,  EV_HUM,  false, cambioHum,  true);
     if (aDesh) aplicar(est.releDesh, PIN_RELE_DESH, EV_DESH, false, cambioDesh, true);
     if (aFrio) aplicar(est.releFrio, PIN_RELE_FRIO, EV_FRIO, segCalor, cambioFrio, !segCalor);
   } else if (ok) {
@@ -380,11 +391,21 @@ void controlActualizar(float t, float h, bool ok) {
     bool quiereHum  = est.releHum;
     bool quiereDesh = est.releDesh;
 
-    if      (hr <  cfg.humSP - cfg.humHistInf) quiereHum = true;
-    else if (hr >= cfg.humSP)               quiereHum = false;
+    // Pasar el límite no alcanza para prender: tiene que seguir pasado durante la espera de confirmación
+    // (humEsperaS / deshEsperaS), así una caída o subida de segundos no lo dispara. Una vez prendido, sigue
+    // hasta el objetivo como siempre. Un forzado manual reinicia la cuenta.
+    const bool bajaHum = hr < cfg.humSP - cfg.humHistInf;
+    const bool altaHum = hr > cfg.humSP + cfg.humHistSup;
+    if (!bajaHum || !aHum)  pideHumDesde  = 0; else if (!pideHumDesde)  pideHumDesde  = ahora | 1;
+    if (!altaHum || !aDesh) pideDeshDesde = 0; else if (!pideDeshDesde) pideDeshDesde = ahora | 1;
+    const bool confHum  = pideHumDesde  && (ahora - pideHumDesde)  >= (uint32_t)cfg.humEsperaS  * 1000UL;
+    const bool confDesh = pideDeshDesde && (ahora - pideDeshDesde) >= (uint32_t)cfg.deshEsperaS * 1000UL;
 
-    if      (hr >  cfg.humSP + cfg.humHistSup) quiereDesh = true;
-    else if (hr <= cfg.humSP)               quiereDesh = false;
+    if      (confHum)                quiereHum = true;
+    else if (hr >= cfg.humSP)        quiereHum = false;
+
+    if      (confDesh)               quiereDesh = true;
+    else if (hr <= cfg.humSP)        quiereDesh = false;
 
     if (segHumNo)  quiereHum  = false;
     if (segDeshNo) quiereDesh = false;

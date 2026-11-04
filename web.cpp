@@ -239,6 +239,8 @@ static void enviarEstado(AsyncWebServerRequest* r) {
   d["tempHistInf"]     = cfg.tempHistInf;
   d["tempHist"]        = cfg.tempHistSup;
   d["tempBanda"]       = cfg.tempBanda;
+  d["humEsperaS"]      = cfg.humEsperaS;
+  d["deshEsperaS"]     = cfg.deshEsperaS;
   d["minOnS"]          = cfg.minOnS;
   d["minOnTempS"]      = cfg.minOnTempS;
   d["minOffS"]         = cfg.minOffS;
@@ -285,6 +287,8 @@ static void guardarConfig(AsyncWebServerRequest* r) {
   auto leerEntero = [&](const char* k, float lo, float hi, uint16_t& dst) {
     float v = dst; leer(k, lo, hi, v); dst = (uint16_t)v;
   };
+  leerEntero("humEsperaS",      0, ESPERA_MAX_S, cfg.humEsperaS);
+  leerEntero("deshEsperaS",     0, ESPERA_MAX_S, cfg.deshEsperaS);
   leerEntero("minOnS",          0, 600, cfg.minOnS);
   leerEntero("minOnTempS",      0, 600, cfg.minOnTempS);
   leerEntero("minOffS",         0, 600, cfg.minOffS);

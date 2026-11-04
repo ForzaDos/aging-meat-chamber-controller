@@ -25,7 +25,7 @@ ul.notas, ol.pasos { font-size: 9.8pt; padding-left: 20px; margin: 6px 0; } li {
 code { font-family: Consolas, monospace; background: #f3eeea; padding: 0 3px; border-radius: 3px; font-size: 9.2pt; }
 </style></head><body><section>
 <h1>Cámara de curado — Menú del LCD</h1>
-<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.25 OTA · generado desde <code>menu.cpp</code></p>
+<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.26 OTA · generado desde <code>menu.cpp</code></p>
 
 <h2>Cómo se maneja</h2>
 <table class="ctl">
@@ -61,7 +61,7 @@ Ven:ON AUX1:-- AUX2:</pre></div>
 <pre class="arbol">
 MENU
 ├── Temperatura  &gt;      Objetivo · Histeresis · Alarma +/- · Min encend. · Forzar frio
-├── Humedad      &gt;      Objetivo · Histeresis · Min encend. · Forzar hum. · Forzar desh
+├── Humedad      &gt;      Objetivo · Histeresis · Espera hum./desh · Min encend. · Forzar hum. · Forzar desh
 ├── Ventilador   &gt;      Programa · Cada · Duracion
 ├── AUX1                 ON / OFF          (el nombre se cambia en la web)
 ├── AUX2                 ON / OFF
@@ -116,14 +116,17 @@ funcionar. Seguro?
 <table><tr><th>Opción (LCD)</th><th>Qué hace</th><th>Valores</th></tr><tr><td class='op'>Objetivo</td><td>Temperatura objetivo. La heladera prende si T &gt; objetivo + histéresis superior y apaga si T &le; objetivo − histéresis inferior.</td><td class='val'>5,0 a 30,0 °C, de a 0,5</td></tr><tr><td class='op'>Hist. sup.</td><td>Cuánto se deja subir la temperatura sobre el objetivo antes de prender el frío.</td><td class='val'>0,5 a 5,0 °C, de a 0,5</td></tr><tr><td class='op'>Hist. inf.</td><td>Cuánto por debajo del objetivo se deja bajar antes de apagar el frío. Con 0 apaga justo en el objetivo.</td><td class='val'>0,0 a 5,0 °C, de a 0,5</td></tr><tr><td class='op'>Alarma +/-</td><td>Si la temperatura se aleja más que esto del objetivo, aparece ALARMA TEMPERATURA.</td><td class='val'>1,0 a 10,0 °C, de a 0,5</td></tr><tr><td class='op'>Min encend.</td><td>Tiempo mínimo encendida la refrigeración (protege el compresor).</td><td class='val'>0 a 600 s, de a 10</td></tr><tr><td class='op'>Forzar frio</td><td>Fuerza la refrigeración a mano durante "Dur forzado" minutos y después vuelve sola a Auto. Encender respeta el mínimo apagado: si no se puede todavía, avisa <code>No se puede aun / Espera m:ss</code>.</td><td class='val'>Auto · ON · OFF</td></tr></table>
 </section><section>
 <h2 class="nueva">HUMEDAD</h2>
-<div class="pantallas"><div class="lcd"><pre>HUMEDAD         1/7 
+<div class="pantallas"><div class="lcd"><pre>HUMEDAD         1/9 
 &gt;Objetivo      75.0%
  Hist. sup.     3.0%
- Hist. inf.     3.0%</pre></div><div class="lcd"><pre>HUMEDAD         4/7 
+ Hist. inf.     3.0%</pre></div><div class="lcd"><pre>HUMEDAD         4/9 
  Hist. inf.     3.0%
+&gt;Espera hum.     60s
+ Espera desh     60s</pre></div><div class="lcd"><pre>HUMEDAD         6/9 
+ Espera desh     60s
 &gt;Min encend.     60s
  Forzar hum.    Auto</pre></div></div>
-<table><tr><th>Opción (LCD)</th><th>Qué hace</th><th>Valores</th></tr><tr><td class='op'>Objetivo</td><td>Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis inferior. Deshumidificador: prende si HR &gt; objetivo + histéresis superior. Los dos apagan al llegar al objetivo.</td><td class='val'>40,0 a 100,0 %, de a 0,5</td></tr><tr><td class='op'>Hist. sup.</td><td>Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.</td><td class='val'>0,5 a 10,0 %, de a 0,5</td></tr><tr><td class='op'>Hist. inf.</td><td>Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.</td><td class='val'>0,5 a 10,0 %, de a 0,5</td></tr><tr><td class='op'>Min encend.</td><td>Tiempo mínimo encendidos el humidificador y el deshumidificador.</td><td class='val'>0 a 600 s, de a 10</td></tr><tr><td class='op'>Forzar hum.</td><td>Fuerza el humidificador a mano. Prender uno apaga el otro (nunca los dos juntos).</td><td class='val'>Auto · ON · OFF</td></tr><tr><td class='op'>Forzar desh</td><td>Fuerza el deshumidificador a mano.</td><td class='val'>Auto · ON · OFF</td></tr></table>
+<table><tr><th>Opción (LCD)</th><th>Qué hace</th><th>Valores</th></tr><tr><td class='op'>Objetivo</td><td>Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis inferior. Deshumidificador: prende si HR &gt; objetivo + histéresis superior. Los dos apagan al llegar al objetivo.</td><td class='val'>40,0 a 100,0 %, de a 0,5</td></tr><tr><td class='op'>Hist. sup.</td><td>Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.</td><td class='val'>0,5 a 40,0 %, de a 0,5</td></tr><tr><td class='op'>Hist. inf.</td><td>Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.</td><td class='val'>0,5 a 40,0 %, de a 0,5</td></tr><tr><td class='op'>Espera hum.</td><td>Segundos que la humedad debe seguir bajo el límite antes de prender el humidificador. Filtra caídas de segundos (por ejemplo al arrancar el frío). 0 = enseguida.</td><td class='val'>0 a 300 s, de a 5</td></tr><tr><td class='op'>Espera desh</td><td>Lo mismo para el deshumidificador: la humedad debe seguir sobre el límite todo ese tiempo. 0 = enseguida.</td><td class='val'>0 a 300 s, de a 5</td></tr><tr><td class='op'>Min encend.</td><td>Tiempo mínimo encendidos el humidificador y el deshumidificador.</td><td class='val'>0 a 600 s, de a 10</td></tr><tr><td class='op'>Forzar hum.</td><td>Fuerza el humidificador a mano. Prender uno apaga el otro (nunca los dos juntos).</td><td class='val'>Auto · ON · OFF</td></tr><tr><td class='op'>Forzar desh</td><td>Fuerza el deshumidificador a mano.</td><td class='val'>Auto · ON · OFF</td></tr></table>
 </section><section>
 <h2 class="nueva">VENTILADOR</h2>
 <div class="pantallas"><div class="lcd"><pre>VENTILADOR      1/4 
@@ -243,7 +246,7 @@ Prende 1x1 los 6
 <div class="pantallas"><div class="lcd"><pre>Camara de curado    
 Software hecho por  
 ForzaDos            
-Version v1.0.25 OTA </pre></div></div>
+Version v1.0.26 OTA </pre></div></div>
 </section><section>
 <h2 class="nueva">Cambiar un valor (todas las opciones)</h2>
 <div class="pantallas">

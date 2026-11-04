@@ -547,13 +547,23 @@ details.test{border-radius:12px}
         </div>
         <div class="ctl">
           <div class="ctl-top"><span>Histéresis inferior (humidificador)</span><b>− <output id="o_humHistInf"></output> %</b></div>
-          <input type="range" name="humHistInf" min="0.5" max="10" step="0.5" data-fmt="1" hidden>
-          <div class="paso"><button type="button" class="sec" data-p="humHistInf" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="humHistInf" data-d="1">+ 0,5</button></div>
+          <input type="range" name="humHistInf" min="0.5" max="40" step="0.5" data-fmt="1" hidden>
+          <div class="paso"><button type="button" class="sec" data-p="humHistInf" data-d="-10">− 5</button><button type="button" class="sec" data-p="humHistInf" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="humHistInf" data-d="1">+ 0,5</button><button type="button" class="sec" data-p="humHistInf" data-d="10">+ 5</button></div>
         </div>
         <div class="ctl">
           <div class="ctl-top"><span>Histéresis superior (deshumidificador)</span><b>+ <output id="o_humHistSup"></output> %</b></div>
-          <input type="range" name="humHistSup" min="0.5" max="10" step="0.5" data-fmt="1" hidden>
-          <div class="paso"><button type="button" class="sec" data-p="humHistSup" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="humHistSup" data-d="1">+ 0,5</button></div>
+          <input type="range" name="humHistSup" min="0.5" max="40" step="0.5" data-fmt="1" hidden>
+          <div class="paso"><button type="button" class="sec" data-p="humHistSup" data-d="-10">− 5</button><button type="button" class="sec" data-p="humHistSup" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="humHistSup" data-d="1">+ 0,5</button><button type="button" class="sec" data-p="humHistSup" data-d="10">+ 5</button></div>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span>Esperar antes de prender el humidificador</span><b><output id="o_humEsperaS"></output> s</b></div>
+          <input type="range" name="humEsperaS" min="0" max="300" step="5" data-fmt="0">
+          <p class="ayuda">Prende solo si la humedad sigue por debajo del límite todo este tiempo. 0 = enseguida.</p>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span>Esperar antes de prender el deshumidificador</span><b><output id="o_deshEsperaS"></output> s</b></div>
+          <input type="range" name="deshEsperaS" min="0" max="300" step="5" data-fmt="0">
+          <p class="ayuda">Prende solo si la humedad sigue por encima del límite todo este tiempo. 0 = enseguida.</p>
         </div>
         <p class="ayuda" id="ayudaH"></p>
       </div>
@@ -783,12 +793,12 @@ details.test{border-radius:12px}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.25 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.26 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
 const PERIODOS = [1, 2, 3, 4, 6, 8, 12, 24];
-const CAMPOS_F  = ['humSP','humHistInf','humHistSup','tempSP','tempHistSup','tempHistInf','tempBanda','minOnS','minOnTempS','minOffS','manualMin'];
+const CAMPOS_F  = ['humSP','humHistInf','humHistSup','humEsperaS','deshEsperaS','tempSP','tempHistSup','tempHistInf','tempBanda','minOnS','minOnTempS','minOffS','manualMin'];
 const COL_T = '#f2a83b', COL_H = '#5fb3f0';
 let UMB = null;   // umbrales vigentes { t: [inferior, objetivo, superior], h: [...] }, los carga pintar()
 let verTip = true;   // ventana flotante con los valores del gráfico
@@ -913,7 +923,7 @@ function regla(id, val, min, max, lo, hi, sp) {
 
 function ayuda() {
   const v = n => +f.elements[n].value;
-  txt('#ayudaH', `Humidifica por debajo de ${num(v('humSP') - v('humHistInf'), 1)} % y deshumidifica por encima de ${num(v('humSP') + v('humHistSup'), 1)} %. Ambos se detienen en ${num(v('humSP'), 1)} %.`);
+  txt('#ayudaH', `Humidifica por debajo de ${num(v('humSP') - v('humHistInf'), 1)} % y deshumidifica por encima de ${num(v('humSP') + v('humHistSup'), 1)} %. Ambos se detienen en ${num(v('humSP'), 1)} %. Para prender, la humedad tiene que seguir pasada del límite ${v('humEsperaS') ? v('humEsperaS') + ' s (humidificador)' : '0 s: el humidificador prende enseguida'} y ${v('deshEsperaS') ? v('deshEsperaS') + ' s (deshumidificador)' : '0 s: el deshumidificador prende enseguida'}.`);
   txt('#ayudaT', `Enfría por encima de ${num(v('tempSP') + v('tempHistSup'), 1)} °C y se detiene en ${num(v('tempSP') - v('tempHistInf'), 1)} °C.` + (v('tempHistInf') >= v('tempBanda') ? ' Ojo: ese punto cae dentro de la zona de alarma.' : ''));
 
   const cicloHum = v('minOnS') + v('minOffS'), cicloFrio = v('minOnTempS') + Math.max(v('minOffS'), 180);
@@ -1452,7 +1462,8 @@ $('#zoomTabs').addEventListener('click', ev => {
 document.addEventListener('click', ev => {
   const b = ev.target.closest('button[data-p]'); if (!b) return;
   const el = b.form.elements[b.dataset.p];
-  if (b.dataset.d === '1') el.stepUp(); else el.stepDown();
+  const n = Math.abs(+b.dataset.d);
+  if (+b.dataset.d > 0) el.stepUp(n); else el.stepDown(n);
   el.dispatchEvent(new Event('input', { bubbles: true }));
 });
 

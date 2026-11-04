@@ -19,6 +19,8 @@ struct Config {
   float    tempHistInf;     // histéresis inferior de temperatura (°C): el frío apaga en objetivo - esto (0 = apaga en el objetivo)
   float    tempHistSup;     // histéresis superior de temperatura (°C): el frío prende por encima de objetivo + esto
   float    tempBanda;       // ± °C tolerados antes de mostrar alarma
+  uint16_t humEsperaS;      // segundos que la humedad debe estar bajo el límite antes de prender el humidificador (0 = enseguida)
+  uint16_t deshEsperaS;     // ídem sobre el límite antes de prender el deshumidificador
   uint16_t minOnS;          // segundos mínimos encendido del humidificador y el deshumidificador
   uint16_t minOnTempS;      // segundos mínimos encendido de la refrigeración
   uint16_t minOffS;         // segundos mínimos apagado (los tres relés de clima; solo se cambia desde la web)

@@ -48,7 +48,7 @@ add = S.append
 # ---------------------------------------------------------------- portada / uso
 add(f"""
 <h1>Cámara de curado — Menú del LCD</h1>
-<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.25 OTA · generado desde <code>menu.cpp</code></p>
+<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.26 OTA · generado desde <code>menu.cpp</code></p>
 
 <h2>Cómo se maneja</h2>
 <table class="ctl">
@@ -84,7 +84,7 @@ add("""
 <pre class="arbol">
 MENU
 ├── Temperatura  &gt;      Objetivo · Histeresis · Alarma +/- · Min encend. · Forzar frio
-├── Humedad      &gt;      Objetivo · Histeresis · Min encend. · Forzar hum. · Forzar desh
+├── Humedad      &gt;      Objetivo · Histeresis · Espera hum./desh · Min encend. · Forzar hum. · Forzar desh
 ├── Ventilador   &gt;      Programa · Cada · Duracion
 ├── AUX1                 ON / OFF          (el nombre se cambia en la web)
 ├── AUX2                 ON / OFF
@@ -144,14 +144,16 @@ add(f"""
 """)
 
 # ---------------------------------------------------------------- humedad
-HUM = [("Objetivo", "75.0%"), ("Hist. sup.", "3.0%"), ("Hist. inf.", "3.0%"), ("Min encend.", "60s"), ("Forzar hum.", "Auto"), ("Forzar desh", "Auto"), ("Volver", "")]
+HUM = [("Objetivo", "75.0%"), ("Hist. sup.", "3.0%"), ("Hist. inf.", "3.0%"), ("Espera hum.", "60s"), ("Espera desh", "60s"), ("Min encend.", "60s"), ("Forzar hum.", "Auto"), ("Forzar desh", "Auto"), ("Volver", "")]
 add(f"""
 <h2 class="nueva">HUMEDAD</h2>
-<div class="pantallas">{lista("HUMEDAD", HUM, 0)}{lista("HUMEDAD", HUM, 3)}</div>
+<div class="pantallas">{lista("HUMEDAD", HUM, 0)}{lista("HUMEDAD", HUM, 3)}{lista("HUMEDAD", HUM, 5)}</div>
 {tabla([
  ("Objetivo", "Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis inferior. Deshumidificador: prende si HR &gt; objetivo + histéresis superior. Los dos apagan al llegar al objetivo.", "40,0 a 100,0 %, de a 0,5"),
- ("Hist. sup.", "Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.", "0,5 a 10,0 %, de a 0,5"),
- ("Hist. inf.", "Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.", "0,5 a 10,0 %, de a 0,5"),
+ ("Hist. sup.", "Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.", "0,5 a 40,0 %, de a 0,5"),
+ ("Hist. inf.", "Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.", "0,5 a 40,0 %, de a 0,5"),
+ ("Espera hum.", "Segundos que la humedad debe seguir bajo el límite antes de prender el humidificador. Filtra caídas de segundos (por ejemplo al arrancar el frío). 0 = enseguida.", "0 a 300 s, de a 5"),
+ ("Espera desh", "Lo mismo para el deshumidificador: la humedad debe seguir sobre el límite todo ese tiempo. 0 = enseguida.", "0 a 300 s, de a 5"),
  ("Min encend.", "Tiempo mínimo encendidos el humidificador y el deshumidificador.", "0 a 600 s, de a 10"),
  ("Forzar hum.", "Fuerza el humidificador a mano. Prender uno apaga el otro (nunca los dos juntos).", "Auto · ON · OFF"),
  ("Forzar desh", "Fuerza el deshumidificador a mano.", "Auto · ON · OFF"),
@@ -258,7 +260,7 @@ add(f"""
 <li>Mientras dura, el control automático, el ventilador y los forzados quedan suspendidos. Un click (o mantener) lo detiene.</li>
 <li>Al terminar: <code>Test terminado / Todo en automatico</code>; AUX1 y AUX2 vuelven a como estaban.</li>
 </ul>
-<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.25 OTA")}</div>
+<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.26 OTA")}</div>
 """)
 
 # ---------------------------------------------------------------- editar / confirmar

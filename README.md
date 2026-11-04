@@ -137,6 +137,7 @@ conector USB. Y no inviertas VCC y GND del HX711: se calienta en segundos y se p
 - **Web**: abrí `http://camara-curado.local` o la IP que muestra el menú del equipo (*Diagnóstico > Red e IP*). Pestañas:
   **Secadero** (estado y botones), **Ajustes**, **Balanza** y **Diario de secado**. El botón rojo **APAGAR TODO** está debajo de la temperatura y la humedad, y se ve en todas las pestañas.
 - **Menú del equipo**: apretá la perilla en la pantalla normal. Todo el menú está en [`docs/Menu_LCD.pdf`](docs/Menu_LCD.pdf).
+- **Espera de confirmación**: el humidificador y el deshumidificador solo prenden si la humedad sigue pasada del límite durante un tiempo ajustable (0 a 300 s), así una caída o subida de segundos (por ejemplo al arrancar el frío) no los dispara.
 - **Histéresis**: la de humedad y la de temperatura tienen un límite superior y uno inferior, independientes (en la web y en el menú). Humedad: el humidificador prende por debajo del objetivo − inferior y el deshumidificador por encima del objetivo + superior. Temperatura: el frío prende por encima del objetivo + superior y apaga en el objetivo − inferior (con 0 apaga en el objetivo).
 - **Historial**: el gráfico muestra 1 hora, 6 horas, 12 horas, 1 día, 1 semana, 1 mes o 3 meses. En *Ajustes* se puede borrar solo el historial de 1 mes o de 3 meses (para empezar un secado nuevo) sin tocar lo demás.
 - **Calibración del sensor**: hay un asistente (con sal) en el menú y en la web.
