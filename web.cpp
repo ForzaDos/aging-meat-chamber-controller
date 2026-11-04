@@ -230,7 +230,8 @@ static void enviarEstado(AsyncWebServerRequest* r) {
 
   d["activo"]          = cfg.activo;
   d["parada"]          = controlParadaActiva();
-  d["humSP"]           = cfg.humSP;
+  d["perfil"]          = controlPerfilActivo();   // 0 = los ajustes no coinciden con ningún perfil
+  d["humSP"]          = cfg.humSP;
   d["humHistSup"]      = cfg.humHistSup;
   d["humHistInf"]      = cfg.humHistInf;
   d["humHist"]         = cfg.humHistSup;       // nombre anterior (lo usa el hub): la superior
@@ -241,6 +242,8 @@ static void enviarEstado(AsyncWebServerRequest* r) {
   d["tempBanda"]       = cfg.tempBanda;
   d["humEsperaS"]      = cfg.humEsperaS;
   d["deshEsperaS"]     = cfg.deshEsperaS;
+  d["humOff"]          = cfg.humOff;
+  d["deshOff"]         = cfg.deshOff;
   d["minOnS"]          = cfg.minOnS;
   d["minOnTempS"]      = cfg.minOnTempS;
   d["minOffS"]         = cfg.minOffS;
@@ -289,6 +292,8 @@ static void guardarConfig(AsyncWebServerRequest* r) {
   };
   leerEntero("humEsperaS",      0, ESPERA_MAX_S, cfg.humEsperaS);
   leerEntero("deshEsperaS",     0, ESPERA_MAX_S, cfg.deshEsperaS);
+  if (tiene("humOff"))  cfg.humOff  = (texto("humOff")  == "1");
+  if (tiene("deshOff")) cfg.deshOff = (texto("deshOff") == "1");
   leerEntero("minOnS",          0, 600, cfg.minOnS);
   leerEntero("minOnTempS",      0, 600, cfg.minOnTempS);
   leerEntero("minOffS",         0, 600, cfg.minOffS);
@@ -313,8 +318,66 @@ static void guardarConfig(AsyncWebServerRequest* r) {
   r->send(200, "application/json", "{\"ok\":true}");
 }
 
+// Perfiles de setpoints.
+//   GET  /api/perfiles
+//   POST /api/perfiles  accion=guardar|cargar|renombrar|editar  n=1..4  [nombre=...]  (editar: los mismos campos que /api/config; NO cambia la cámara)
+static void enviarPerfiles(AsyncWebServerRequest* r) {
+  JsonDocument d;
+  ControlCandado c;
+  d["activo"] = controlPerfilActivo();
+  JsonArray a = d["perfiles"].to<JsonArray>();
+  for (uint8_t i = 0; i < PERFILES_N; i++) {
+    Perfil p;
+    controlPerfilLeer(i, p);
+    JsonObject o = a.add<JsonObject>();
+    o["n"] = i + 1;
+    o["nombre"] = p.nombre;
+    o["lleno"] = p.lleno;
+    if (!p.lleno) continue;
+    o["humSP"] = p.humSP; o["humHistInf"] = p.humHistInf; o["humHistSup"] = p.humHistSup;
+    o["tempSP"] = p.tempSP; o["tempHistInf"] = p.tempHistInf; o["tempHistSup"] = p.tempHistSup;
+    o["humEsperaS"] = p.humEsperaS; o["deshEsperaS"] = p.deshEsperaS;
+    o["tempBanda"] = p.tempBanda;
+    o["humOff"] = p.v2 ? p.humOff : false; o["deshOff"] = p.v2 ? p.deshOff : false;
+    o["ventActivo"] = p.ventActivo; o["ventPeriodoH"] = p.ventPeriodoH; o["ventDuracionMin"] = p.ventDuracionMin; o["ventAnclaMin"] = p.ventAnclaMin;
+  }
+  enviarJson(r, d);
+}
+static void ordenPerfil(AsyncWebServerRequest* r) {
+  const String a = r->hasParam("accion", true) ? r->getParam("accion", true)->value() : "";
+  const int n = r->hasParam("n", true) ? r->getParam("n", true)->value().toInt() : 0;
+  if (n < 1 || n > PERFILES_N) { r->send(400, "application/json", "{\"ok\":false}"); return; }
+  ControlCandado c;
+  bool ok = false;
+  if (a == "guardar") ok = controlPerfilGuardar(n - 1);
+  else if (a == "cargar") {
+    ok = controlPerfilCargar(n - 1);
+    if (!ok) { r->send(409, "application/json", "{\"ok\":false,\"motivo\":\"vacio\"}"); return; }
+  }
+  else if (a == "editar") {
+    // Edita el perfil sin tocar la configuración de la cámara. Parte de lo que ya tiene el perfil (o de los ajustes actuales
+    // si está vacío) y pisa solo lo que venga en el POST; controlPerfilEditar() aplica los límites.
+    Perfil p;
+    if (!controlPerfilLeer(n - 1, p)) controlPerfilActual(p);
+    auto num = [&](const char* k, float& dst) { if (r->hasParam(k, true)) { const float v = r->getParam(k, true)->value().toFloat(); if (isfinite(v)) dst = v; } };
+    auto ent = [&](const char* k, uint16_t& dst) { float v = dst; num(k, v); dst = v < 0 ? 0 : v > 65535 ? 65535 : (uint16_t)v; };
+    num("humSP", p.humSP); num("humHistInf", p.humHistInf); num("humHistSup", p.humHistSup);
+    num("tempSP", p.tempSP); num("tempHistInf", p.tempHistInf); num("tempHistSup", p.tempHistSup); num("tempBanda", p.tempBanda);
+    ent("humEsperaS", p.humEsperaS); ent("deshEsperaS", p.deshEsperaS);
+    ent("ventDuracionMin", p.ventDuracionMin); ent("ventAnclaMin", p.ventAnclaMin);
+    if (r->hasParam("ventPeriodoH", true)) p.ventPeriodoH = controlPeriodoValido(r->getParam("ventPeriodoH", true)->value().toInt());
+    if (r->hasParam("ventActivo", true)) p.ventActivo = (r->getParam("ventActivo", true)->value() == "1");
+    if (r->hasParam("humOff", true))  p.humOff  = (r->getParam("humOff", true)->value()  == "1");
+    if (r->hasParam("deshOff", true)) p.deshOff = (r->getParam("deshOff", true)->value() == "1");
+    ok = controlPerfilEditar(n - 1, p);
+  }
+  else if (a == "renombrar" && r->hasParam("nombre", true)) ok = controlPerfilRenombrar(n - 1, r->getParam("nombre", true)->value().c_str());
+  else { r->send(400, "application/json", "{\"ok\":false}"); return; }
+  r->send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"ok\":false}");
+}
+
 // Relés manuales.
-//   cual=luz|otros            estado=1|0   (luz = AUX1, otros = AUX2)
+//   cual=luz|otros           estado=1|0   (luz = AUX1, otros = AUX2)
 //   cual=hum|desh|frio        modo=auto|on|off     (forzado temporal, vuelve solo a automático)
 // Si el encendido todavía no se permite (tiempo mínimo apagado) responde 409 con "espera" en segundos.
 static void cambiarManual(AsyncWebServerRequest* r) {
@@ -408,6 +471,7 @@ static void enviarDiag(AsyncWebServerRequest* r) {
   d["uptime"]          = segEncendido();
   d["reinicio"]        = motivoReinicio();
   d["ip"]              = WiFi.localIP().toString();
+  d["mac"]             = WiFi.macAddress();   // la propia del ESP32 (con un repetidor el router ve otra): el hub de domótica la usa para reencontrar la cámara si cambia de IP
   d["sinClave"]        = (bool)WEB_SIN_CLAVE;
   d["volcado"]         = (esp_core_dump_image_check() == ESP_OK);   // hay un volcado del último cuelgue en la flash (GET /api/coredump)
   d["particion"]       = esp_ota_get_running_partition()->label;   // app0 / app1
@@ -865,6 +929,7 @@ static void enviarPagina(AsyncWebServerRequest* r, const uint8_t* gz, size_t n) 
 // GET  /api/wifi        -> red guardada, conexión, IP, señal y estado de la prueba (0 ninguna, 1 probando, 2 ok, 3 falló)
 // GET  /api/wifi/scan   -> ?nuevo=1 pide una búsqueda nueva; responde {"estado":"buscando"} o {"estado":"listo","redes":[...]}
 // POST /api/wifi        -> ssid=, clave=  prueba la red y, si conecta, la guarda
+// GET /api/wifi suma bssid (punto de acceso actual) y fijo (el fijado); /api/wifi/scan suma aps (los de la red guardada)
 static void enviarWifi(AsyncWebServerRequest* r) {
   JsonDocument d;
   const bool con = (WiFi.status() == WL_CONNECTED);
@@ -873,6 +938,8 @@ static void enviarWifi(AsyncWebServerRequest* r) {
   d["ip"]        = con ? WiFi.localIP().toString() : String("");
   d["rssi"]      = con ? WiFi.RSSI() : 0;
   d["prueba"]    = wifiEstadoPrueba();
+  d["bssid"]     = wifiBssidActual();   // punto de acceso al que está conectada
+  d["fijo"]      = wifiBssidFijo();     // el fijado ("" = cualquiera)
   enviarJson(r, d);
 }
 
@@ -897,8 +964,23 @@ static void escanearWifi(AsyncWebServerRequest* r) {
     d["estado"] = "listo";
     JsonArray a = d["redes"].to<JsonArray>();
     for (auto& x : v) { JsonObject o = a.add<JsonObject>(); o["s"] = x.s; o["r"] = x.r; o["a"] = x.a; }
+    // Todos los puntos de acceso de la red guardada (router, repetidor...), cada uno con su dirección, para poder fijar uno.
+    JsonArray aps = d["aps"].to<JsonArray>();
+    const String guardada = wifiRedGuardada();
+    for (int i = 0; i < n && i < 40; i++) {
+      if (WiFi.SSID(i) != guardada) continue;
+      JsonObject o = aps.add<JsonObject>();
+      o["b"] = WiFi.BSSIDstr(i); o["r"] = WiFi.RSSI(i); o["c"] = WiFi.channel(i);
+    }
   }
   enviarJson(r, d);
+}
+
+// POST /api/wifi/fijar  bssid=AA:BB:CC:DD:EE:FF  (fija ese punto de acceso)  |  accion=quitar (cualquiera)
+static void fijarWifi(AsyncWebServerRequest* r) {
+  if (r->hasParam("accion", true) && r->getParam("accion", true)->value() == "quitar") { wifiQuitarFijo(); r->send(200, "application/json", "{\"ok\":true}"); return; }
+  if (r->hasParam("bssid", true) && wifiFijarBssid(r->getParam("bssid", true)->value().c_str())) { r->send(200, "application/json", "{\"ok\":true}"); return; }
+  r->send(400, "application/json", "{\"ok\":false}");
 }
 
 static void guardarWifi(AsyncWebServerRequest* r) {
@@ -935,12 +1017,15 @@ void webInit() {
   server.on(RUTA("/api/wifi"),          HTTP_GET,  enviarWifi);
   server.on(RUTA("/api/wifi/scan"),     HTTP_GET,  escanearWifi);
   server.on(RUTA("/api/wifi"),          HTTP_POST, guardarWifi);
+  server.on(RUTA("/api/wifi/fijar"),    HTTP_POST, fijarWifi);
   server.on(RUTA("/api/borrar"),        HTTP_POST, borrarDatos);
   server.on(RUTA("/api/borrar/bitacora"), HTTP_POST, borrarBitacoraTodo);
   server.on(RUTA("/api/borrar/registro"), HTTP_POST, borrarRegistro);
   server.on(RUTA("/api/borrar/historial"), HTTP_POST, borrarHistorialNivel);
   server.on(RUTA("/api/estado"),    HTTP_GET,  enviarEstado);
   server.on(RUTA("/api/config"),    HTTP_POST, guardarConfig);
+  server.on(RUTA("/api/perfiles"),  HTTP_GET,  enviarPerfiles);
+  server.on(RUTA("/api/perfiles"),  HTTP_POST, ordenPerfil);
   server.on(RUTA("/api/manual"),    HTTP_POST, cambiarManual);
   server.on(RUTA("/api/eventos"),   HTTP_GET,  enviarEventos);
   server.on(RUTA("/api/historial"), HTTP_GET,  enviarHistorial);

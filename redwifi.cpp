@@ -26,10 +26,21 @@ static bool     busEnCurso = false, busPausoSta = false;
 static uint32_t busInicio = 0;
 static uint8_t  busIntentos = 0;
 
+// Punto de acceso fijado (BSSID). Si un repetidor comparte el nombre de la red, el ESP32 se conecta al primero que encuentra, no al
+// mejor, y puede cambiar en cada reinicio. Fijado, intenta primero ese y, si en 20 s no lo logra, vale cualquiera: nunca se queda
+// sin red por esto. Mientras esté en otro, cada 30 min vuelve a probar el fijado.
+static uint8_t  bssidFijo[6];
+static bool     tieneFijo = false;
+static uint32_t intentoFijo = 0;         // millis() del intento con el punto de acceso fijado (0 = no hay uno en curso)
+static uint32_t ultRepin = 0;
+static volatile uint8_t pendFijoAccion = 0;   // pedido de la web: 1 = fijar pendFijo, 2 = soltar (lo aplica wifiLoop)
+static uint8_t  pendFijo[6];
+
 static void cargar() {
   pw.begin("redwifi", false);
   String s = pw.getString("ssid", "");
   String c = pw.getString("clave", "");
+  tieneFijo = (pw.getBytes("bssid", bssidFijo, 6) == 6);
   pw.end();
   if (s.length() == 0) { s = WIFI_SSID; c = WIFI_PASS; }
   snprintf(ssidG, sizeof(ssidG), "%s", s.c_str());
@@ -37,12 +48,25 @@ static void cargar() {
 }
 
 static void guardar(const char* s, const char* c) {
+  const bool otraRed = (strcmp(ssidG, s) != 0);
   pw.begin("redwifi", false);
+  if (otraRed) { pw.remove("bssid"); tieneFijo = false; }   // el punto de acceso fijado era de la red anterior
   pw.putString("ssid", s);
   pw.putString("clave", c);
   pw.end();
   snprintf(ssidG, sizeof(ssidG), "%s", s);
   snprintf(claveG, sizeof(claveG), "%s", c);
+}
+
+// Arranca una conexión a la red guardada: primero al punto de acceso fijado (si hay), si no a cualquiera.
+static void conectar() {
+  if (tieneFijo) {
+    WiFi.begin(ssidG, claveG, 0, bssidFijo);
+    intentoFijo = millis() | 1;
+  } else {
+    WiFi.begin(ssidG, claveG);
+    intentoFijo = 0;
+  }
 }
 
 static void levantarAp() {
@@ -68,7 +92,7 @@ void wifiInit(bool forzarConfig) {
   WiFi.setHostname(HOSTNAME);   // antes de WiFi.mode(): si no, el router muestra "esp32-xxxxxx"
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
-  WiFi.begin(ssidG, claveG);
+  conectar();
 
   // Espera acotada: el control funciona aunque no haya Wi-Fi.
   const uint32_t t0 = millis();
@@ -117,10 +141,30 @@ static void busquedaLoop(uint32_t ahora) {
   if (busPausoSta && !busEnCurso && !busPedida) {  // retoma la conexión con la red guardada
     busPausoSta = false;
     WiFi.setAutoReconnect(true);
-    if (prueba != WF_PROBANDO && !pedido && WiFi.status() != WL_CONNECTED) WiFi.begin(ssidG, claveG);
+    if (prueba != WF_PROBANDO && !pedido && WiFi.status() != WL_CONNECTED) conectar();
   }
 }
 String wifiRedGuardada() { return String(ssidG); }
+
+static String macTexto(const uint8_t* b) {
+  char s[18];
+  snprintf(s, sizeof(s), "%02X:%02X:%02X:%02X:%02X:%02X", b[0], b[1], b[2], b[3], b[4], b[5]);
+  return String(s);
+}
+String wifiBssidActual() { return WiFi.status() == WL_CONNECTED ? WiFi.BSSIDstr() : String(""); }
+String wifiBssidFijo() { return tieneFijo ? macTexto(bssidFijo) : String(""); }
+bool wifiFijarBssid(const char* texto) {
+  unsigned v[6];
+  if (!texto || strlen(texto) != 17) return false;
+  if (sscanf(texto, "%2x:%2x:%2x:%2x:%2x:%2x", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) != 6) return false;
+  unsigned o = 0, y = 0xFF;
+  for (int i = 0; i < 6; i++) { o |= v[i]; y &= v[i]; }
+  if (o == 0 || y == 0xFF) return false;          // 00:00:... y FF:FF:... no son un punto de acceso
+  for (int i = 0; i < 6; i++) pendFijo[i] = (uint8_t)v[i];
+  pendFijoAccion = 1;
+  return true;
+}
+void wifiQuitarFijo() { pendFijoAccion = 2; }
 
 bool wifiProbar(const char* ssid, const char* clave) {
   if (prueba == WF_PROBANDO || pedido) return false;
@@ -146,6 +190,21 @@ void wifiLoop() {
   if (apActivo) dns.processNextRequest();
   busquedaLoop(ahora);
 
+  // Pedido de la web de fijar o soltar el punto de acceso (se aplica acá, no en la tarea de la web).
+  if (pendFijoAccion && prueba != WF_PROBANDO && !busEnCurso && !busPedida && !busPausoSta) {
+    const uint8_t a = pendFijoAccion;
+    pendFijoAccion = 0;
+    pw.begin("redwifi", false);
+    if (a == 1) { memcpy(bssidFijo, pendFijo, 6); pw.putBytes("bssid", bssidFijo, 6); tieneFijo = true; }
+    else { pw.remove("bssid"); tieneFijo = false; }
+    pw.end();
+    Serial.println(a == 1 ? "Wi-Fi: punto de acceso fijado" : "Wi-Fi: punto de acceso suelto (cualquiera)");
+    WiFi.disconnect();
+    conectar();
+    ultRepin = ahora;
+    return;
+  }
+
   if (pedido) {
     pedido = false;
     pInicio = ahora;
@@ -165,7 +224,7 @@ void wifiLoop() {
     } else if (ahora - pInicio > 20000UL) {
       prueba = WF_FALLO;
       WiFi.disconnect();
-      WiFi.begin(ssidG, claveG);          // vuelve a la red anterior
+      conectar();                         // vuelve a la red anterior
       Serial.println("No se pudo conectar a la red nueva; se vuelve a la anterior");
     }
   }
@@ -175,6 +234,26 @@ void wifiLoop() {
   static bool sinSleep = false;
   if (con && !sinSleep) { WiFi.setSleep(false); sinSleep = true; }
   if (!con) sinSleep = false;
+
+  // Punto de acceso fijado: si conectó, listo; si en 20 s no, se conecta a cualquiera (y cada 30 min vuelve a probar el fijado).
+  if (intentoFijo) {
+    if (con) intentoFijo = 0;
+    else if (ahora - intentoFijo > 20000UL && prueba != WF_PROBANDO && !busPausoSta) {
+      intentoFijo = 0;
+      WiFi.disconnect();
+      WiFi.begin(ssidG, claveG);
+      ultRepin = ahora;
+      Serial.println("Wi-Fi: el punto de acceso fijado no responde; se conecta a cualquiera");
+    }
+  } else if (con && tieneFijo && prueba != WF_PROBANDO && !apActivo && !busEnCurso && !busPedida && ahora - ultRepin > 1800000UL) {
+    const uint8_t* b = WiFi.BSSID();
+    ultRepin = ahora;
+    if (b && memcmp(b, bssidFijo, 6) != 0) {
+      Serial.println("Wi-Fi: conectada a otro punto de acceso; se prueba de nuevo el fijado");
+      WiFi.disconnect();
+      conectar();
+    }
+  }
 
   if (con) {
     sinConexion = 0;

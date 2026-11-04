@@ -1,5 +1,5 @@
 // Compila la cámara de curado y la sube por Wi-Fi (OTA). Desde PROYECTOS_CLAUDE/camara_curado:
-//   node subir.mjs [ip | COMx]       (sin nada: 192.168.18.88)
+//   node subir.mjs [ip | COMx]       (sin nada: 192.168.18.103)
 // - Usa partitions.csv (dos lugares de 1,44 MB para el programa). La primera vez con esta partición,
 //   y si algún día el OTA no anda, se sube por USB:  node subir.mjs COM3
 // - La web no pide clave (WEB_SIN_CLAVE 1 en config.h). Si la activás (0), la clave sale de CAMARA_CLAVE o de WEB_CLAVE.
@@ -19,7 +19,7 @@ if (!CLI) throw new Error('No encuentro arduino-cli: pasalo en la variable ARDUI
 const FQBN = 'esp32:esp32:esp32:PartitionScheme=custom';
 const MAXIMO = 0x170000; // tamaño de cada lugar para el programa (partitions.csv)
 const BUILD = join(AQUI, 'build', 'ota');
-const destino = process.argv[2] || '192.168.18.88';
+const destino = process.argv[2] || '192.168.18.103';
 
 const cfg = readFileSync(join(AQUI, 'config.h'), 'utf8');
 const definido = (n) => cfg.match(new RegExp(`#define\\s+${n}\\s+"([^"]*)"`))?.[1];

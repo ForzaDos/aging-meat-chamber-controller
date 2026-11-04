@@ -277,6 +277,23 @@ input[type=range]::-moz-range-thumb{pointer-events:auto}
 .paso button{flex:1;min-height:46px;font-size:17px;touch-action:manipulation}
 .zoomb{grid-template-columns:1.7fr 1fr 1fr 1fr}
 .zoomb span{display:flex;align-items:center;justify-content:center;padding:0 6px;font-size:13px;font-weight:600;color:var(--tenue);background:var(--placa2);border-right:1px solid var(--borde)}
+.etapa{margin-top:2px;font-size:15px;font-weight:600;color:var(--laton)}
+.perfilesBox{margin-top:14px;padding-top:12px;border-top:1px solid var(--borde)}
+.perfBtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.perfBtns button{flex:1 1 120px;min-height:46px;font-size:16px;touch-action:manipulation}
+.perfBtns button.vacio{color:var(--tenue)}
+.perfBtns button.uso{border-color:var(--laton)}
+.perfBtns button.uso::after{content:"●";color:var(--laton);margin-left:6px;font-size:12px}
+.perfBtns button.sel{outline:2px solid var(--laton);outline-offset:1px}
+.perfDet{margin-top:10px;padding:12px;border:1px solid var(--borde);background:var(--placa2);border-radius:12px}
+.perfDet h4{margin:0 0 6px;font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.perfDet .enuso{font-size:12px;font-weight:700;color:var(--laton);border:1px solid var(--laton);border-radius:20px;padding:1px 8px}
+.perfDet p{margin:4px 0}
+.perfDet h5{margin:16px 0 4px;font-size:15px;color:var(--tenue)}
+.perfDet .paso{margin-top:10px}
+.perfDet .nombreFila{display:flex;gap:8px;margin-top:12px;align-items:stretch}
+.perfDet .nombreFila input{flex:1;min-width:0}
+.perfDet .nombreFila button{min-height:46px;touch-action:manipulation}
 .leyenda{margin:6px 0 12px;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;background:var(--placa2);font-size:14px;color:var(--tenue)}
 .leyenda b{color:var(--texto)}
 .leyenda p{margin:0 0 6px}
@@ -306,6 +323,7 @@ details.test{border-radius:12px}
   <div>
     <h1>Monitoreo del secadero</h1>
     <div class="hora" id="hora">--:--:--</div>
+    <div class="etapa" id="etapa" hidden></div>
   </div>
   <div class="red"><span class="led" id="conn"></span><span id="rssi">sin conexión</span></div>
 </header>
@@ -389,7 +407,7 @@ details.test{border-radius:12px}
     <button data-r="1m">1 mes</button>
     <button data-r="3m">3 meses</button>
   </div>
-  <div class="tabs zoomb" id="zoomTabs" title="Auto ajusta la escala vertical a los datos. ×2 y ×4 alejan el gráfico: el alto mínimo que muestra pasa a ser el doble o el cuádruple (útil cuando casi no hay variación).">
+  <div class="tabs zoomb" id="zoomTabs" title="Auto ajusta la escala vertical a los datos. ×2 y ×4 alejan el gráfico: en la humedad muestran el doble o el cuádruple de rango, y en la temperatura el alto mínimo pasa a ser el doble o el cuádruple (útil cuando casi no hay variación).">
     <span>Escala vertical</span>
     <button data-z="1" class="on">Auto</button>
     <button data-z="2">×2</button>
@@ -541,6 +559,9 @@ details.test{border-radius:12px}
     <div class="dos2">
       <div class="grupo">
         <h3>Humedad</h3>
+        <label class="chk" style="margin-top:0"><input type="checkbox" name="humUsar"> Usar el humidificador</label>
+        <label class="chk" style="margin-top:0"><input type="checkbox" name="deshUsar"> Usar el deshumidificador</label>
+        <p class="ayuda">Destildado, ese equipo no prende solo (queda apagado, sin respaldo del otro). El forzado manual y la protección de seguridad siguen funcionando.</p>
         <div class="ctl">
           <div class="ctl-top"><span>Humedad objetivo</span><b><output id="o_humSP"></output> %</b></div>
           <input type="range" name="humSP" min="40" max="100" step="0.5" data-fmt="1">
@@ -629,6 +650,13 @@ details.test{border-radius:12px}
     </div>
     <p class="nota">Los mismos valores se pueden cambiar desde el equipo con el encoder (click para entrar al menú). Manda el último cambio, venga de donde venga.</p>
   </form>
+  <div class="grupo perfilesBox" id="perfBox">
+    <h3>Perfiles de setpoints</h3>
+    <p class="ayuda">Un perfil guarda los ajustes de una etapa (estufado, secado…) para volver a ellos con un toque. Tocá uno para ver qué guarda, cargarlo, reemplazarlo con los ajustes actuales o cambiarle el nombre.</p>
+    <div class="perfBtns" id="perfBtns"></div>
+    <div class="perfDet" id="perfDet" hidden></div>
+    <p class="msg" id="msgPerfil"></p>
+  </div>
   </details>
 </section>
 
@@ -793,7 +821,7 @@ details.test{border-radius:12px}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.26 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.31 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
@@ -837,6 +865,9 @@ function aplicarTip() {
 
 // Estilo de los gráficos del hub: curva suave, relleno en degradé, rejilla punteada y tooltip oscuro.
 if (typeof Chart !== 'undefined') {
+  // Algunos celulares reinician el contexto del canvas (pierde la escala de pantalla) y el gráfico queda dibujado
+  // a un tercio, arriba a la izquierda: se repone la escala antes de cada dibujo.
+  Chart.register({ id: 'reponerEscala', beforeDraw(c) { const r = c.currentDevicePixelRatio || 1; c.ctx.setTransform(r, 0, 0, r, 0, 0); } });
   Chart.defaults.font.family = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
   Chart.defaults.color = '#8b95a3';
   Chart.defaults.plugins.tooltip.backgroundColor = '#20252d';
@@ -1033,8 +1064,12 @@ function pintar(e) {
   const av = $('#aviso');
   av.hidden = !m; av.className = c; av.textContent = m;
 
+  ultEst = e;
+  if ((e.perfil | 0) !== perfilAct) { perfilAct = e.perfil | 0; marcarPerfil(); }
   if (!sucio.f) {
     for (const n of CAMPOS_F) poner(f, n, e[n]);
+    f.elements.humUsar.checked = !e.humOff;
+    f.elements.deshUsar.checked = !e.deshOff;
   }
   if (!sucio.fv) {
     fv.elements.ventActivo.checked = !!e.ventActivo;
@@ -1110,6 +1145,238 @@ async function refrescar() {
   }
 }
 
+/* ---------- Perfiles de setpoints ---------- */
+let perfiles = [], perfilAct = 0, perfilSel = 0, perfilEdit = false, perfilesCargando = false, ultEst = null;
+function msgPerfil(t, err) {
+  const m = $('#msgPerfil');
+  m.className = 'msg' + (err ? ' err' : ''); m.textContent = t;
+  setTimeout(() => { m.textContent = ''; }, 5000);
+}
+function ventPerfil(p) {
+  const per = p.ventPeriodoH, dur = p.ventDuracionMin;
+  return !p.ventActivo || !dur ? 'sin programa'
+    : dur >= per * 60 ? 'prendido todo el tiempo'
+    : per === 24 ? `${dur} min por día` : `${dur} min cada ${per} h`;
+}
+function lineasPerfil(p) {
+  return [
+    `Temperatura: objetivo ${num(p.tempSP, 1)} °C. El frío prende a +${num(p.tempHistSup, 1)} y apaga a −${num(p.tempHistInf, 1)}.`,
+    `Humedad: objetivo ${num(p.humSP, 1)} %. ${p.humOff ? 'Humidificador APAGADO' : 'Humidifica a −' + num(p.humHistInf, 1)} y ${p.deshOff ? 'deshumidificador APAGADO' : 'deshumidifica a +' + num(p.humHistSup, 1)}.`,
+    `Espera de confirmación: humidificador ${p.humEsperaS} s, deshumidificador ${p.deshEsperaS} s.`,
+    `Ventilador: ${ventPerfil(p)}.`,
+  ];
+}
+function marcarPerfil() {
+  for (const b of document.querySelectorAll('#perfBtns button')) {
+    const n = +b.dataset.sel;
+    b.classList.toggle('uso', n === perfilAct);
+    b.classList.toggle('sel', n === perfilSel);
+  }
+  const en = document.querySelector('#perfDet .enuso');
+  if (en && !perfilEdit) en.hidden = perfilSel !== perfilAct;
+  const p = perfiles.find(x => x.n === perfilAct), et = $('#etapa');
+  et.hidden = !p;
+  if (p) et.textContent = 'Etapa: ' + p.nombre;
+}
+function elem(tag, txt, cls) {
+  const e = document.createElement(tag);
+  if (txt) e.textContent = txt;
+  if (cls) e.className = cls;
+  return e;
+}
+function botonPerfil(txt, a, off, cls) {
+  const b = elem('button', txt, cls || 'sec');
+  b.type = 'button'; b.dataset.a = a; b.disabled = !!off;
+  return b;
+}
+
+// Campos del editor (mismos rangos que los sliders de Setpoints y del Ventilador). Los nombres llevan "e_" para no chocar con el formulario real.
+const CAMPOS_ED = [
+  { h: 'Humedad' },
+  { usar: 'hum' },
+  { usar: 'desh' },
+  { n: 'humSP', l: 'Humedad objetivo', u: '%', min: 40, max: 100, st: 0.5, f: '1' },
+  { n: 'humHistInf', l: 'Histéresis inferior (humidificador)', pre: '− ', u: '%', min: 0.5, max: 40, st: 0.5, f: '1', pasos: [-10, -1, 1, 10] },
+  { n: 'humHistSup', l: 'Histéresis superior (deshumidificador)', pre: '+ ', u: '%', min: 0.5, max: 40, st: 0.5, f: '1', pasos: [-10, -1, 1, 10] },
+  { n: 'humEsperaS', l: 'Esperar antes de prender el humidificador', u: 's', min: 0, max: 300, st: 5, f: '0' },
+  { n: 'deshEsperaS', l: 'Esperar antes de prender el deshumidificador', u: 's', min: 0, max: 300, st: 5, f: '0' },
+  { h: 'Temperatura' },
+  { n: 'tempSP', l: 'Temperatura objetivo', u: '°C', min: 5, max: 30, st: 0.5, f: '1' },
+  { n: 'tempHistSup', l: 'Histéresis superior (prende el frío)', pre: '+ ', u: '°C', min: 0.5, max: 5, st: 0.5, f: '1', pasos: [-1, 1] },
+  { n: 'tempHistInf', l: 'Histéresis inferior (apaga el frío)', pre: '− ', u: '°C', min: 0, max: 5, st: 0.5, f: '1', pasos: [-1, 1] },
+  { n: 'tempBanda', l: 'Alarma si se aparta más de', pre: '± ', u: '°C', min: 1, max: 10, st: 0.5, f: '1' },
+  { h: 'Ventilador' },
+  { chk: true },
+  { n: 'ventPer', l: 'Repetir cada', u: 'h', min: 0, max: 7, st: 1, f: 'per', de: 'ventPeriodoH' },
+  { n: 'ventDuracionMin', l: 'Encender durante', u: 'min', min: 0, max: 180, st: 1, f: '0' },
+  { n: 'ventAnclaMin', l: 'Empezar a las', min: 0, max: 1425, st: 15, f: 'hora' },
+];
+function etiquetaPaso(d, st) {
+  const v = Math.abs(d) * st;
+  return (d < 0 ? '− ' : '+ ') + (v % 1 ? num(v, 1) : v);
+}
+function campoEd(c) {
+  const id = 'e_' + c.n;
+  let h = `<div class="ctl"><div class="ctl-top"><span>${c.l}</span><b>${c.pre || ''}<output id="o_${id}"></output>${c.u ? ' ' + c.u : ''}</b></div>`;
+  h += `<input type="range" name="${id}" min="${c.min}" max="${c.max}" step="${c.st}" data-fmt="${c.f}"${c.pasos ? ' hidden' : ''}>`;
+  if (c.pasos) h += '<div class="paso">' + c.pasos.map(d => `<button type="button" class="sec" data-p="${id}" data-d="${d}">${etiquetaPaso(d, c.st)}</button>`).join('') + '</div>';
+  return h + '</div>';
+}
+function pintarEditor(box, p) {
+  const f = document.createElement('form');
+  f.id = 'fpe'; f.autocomplete = 'off';
+  f.addEventListener('submit', ev => ev.preventDefault());
+  let h = '';
+  for (const c of CAMPOS_ED) {
+    h += c.h ? `<h5>${c.h}</h5>`
+      : c.chk ? '<label class="chk" style="margin-top:0"><input type="checkbox" name="e_ventActivo"> Usar el programa del ventilador</label>'
+      : c.usar ? `<label class="chk" style="margin-top:0"><input type="checkbox" name="e_${c.usar}Usar"> Usar el ${c.usar === 'hum' ? 'humidificador' : 'deshumidificador'}</label>`
+      : campoEd(c);
+  }
+  f.innerHTML = h;
+  f.addEventListener('input', ev => { if (ev.target.type === 'range') salida(ev.target); });
+  box.append(f);
+  const base = p.lleno ? p : (ultEst || {});          // un perfil vacío arranca con lo que tiene la cámara ahora
+  for (const c of CAMPOS_ED) {
+    if (!c.n) continue;
+    const el = f.elements['e_' + c.n];
+    const v = c.n === 'ventPer' ? Math.max(0, PERIODOS.indexOf(base.ventPeriodoH)) : base[c.n];
+    if (v !== undefined && v !== null) el.value = v;
+    salida(el);
+  }
+  f.elements.e_ventActivo.checked = !!base.ventActivo;
+  f.elements.e_humUsar.checked = !base.humOff;
+  f.elements.e_deshUsar.checked = !base.deshOff;
+}
+function datosEditor() {
+  const f = $('#fpe'), q = new URLSearchParams();
+  for (const c of CAMPOS_ED) {
+    if (!c.n) continue;
+    const v = f.elements['e_' + c.n].value;
+    if (c.n === 'ventPer') q.set('ventPeriodoH', PERIODOS[+v]); else q.set(c.n, v);
+  }
+  q.set('ventActivo', f.elements.e_ventActivo.checked ? '1' : '0');
+  q.set('humOff', f.elements.e_humUsar.checked ? '0' : '1');
+  q.set('deshOff', f.elements.e_deshUsar.checked ? '0' : '1');
+  return q;
+}
+
+function pintarDetalle() {
+  const box = $('#perfDet'), p = perfiles.find(x => x.n === perfilSel);
+  box.hidden = !p;
+  box.textContent = '';
+  if (!p) { perfilEdit = false; return; }
+  const h = elem('h4');
+  h.append(elem('span', p.nombre), elem('span', perfilEdit ? 'editando' : 'en uso ahora', 'enuso'));
+  box.append(h);
+  if (perfilEdit) {
+    h.lastChild.hidden = false;
+    box.append(elem('p', 'Lo que cambies acá se guarda solo en este perfil. La cámara no se toca hasta que lo cargues.' + (p.lleno ? '' : ' Este perfil estaba vacío: arranca con los ajustes actuales de la cámara.'), 'ayuda'));
+    pintarEditor(box, p);
+    const fila = elem('div', '', 'paso');
+    fila.append(botonPerfil('Guardar perfil', 'editarGuardar', false, 'guardar'), botonPerfil('Guardar y cargar', 'editarCargar'), botonPerfil('Cancelar', 'editarCancelar'));
+    box.append(fila);
+    box.append(elem('p', 'Guardar perfil solo lo deja anotado. Guardar y cargar además lo aplica ahora en la cámara.', 'ayuda'));
+    return;
+  }
+  if (!p.lleno) box.append(elem('p', 'Este perfil está vacío. Tocá "Editar" para programarlo sin mover la cámara, o dejá los setpoints como los querés, guardalos y usá "Guardar actual".', 'ayuda'));
+  else for (const t of lineasPerfil(p)) box.append(elem('p', t, 'ayuda'));
+  const fila = elem('div', '', 'paso');
+  fila.append(botonPerfil('Cargar', 'cargar', !p.lleno), botonPerfil('Editar', 'editar'), botonPerfil('Guardar actual', 'guardar'));
+  box.append(fila);
+  box.append(elem('p', 'Cargar aplica ahora estos ajustes en la cámara (objetivos, histéresis, esperas y ventilador). Editar los cambia solo en el perfil, sin tocar la cámara. Guardar actual reemplaza este perfil con lo que la cámara tiene en este momento. La calibración, los tiempos de protección, la pausa y la parada no se guardan ni se cambian.', 'ayuda'));
+  const nom = elem('div', '', 'nombreFila');
+  const inp = elem('input', '', 'confTxt');
+  inp.type = 'text'; inp.id = 'perfNom'; inp.maxLength = 12; inp.value = p.nombre; inp.autocomplete = 'off';
+  inp.setAttribute('aria-label', 'Nombre del perfil');
+  nom.append(inp, botonPerfil('Cambiar nombre', 'renombrar'));
+  box.append(nom);
+  marcarPerfil();
+}
+function pintarPerfiles() {
+  const cont = $('#perfBtns');
+  cont.textContent = '';
+  for (const p of perfiles) {
+    const b = elem('button', p.nombre, 'sec' + (p.lleno ? '' : ' vacio'));
+    b.type = 'button'; b.dataset.sel = p.n;
+    cont.append(b);
+  }
+  pintarDetalle();
+  marcarPerfil();
+}
+async function cargarPerfiles() {
+  if (perfilesCargando) return;
+  perfilesCargando = true;
+  try {
+    const r = await fetch('/api/perfiles', { cache: 'no-store' });
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    perfiles = d.perfiles; perfilAct = d.activo | 0;
+    pintarPerfiles();
+  } catch (_) {
+    setTimeout(() => { perfilesCargando = false; if (!perfiles.length) cargarPerfiles(); }, 10000);
+    return;
+  }
+  perfilesCargando = false;
+}
+async function postPerfil(q) {
+  const r = await fetch('/api/perfiles', { method: 'POST', headers: HX, body: q });
+  return r.ok;
+}
+$('#perfBox').addEventListener('input', ev => {
+  if (ev.target.id !== 'perfNom') return;
+  const l = limpiarNombre(ev.target.value);
+  if (l !== ev.target.value) ev.target.value = l;
+});
+$('#perfBox').addEventListener('click', async ev => {
+  const s = ev.target.closest('button[data-sel]');
+  if (s) {
+    const n = +s.dataset.sel;
+    perfilSel = perfilSel === n ? 0 : n;
+    perfilEdit = false;
+    pintarDetalle(); marcarPerfil();
+    return;
+  }
+  const b = ev.target.closest('button[data-a]');
+  if (!b) return;
+  const p = perfiles.find(x => x.n === perfilSel), a = b.dataset.a;
+  if (!p) return;
+  if (a === 'editar' || a === 'editarCancelar') { perfilEdit = a === 'editar'; pintarDetalle(); marcarPerfil(); return; }
+  const q = new URLSearchParams();
+  q.set('accion', a); q.set('n', p.n);
+  if (a === 'cargar' && !confirm(`¿Cargar "${p.nombre}"? Cambia ahora los objetivos, las histéresis y el programa del ventilador.`)) return;
+  if (a === 'guardar') {
+    if (sucio.f || sucio.fv) { msgPerfil('Primero guardá los cambios de Setpoints o del ventilador (o recargá la página para descartarlos).', true); return; }
+    if (p.lleno && !confirm(`¿Guardar los ajustes actuales en "${p.nombre}"? Reemplaza lo que tenía.`)) return;
+  }
+  if (a === 'renombrar') {
+    const nom = limpiarNombre($('#perfNom').value).trim();
+    if (!nom) { msgPerfil('Escribí un nombre (letras sin acentos ni ñ, números y - . / ( ) + #).', true); return; }
+    q.set('nombre', nom);
+  }
+  try {
+    if (a === 'editarGuardar' || a === 'editarCargar') {
+      if (a === 'editarCargar' && !confirm(`¿Guardar y cargar "${p.nombre}"? Cambia ahora los objetivos, las histéresis y el programa del ventilador de la cámara.`)) return;
+      const e = datosEditor();
+      e.set('accion', 'editar'); e.set('n', p.n);
+      if (!await postPerfil(e)) throw 0;
+      if (a === 'editarCargar') {
+        const c = new URLSearchParams(); c.set('accion', 'cargar'); c.set('n', p.n);
+        if (!await postPerfil(c)) throw 0;
+        sucio.f = false; sucio.fv = false;
+      }
+      perfilEdit = false;
+      msgPerfil(a === 'editarCargar' ? `Perfil "${p.nombre}" guardado y cargado` : `Perfil "${p.nombre}" guardado (la cámara no cambió)`);
+    } else {
+      if (!await postPerfil(q)) throw 0;
+      if (a === 'cargar') { sucio.f = false; sucio.fv = false; }
+      msgPerfil(a === 'cargar' ? `Perfil "${p.nombre}" cargado` : a === 'guardar' ? `Guardado en "${p.nombre}"` : 'Nombre cambiado');
+    }
+    await cargarPerfiles();
+    refrescar();
+  } catch (_) { msgPerfil('No se pudo. Revisá la conexión.', true); }
+});
+
 async function enviar(form, clave, params) {
   const msg = form.querySelector('.msg');
   try {
@@ -1135,6 +1402,8 @@ f.addEventListener('submit', ev => {
   ev.preventDefault();
   const p = new URLSearchParams();
   for (const n of CAMPOS_F) p.set(n, f.elements[n].value);
+  p.set('humOff', f.elements.humUsar.checked ? '0' : '1');
+  p.set('deshOff', f.elements.deshUsar.checked ? '0' : '1');
   enviar(f, 'f', p);
 });
 
@@ -1340,14 +1609,16 @@ function etiqueta(v) {
 // Escala vertical automática pero con un alto mínimo, centrada en los datos:
 // así las oscilaciones chicas se ven chicas y un desvío grande igual entra.
 // Los bordes se redondean a "paso" para que las marcas queden en números redondos.
-function escalaMin(a, altoMin, paso, lo, hi, extra, zoom) {
+function escalaMin(a, altoMin, paso, lo, hi, extra, zoom, proporcional) {
   const v = a.filter(x => x.y != null).map(x => x.y);
   if (!v.length) return { min: undefined, max: undefined };
   if (extra) v.push(...extra);   // los umbrales también tienen que entrar en el gráfico
   let min = Math.min(...v), max = Math.max(...v);
   const margen = (max - min) * 0.08;                     // un poco de aire arriba y abajo
   min -= margen; max += margen;
-  const alto = altoMin * (zoom || 1);                    // "alejar" (×2, ×4) sube el alto mínimo; un rango más grande no se toca
+  // "Alejar" (×2, ×4): en temperatura sube el alto mínimo (multiplicar todo el rango daría -11 a 51 °C). En humedad, que ya viene
+  // acotada a 0-100, multiplica el rango que se ve (con los umbrales ya supera el mínimo y si no, ×2 casi no se notaba).
+  const alto = (proporcional ? Math.max(altoMin, max - min) : altoMin) * (zoom || 1);
   if (max - min < alto) { const c = (min + max) / 2; min = c - alto / 2; max = c + alto / 2; }
   min = Math.floor(min / paso) * paso; max = Math.ceil(max / paso) * paso;
   if (lo != null && min < lo) { max = Math.min(hi ?? Infinity, max + (lo - min)); min = lo; }
@@ -1426,7 +1697,7 @@ async function cargarHist() {
   chart.options.scales.x.min = ini;
   chart.options.scales.x.max = fin;
   Object.assign(chart.options.scales.yT, escalaMin(T, ALTO_MIN_T, 0.5, undefined, undefined, UMB && UMB.t, zoomV));
-  Object.assign(chart.options.scales.yH, escalaMin(H, ALTO_MIN_H, 1, 0, 100, UMB && UMB.h, zoomV));
+  Object.assign(chart.options.scales.yH, escalaMin(H, ALTO_MIN_H, 1, 0, 100, UMB && UMB.h, zoomV, true));
   chart.update();
   dibujarActividad(d, paso, ini, fin);
 
@@ -1444,6 +1715,12 @@ $('#tabs').addEventListener('click', ev => {
   rango = b.dataset.r;
   document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
   cargarHist();
+});
+
+// Al volver a la página (celular que estuvo en segundo plano) se vuelven a dibujar los gráficos.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  for (const c of [chart, chartR]) if (c) { c.resize(); c.update('none'); }
 });
 
 function marcarZoom() {
@@ -1561,6 +1838,7 @@ $('#diag').addEventListener('toggle', async () => {
 });
 
 refrescar();
+cargarPerfiles();
 cargarHist();
 cargarEventos();
 /* ---------- Modo test de relés ---------- */

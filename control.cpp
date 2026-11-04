@@ -139,6 +139,8 @@ void controlInit() {
   cfg.tempBanda       = prefs.getFloat("tempBanda", DEF_TEMP_BANDA);
   cfg.humEsperaS      = prefs.getUShort("humEsp",   DEF_ESPERA_HUM_S);
   cfg.deshEsperaS     = prefs.getUShort("deshEsp",  DEF_ESPERA_HUM_S);
+  cfg.humOff          = prefs.getBool("humOff",     false);
+  cfg.deshOff         = prefs.getBool("deshOff",    false);
   cfg.minOnS          = prefs.getUShort("minOnS",   DEF_MIN_ON_S);
   cfg.minOnTempS      = prefs.getUShort("minOnT",   DEF_MIN_ON_S);
   cfg.minOffS         = prefs.getUShort("minOffS",  DEF_MIN_OFF_S);
@@ -190,6 +192,8 @@ void controlGuardarConfig() {
   prefs.putFloat("tempBanda", cfg.tempBanda);
   prefs.putUShort("humEsp",   cfg.humEsperaS);
   prefs.putUShort("deshEsp",  cfg.deshEsperaS);
+  prefs.putBool("humOff",     cfg.humOff);
+  prefs.putBool("deshOff",    cfg.deshOff);
   prefs.putUShort("minOnS",   cfg.minOnS);
   prefs.putUShort("minOnT",   cfg.minOnTempS);
   prefs.putUShort("minOffS",  cfg.minOffS);
@@ -203,6 +207,149 @@ void controlGuardarConfig() {
   prefs.putFloat("offH",      cfg.offH);
   prefs.putString("nomA1",    cfg.nomAux1);
   prefs.putString("nomA2",    cfg.nomAux2);
+}
+
+// ---------------------------------------------------------------------
+//  Perfiles de setpoints. Un blob por casillero ("p1".."p4") en el namespace "perfiles".
+// ---------------------------------------------------------------------
+static const char* const PERFIL_NOMBRE[PERFILES_N] = { "Estufado", "Secado 1", "Secado 2", "Otros" };
+
+// Mismas letras que los nombres de AUX, máximo 12. Los cuatro nombres se pueden cambiar; vacío = el de fábrica.
+static void limpiarNombrePerfil(char* dst, const char* src) {
+  uint8_t n = 0;
+  for (const char* p = src ? src : ""; *p && n < 12; p++) {
+    const char c = *p;
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || strchr(" -./()+#", c)) dst[n++] = c;
+  }
+  while (n && dst[n - 1] == ' ') n--;
+  dst[n] = 0;
+}
+
+static void perfilClave(uint8_t i, char* k) { k[0] = 'p'; k[1] = '1' + i; k[2] = 0; }
+
+bool controlPerfilLeer(uint8_t i, Perfil& p) {
+  memset(&p, 0, sizeof p);
+  if (i >= PERFILES_N) return false;
+  strcpy(p.nombre, PERFIL_NOMBRE[i]);
+  char k[3]; perfilClave(i, k);
+  Preferences pp;
+  if (!pp.begin("perfiles", true)) return false;
+  // Los campos de Perfil solo se pueden AGREGAR AL FINAL: un perfil guardado con una versión anterior (más corto) se lee igual,
+  // con lo que falta en cero.
+  Perfil g;
+  memset(&g, 0, sizeof g);
+  const size_t n = pp.getBytes(k, &g, sizeof g);
+  pp.end();
+  if (n == 0 || n > sizeof g) return false;
+  p = g;
+  if (!p.nombre[0]) strcpy(p.nombre, PERFIL_NOMBRE[i]);
+  p.nombre[12] = 0;
+  return p.lleno;
+}
+
+// Copia en RAM de los 4 casilleros: /api/estado pregunta por el perfil activo cada segundo y no debe leer la NVS cada vez.
+static Perfil perfilCache[PERFILES_N];
+static bool   perfilCacheOk = false;             // se invalida al escribir
+static bool perfilEscribir(uint8_t i, const Perfil& p) {
+  perfilCacheOk = false;
+  char k[3]; perfilClave(i, k);
+  Preferences pp;
+  if (!pp.begin("perfiles", false)) return false;
+  const bool ok = pp.putBytes(k, &p, sizeof p) == sizeof p;
+  pp.end();
+  return ok;
+}
+
+void controlPerfilActual(Perfil& p) {
+  p.lleno = true;                                // el nombre no se toca
+  p.humSP = cfg.humSP; p.humHistInf = cfg.humHistInf; p.humHistSup = cfg.humHistSup;
+  p.tempSP = cfg.tempSP; p.tempHistInf = cfg.tempHistInf; p.tempHistSup = cfg.tempHistSup; p.tempBanda = cfg.tempBanda;
+  p.humEsperaS = cfg.humEsperaS; p.deshEsperaS = cfg.deshEsperaS;
+  p.ventActivo = cfg.ventActivo; p.ventPeriodoH = cfg.ventPeriodoH;
+  p.ventDuracionMin = cfg.ventDuracionMin; p.ventAnclaMin = cfg.ventAnclaMin;
+  p.v2 = 1; p.humOff = cfg.humOff; p.deshOff = cfg.deshOff;
+}
+
+bool controlPerfilGuardar(uint8_t i) {
+  if (i >= PERFILES_N) return false;
+  Perfil p;
+  controlPerfilLeer(i, p);                       // conserva el nombre elegido
+  controlPerfilActual(p);
+  return perfilEscribir(i, p);
+}
+
+// Guarda valores editados a mano en el perfil SIN tocar la configuración de la cámara. Mismos rangos que al cargar.
+bool controlPerfilEditar(uint8_t i, const Perfil& nuevo) {
+  if (i >= PERFILES_N) return false;
+  Perfil p = nuevo, g;
+  controlPerfilLeer(i, g);
+  strcpy(p.nombre, g.nombre);                    // el nombre se cambia aparte
+  p.lleno = true;
+  p.v2 = 1;
+  p.humSP       = limitar(p.humSP,       HUM_SP_MIN,   HUM_SP_MAX,   DEF_HUM_SP);
+  p.humHistInf  = limitar(p.humHistInf,  HIST_HUM_MIN,  HIST_HUM_MAX,  DEF_HUM_HIST);
+  p.humHistSup  = limitar(p.humHistSup,  HIST_HUM_MIN,  HIST_HUM_MAX,  DEF_HUM_HIST);
+  p.tempSP      = limitar(p.tempSP,      TEMP_SP_MIN,  TEMP_SP_MAX,  DEF_TEMP_SP);
+  p.tempHistInf = limitar(p.tempHistInf, 0.0f,         HIST_TEMP_MAX, DEF_TEMP_HIST_INF);
+  p.tempHistSup = limitar(p.tempHistSup, HIST_TEMP_MIN, HIST_TEMP_MAX, DEF_TEMP_HIST);
+  p.tempBanda   = limitar(p.tempBanda,   1.0f, 10.0f, DEF_TEMP_BANDA);
+  if (p.humEsperaS  > ESPERA_MAX_S) p.humEsperaS  = ESPERA_MAX_S;
+  if (p.deshEsperaS > ESPERA_MAX_S) p.deshEsperaS = ESPERA_MAX_S;
+  p.ventPeriodoH    = controlPeriodoValido(p.ventPeriodoH);
+  if (p.ventDuracionMin > VENT_DURACION_MAX) p.ventDuracionMin = VENT_DURACION_MAX;
+  if (p.ventAnclaMin > 1439) p.ventAnclaMin = 0;
+  return perfilEscribir(i, p);
+}
+
+bool controlPerfilRenombrar(uint8_t i, const char* nombre) {
+  if (i >= PERFILES_N) return false;
+  Perfil p;
+  controlPerfilLeer(i, p);
+  limpiarNombrePerfil(p.nombre, nombre);
+  if (!p.nombre[0]) strcpy(p.nombre, PERFIL_NOMBRE[i]);
+  return perfilEscribir(i, p);
+}
+
+bool controlPerfilCargar(uint8_t i) {
+  Perfil p;
+  if (!controlPerfilLeer(i, p)) return false;
+  cfg.humSP       = limitar(p.humSP,       HUM_SP_MIN,   HUM_SP_MAX,   cfg.humSP);
+  cfg.humHistInf  = limitar(p.humHistInf,  HIST_HUM_MIN,  HIST_HUM_MAX,  cfg.humHistInf);
+  cfg.humHistSup  = limitar(p.humHistSup,  HIST_HUM_MIN,  HIST_HUM_MAX,  cfg.humHistSup);
+  cfg.tempSP      = limitar(p.tempSP,      TEMP_SP_MIN,  TEMP_SP_MAX,  cfg.tempSP);
+  cfg.tempHistInf = limitar(p.tempHistInf, 0.0f,         HIST_TEMP_MAX, cfg.tempHistInf);
+  cfg.tempHistSup = limitar(p.tempHistSup, HIST_TEMP_MIN, HIST_TEMP_MAX, cfg.tempHistSup);
+  cfg.tempBanda   = limitar(p.tempBanda,   1.0f, 10.0f, cfg.tempBanda);
+  cfg.humEsperaS  = p.humEsperaS  > ESPERA_MAX_S ? ESPERA_MAX_S : p.humEsperaS;
+  cfg.deshEsperaS = p.deshEsperaS > ESPERA_MAX_S ? ESPERA_MAX_S : p.deshEsperaS;
+  cfg.ventActivo      = p.ventActivo;
+  cfg.ventPeriodoH    = controlPeriodoValido(p.ventPeriodoH);
+  cfg.ventDuracionMin = p.ventDuracionMin > VENT_DURACION_MAX ? VENT_DURACION_MAX : p.ventDuracionMin;
+  cfg.ventAnclaMin    = p.ventAnclaMin > 1439 ? 0 : p.ventAnclaMin;
+  cfg.humOff  = p.v2 ? p.humOff  : false;      // un perfil anterior a la v1.0.31 deja los dos equipos encendidos
+  cfg.deshOff = p.v2 ? p.deshOff : false;
+  pideHumDesde = pideDeshDesde = 0;              // los objetivos cambiaron: la espera de confirmación empieza de cero
+  controlGuardarConfig();
+  return true;
+}
+
+uint8_t controlPerfilActivo() {
+  auto igual = [](float a, float b) { return fabsf(a - b) < 0.05f; };
+  if (!perfilCacheOk) {
+    for (uint8_t i = 0; i < PERFILES_N; i++) controlPerfilLeer(i, perfilCache[i]);
+    perfilCacheOk = true;
+  }
+  for (uint8_t i = 0; i < PERFILES_N; i++) {
+    const Perfil& p = perfilCache[i];
+    if (!p.lleno) continue;
+    if (igual(p.humSP, cfg.humSP) && igual(p.humHistInf, cfg.humHistInf) && igual(p.humHistSup, cfg.humHistSup) &&
+        igual(p.tempSP, cfg.tempSP) && igual(p.tempHistInf, cfg.tempHistInf) && igual(p.tempHistSup, cfg.tempHistSup) &&
+        igual(p.tempBanda, cfg.tempBanda) && p.humEsperaS == cfg.humEsperaS && p.deshEsperaS == cfg.deshEsperaS &&
+        p.ventActivo == cfg.ventActivo && p.ventPeriodoH == cfg.ventPeriodoH &&
+        (p.v2 ? p.humOff : false) == cfg.humOff && (p.v2 ? p.deshOff : false) == cfg.deshOff &&
+        p.ventDuracionMin == cfg.ventDuracionMin && p.ventAnclaMin == cfg.ventAnclaMin) return i + 1;
+  }
+  return 0;
 }
 
 void controlNombreAux(uint8_t cual, const char* nombre) {
@@ -396,8 +543,8 @@ void controlActualizar(float t, float h, bool ok) {
     // hasta el objetivo como siempre. Un forzado manual reinicia la cuenta.
     const bool bajaHum = hr < cfg.humSP - cfg.humHistInf;
     const bool altaHum = hr > cfg.humSP + cfg.humHistSup;
-    if (!bajaHum || !aHum)  pideHumDesde  = 0; else if (!pideHumDesde)  pideHumDesde  = ahora | 1;
-    if (!altaHum || !aDesh) pideDeshDesde = 0; else if (!pideDeshDesde) pideDeshDesde = ahora | 1;
+    if (!bajaHum || !aHum || cfg.humOff)    pideHumDesde  = 0; else if (!pideHumDesde)  pideHumDesde  = ahora | 1;
+    if (!altaHum || !aDesh || cfg.deshOff)  pideDeshDesde = 0; else if (!pideDeshDesde) pideDeshDesde = ahora | 1;
     const bool confHum  = pideHumDesde  && (ahora - pideHumDesde)  >= (uint32_t)cfg.humEsperaS  * 1000UL;
     const bool confDesh = pideDeshDesde && (ahora - pideDeshDesde) >= (uint32_t)cfg.deshEsperaS * 1000UL;
 
@@ -409,6 +556,8 @@ void controlActualizar(float t, float h, bool ok) {
 
     if (segHumNo)  quiereHum  = false;
     if (segDeshNo) quiereDesh = false;
+    if (cfg.humOff)  quiereHum  = false;   // apagado a pedido (perfil o ajustes): no prende solo; si estaba prendido, se apaga respetando el mínimo encendido
+    if (cfg.deshOff) quiereDesh = false;
 
     // Primero se apaga, después se enciende; nunca los dos a la vez.
     if (aHum  && !quiereHum)  aplicar(est.releHum,  PIN_RELE_HUM,  EV_HUM,  false, cambioHum,  false);

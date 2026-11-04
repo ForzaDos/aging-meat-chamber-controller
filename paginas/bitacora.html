@@ -293,6 +293,8 @@ const COLORES = ['#f2a83b', '#5fb3f0', '#e0b36a', '#7cc8ff', '#ffd66b', '#e7a0c8
 // Estilo de los gráficos del hub: curva suave, rejilla punteada y tooltip oscuro.
 if (typeof Chart !== 'undefined') {
   const D = Chart.defaults;
+  // Si el celular reinicia el contexto del canvas, el gráfico queda a un tercio de escala: se repone antes de cada dibujo.
+  Chart.register({ id: 'reponerEscala', beforeDraw(c) { const r = c.currentDevicePixelRatio || 1; c.ctx.setTransform(r, 0, 0, r, 0, 0); } });
   D.font.family = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif'; D.color = '#8b95a3';
   Object.assign(D.plugins.tooltip, { backgroundColor: '#20252d', borderColor: '#2a3039', borderWidth: 1, cornerRadius: 10, padding: 10, titleColor: '#e8ebef', bodyColor: '#e8ebef' });
   D.plugins.legend.labels.usePointStyle = true; D.plugins.legend.labels.pointStyle = 'circle';

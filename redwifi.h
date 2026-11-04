@@ -32,3 +32,9 @@ String   wifiRedGuardada();                  // nombre de la red guardada
 // y los retoma al terminar. Mientras wifiBuscando() es true, los resultados todavía no están.
 void     wifiPedirBusqueda();
 bool     wifiBuscando();
+// Punto de acceso fijado (BSSID, "AA:BB:CC:DD:EE:FF"): con un repetidor que comparte el nombre de la red, la placa se conecta al
+// primero que encuentra. Fijado, prueba primero ese y, si en 20 s no lo logra, usa cualquiera. Cambiar de red lo borra.
+String   wifiBssidActual();                  // el punto de acceso al que está conectada ("" si no hay conexión)
+String   wifiBssidFijo();                    // el fijado ("" si no hay)
+bool     wifiFijarBssid(const char* texto);  // false si el texto no es una dirección válida; lo aplica wifiLoop()
+void     wifiQuitarFijo();                   // vuelve a conectarse a cualquiera

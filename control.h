@@ -21,6 +21,8 @@ struct Config {
   float    tempBanda;       // ± °C tolerados antes de mostrar alarma
   uint16_t humEsperaS;      // segundos que la humedad debe estar bajo el límite antes de prender el humidificador (0 = enseguida)
   uint16_t deshEsperaS;     // ídem sobre el límite antes de prender el deshumidificador
+  bool     humOff;          // true = el humidificador NO prende solo (queda apagado; el forzado manual sigue andando)
+  bool     deshOff;         // ídem para el deshumidificador
   uint16_t minOnS;          // segundos mínimos encendido del humidificador y el deshumidificador
   uint16_t minOnTempS;      // segundos mínimos encendido de la refrigeración
   uint16_t minOffS;         // segundos mínimos apagado (los tres relés de clima; solo se cambia desde la web)
@@ -66,6 +68,29 @@ void    controlBloquear();
 void    controlLiberar();
 struct ControlCandado { ControlCandado() { controlBloquear(); } ~ControlCandado() { controlLiberar(); } };
 void    controlGuardarConfig();                          // persiste cfg en NVS
+
+// PERFILES DE SETPOINTS (v1.0.28): 4 casilleros (Estufado, Secado 1, Secado 2, Otros) con una foto de los ajustes de clima
+// y del programa del ventilador. NO guardan calibración, tiempos de protección, pausa ni parada. Van en NVS, namespace "perfiles".
+// Desde la web, llamar con ControlCandado.
+#define PERFILES_N 4
+struct Perfil {
+  bool     lleno;
+  char     nombre[13];      // los cuatro se pueden renombrar (de fábrica: Estufado, Secado 1, Secado 2, Otros)
+  float    humSP, humHistInf, humHistSup, tempSP, tempHistInf, tempHistSup, tempBanda;
+  uint16_t humEsperaS, deshEsperaS, ventDuracionMin, ventAnclaMin;
+  uint8_t  ventPeriodoH;
+  bool     ventActivo;
+  // Agregados en la v1.0.31. Un perfil guardado antes es más corto: se lee con esto en cero (todo encendido). Solo se agrega al final.
+  uint32_t v2;             // 1 = el perfil trae humOff / deshOff
+  bool     humOff, deshOff;
+};
+bool    controlPerfilLeer(uint8_t i, Perfil& p);         // i = 0..3; devuelve p.lleno (el nombre viene siempre)
+void    controlPerfilActual(Perfil& p);                  // copia a p los ajustes actuales de la cámara (no toca el nombre)
+bool    controlPerfilGuardar(uint8_t i);                 // guarda los ajustes actuales en el casillero
+bool    controlPerfilEditar(uint8_t i, const Perfil& p); // guarda valores editados (con límites); NO cambia la cámara
+bool    controlPerfilCargar(uint8_t i);                  // aplica y persiste; false si el casillero está vacío
+bool    controlPerfilRenombrar(uint8_t i, const char* nombre);   // vacío = nombre de fábrica
+uint8_t controlPerfilActivo();                           // 1..4 si los ajustes actuales coinciden con ese perfil, 0 si con ninguno
 void    controlActualizar(float t, float h, bool ok);    // una vez por lectura del sensor
 void    controlSetLuz(bool on);                          // relé 5 = AUX1 (antes "luz"), manual
 void    controlSetOtros(bool on);                        // relé 6 = AUX2 (antes "otros"), manual

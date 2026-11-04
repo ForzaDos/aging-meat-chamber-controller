@@ -9,7 +9,7 @@ en `plan.md`. Leer ambos antes de tocar `control.cpp` o `web.cpp`.
 - **Si editaste cualquier `.html` de `paginas/`** → primero `python paginas/generar.py`.
   Regenera `pagina.h`, `pagina_bitacora.h` y `pagina_wifi.h` (gzip + inyecta `VERSION_PROGRAMA`).
   Si lo salteás, la placa sigue sirviendo la página vieja y los `.h` quedan desincronizados.
-- Compilar + subir por OTA: `node subir.mjs` (destino por defecto `192.168.18.88`).
+- Compilar + subir por OTA: `node subir.mjs` (destino por defecto `192.168.18.103`).
 - Compilar + subir por USB: `node subir.mjs COM3`.
 - La web no pide clave (`WEB_SIN_CLAVE 1` en `config.h`).
 - `subir.mjs` usa un `arduino-cli.exe` **hardcodeado** en `C:/Program Files/Arduino IDE/...`.

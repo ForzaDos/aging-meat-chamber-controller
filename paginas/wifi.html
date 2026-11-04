@@ -98,6 +98,16 @@ details.test{border-radius:12px}
 </section>
 
 <section class="placa">
+  <h2>Punto de acceso</h2>
+  <div class="dato"><span>Conectada a</span><b id="eAp">–</b></div>
+  <div class="dato"><span>Fijada a</span><b id="eFijo">ninguno (cualquiera)</b></div>
+  <p class="ayuda">Si hay un repetidor con el mismo nombre de red, la placa se conecta al primero que encuentra y puede cambiar en cada reinicio. Fijándola al del repetidor, siempre intenta ese primero; si en 20 segundos no lo logra, usa cualquiera, así nunca se queda sin red. Tocá el que quieras fijar (el de mejor señal figura primero). Se reconecta sola y esta página puede cortarse unos segundos: si cambia de IP, la nueva se ve en Menú &rsaquo; Diagnóstico &rsaquo; Ver IP.</p>
+  <ul id="aps"></ul>
+  <button type="button" class="sec" id="bSoltar">Soltar (que se conecte a cualquiera)</button>
+  <div class="msg" id="msgAp" hidden></div>
+</section>
+
+<section class="placa">
   <h2>Elegir otra red</h2>
   <button type="button" class="sec" id="bBuscar">Buscar redes</button>
   <ul id="redes"></ul>
@@ -114,6 +124,7 @@ details.test{border-radius:12px}
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let apActual = '', apFijo = '';
 let probando = false, buscando = false, pruebaDesde = 0;   // pruebaDesde: respuestas pedidas antes de probar no cuentan
 function msg(t, c) { const m = $('#msg'); m.textContent = t; m.className = 'msg' + (c ? ' ' + c : ''); m.hidden = !t; }
 
@@ -125,6 +136,9 @@ async function estado() {
     $('#eCon').textContent = e.conectado ? 'conectada' : 'sin conexión';
     $('#eIp').textContent = e.conectado ? e.ip : '–';
     $('#eSen').textContent = e.conectado ? e.rssi + ' dBm' : '–';
+    apActual = e.bssid || ''; apFijo = e.fijo || '';
+    $('#eAp').textContent = apActual || '–';
+    $('#eFijo').textContent = apFijo || 'ninguno (cualquiera)';
     if (probando && pedido > pruebaDesde) {
       if (e.prueba === 2) { probando = false; $('#bCon').disabled = false; msg('Listo: la placa se conectó a "' + e.ssid + '". IP: ' + e.ip + '. Si estás en la red CamaraCurado-Setup, volvé a tu Wi-Fi y abrí http://' + e.ip, 'ok'); }
       else if (e.prueba === 3) { probando = false; $('#bCon').disabled = false; msg('No se pudo conectar. Revisá la clave y que la red sea de 2,4 GHz. La placa volvió a la red anterior.', 'mal'); }
@@ -142,6 +156,9 @@ async function buscar(nuevo) {
       $('#redes').innerHTML = r.redes.length ? r.redes.map(x =>
         `<li><button type="button" data-s="${esc(x.s)}" data-a="${x.a ? 1 : 0}">${esc(x.s)}<small>${x.a ? 'abierta' : 'con clave'} · ${x.r} dBm</small></button></li>`).join('')
         : '<li><span class="ayuda">No se encontró ninguna red.</span></li>';
+      $('#aps').innerHTML = (r.aps || []).length ? r.aps.map(x =>
+        `<li><button type="button" data-b="${esc(x.b)}">${esc(x.b)}<small>${x.r} dBm · canal ${x.c}${x.b === apActual ? ' · conectada' : ''}${x.b === apFijo ? ' · fijada' : ''}</small></button></li>`).join('')
+        : '<li><span class="ayuda">No se ve ningún punto de acceso de esta red. Tocá "Buscar redes".</span></li>';
       return;
     }
   } catch (_) {}
@@ -155,6 +172,20 @@ $('#redes').onclick = e => {
   $('#ssid').value = b.dataset.s;
   if (b.dataset.a === '1') $('#clave').value = ''; else $('#clave').focus();
 };
+function msgAp(t, c) { const m = $('#msgAp'); m.textContent = t; m.className = 'msg' + (c ? ' ' + c : ''); m.hidden = !t; }
+async function postAp(campos, ok) {
+  try {
+    const r = await fetch('/api/wifi/fijar', { method: 'POST', headers: { 'X-Camara': '1' }, body: new URLSearchParams(campos) });
+    if (!r.ok) throw 0;
+    msgAp(ok, 'ok');
+  } catch (_) { msgAp('No se pudo. Revisá la conexión con la placa.', 'mal'); }
+}
+$('#aps').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (!confirm('¿Fijar la placa a este punto de acceso (' + b.dataset.b + ')? Se reconecta y la página puede cortarse unos segundos.')) return;
+  postAp({ bssid: b.dataset.b }, 'Fijado. La placa se está reconectando a ' + b.dataset.b + '. Si la página no responde, abrila de nuevo en unos segundos.');
+};
+$('#bSoltar').onclick = () => postAp({ accion: 'quitar' }, 'Suelto. La placa se reconecta al punto de acceso que encuentre.');
 $('#ver').onchange = e => { $('#clave').type = e.target.checked ? 'text' : 'password'; };
 $('#bCon').onclick = async () => {
   const s = $('#ssid').value.trim(), c = $('#clave').value;

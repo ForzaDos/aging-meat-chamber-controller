@@ -4,6 +4,8 @@
 //   GET  /               -> página principal (también /chart.js, la librería de gráficos)
 //   GET  /api/estado     -> lecturas, relés y setpoints (JSON)
 //   POST /api/config     -> guarda setpoints (form-urlencoded)
+//   GET  /api/perfiles   -> los 4 perfiles de setpoints (Estufado, Secado 1, Secado 2, Otros) y cuál está en uso
+//   POST /api/perfiles   -> accion=guardar|cargar|renombrar|editar, n=1..4 [nombre | campos a editar sin cambiar la cámara]
 //   POST /api/manual     -> cual=luz|otros, estado=1|0  (AUX1/AUX2)  |  cual=hum|desh|frio, modo=auto|on|off
 //   GET  /api/eventos    -> ?n=40&saltar=0 registro de relés
 //   GET  /api/historial  -> ?rango=1h|1d|1w|1m|3m

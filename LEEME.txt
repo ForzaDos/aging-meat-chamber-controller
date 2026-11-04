@@ -1,7 +1,7 @@
 Camara de curado - v1.0.1 OTA (24/10/2026)
 
 ACTUALIZAR EL PROGRAMA (por Wi-Fi, sin cable)
-- Desde la PC: en esta carpeta, "node subir.mjs" (compila y sube a 192.168.18.88).
+- Desde la PC: en esta carpeta, "node subir.mjs" (compila y sube a 192.168.18.103).
 - Desde la web: Ajustes > Diagnostico > "Actualizar el programa por Wi-Fi" y elegir camara_curado.ino.bin.
 - Mientras graba (menos de un minuto) el clima queda apagado; despues se reinicia sola. Si la version nueva
   no arranca bien o no se conecta al Wi-Fi, vuelve sola a la anterior.
