@@ -90,6 +90,9 @@ bool    controlPerfilGuardar(uint8_t i);                 // guarda los ajustes a
 bool    controlPerfilEditar(uint8_t i, const Perfil& p); // guarda valores editados (con límites); NO cambia la cámara
 bool    controlPerfilCargar(uint8_t i);                  // aplica y persiste; false si el casillero está vacío
 bool    controlPerfilRenombrar(uint8_t i, const char* nombre);   // vacío = nombre de fábrica
+// Etapa para el LCD: nombre del perfil que coincide con los ajustes actuales (modificado = false) o, si ya no coinciden, el del último
+// perfil cargado o guardado desde la cámara (modificado = true). false = ninguno.
+bool    controlPerfilEtapa(char* nombre, size_t n, bool& modificado);
 uint8_t controlPerfilActivo();                           // 1..4 si los ajustes actuales coinciden con ese perfil, 0 si con ninguno
 void    controlActualizar(float t, float h, bool ok);    // una vez por lectura del sensor
 

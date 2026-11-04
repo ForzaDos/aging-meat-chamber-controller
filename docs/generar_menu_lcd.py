@@ -48,7 +48,7 @@ add = S.append
 # ---------------------------------------------------------------- portada / uso
 add(f"""
 <h1>Cámara de curado — Menú del LCD</h1>
-<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.34 OTA · generado desde <code>menu.cpp</code></p>
+<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.35 OTA · generado desde <code>menu.cpp</code></p>
 
 <h2>Cómo se maneja</h2>
 <table class="ctl">
@@ -83,8 +83,9 @@ add("""
 <h2>Mapa del menú</h2>
 <pre class="arbol">
 MENU
+├── Etapa: ...           solo lectura: el perfil cargado (con * = se cambió algo después)
 ├── Temperatura  &gt;      Objetivo · Histeresis · Alarma +/- · Min encend. · Forzar frio
-├── Humedad      &gt;      Objetivo · Histeresis · Espera hum./desh · Min encend. · Forzar hum. · Forzar desh
+├── Humedad      &gt;      Uso (solo lectura) · Objetivo · Histeresis · Espera hum./desh · Min encend. · Forzar hum. · Forzar desh
 ├── Ventilador   &gt;      Programa · Cada · Duracion
 ├── AUX1                 ON / OFF          (el nombre se cambia en la web)
 ├── AUX2                 ON / OFF
@@ -101,12 +102,13 @@ MENU
 """)
 
 # ---------------------------------------------------------------- menú principal
-PRINC = [("Temperatura", ">"), ("Humedad", ">"), ("Ventilador", ">"), ("AUX1", "OFF"), ("AUX2", "OFF"),
+PRINC = [("Etapa: Estufado", ""), ("Temperatura", ">"), ("Humedad", ">"), ("Ventilador", ">"), ("AUX1", "OFF"), ("AUX2", "OFF"),
          ("Control", "Activo"), ("Balanza", ">"), ("Tiempos", ">"), ("Calibracion", ">"), ("Diagnostico", ">"), ("APAGAR TODO", ""), ("Salir", "")]
 add(f"""
 <h2 class="nueva">MENU (principal)</h2>
-<div class="pantallas">{lista("MENU", PRINC, 0)}{lista("MENU", PRINC, 5)}{lista("MENU", PRINC, 11)}</div>
+<div class="pantallas">{lista("MENU", PRINC, 1)}{lista("MENU", PRINC, 6)}{lista("MENU", PRINC, 12)}{lista("MENU", [("Etapa: Estufado*", "")] + PRINC[1:], 0)}</div>
 {tabla([
+ ("Etapa: ...", "<b>Solo lectura.</b> Dice qué perfil de la web coincide con los ajustes actuales, por ejemplo <code>Etapa: Estufado</code>. Con un <b>*</b> al final (<code>Etapa: Estufado*</code>) se cambió algo después de cargarlo; <code>Etapa: ninguna</code> si no coincide con ninguno. Un click muestra el detalle. Los perfiles se cargan y se editan desde la web. Al entrar al menú el cursor arranca en Temperatura y la etapa queda arriba.", "—"),
  ("Temperatura &gt;", "Submenú de temperatura y refrigeración.", "—"),
  ("Humedad &gt;", "Submenú de humedad, humidificador y deshumidificador.", "—"),
  ("Ventilador &gt;", "Programa del ventilador.", "—"),
@@ -144,11 +146,12 @@ add(f"""
 """)
 
 # ---------------------------------------------------------------- humedad
-HUM = [("Objetivo", "75.0%"), ("Hist. sup.", "3.0%"), ("Hist. inf.", "3.0%"), ("Espera hum.", "60s"), ("Espera desh", "60s"), ("Min encend.", "60s"), ("Forzar hum.", "Auto"), ("Forzar desh", "Auto"), ("Volver", "")]
+HUM = [("Humid/desh: en uso", ""), ("Objetivo", "75.0%"), ("Hist. sup.", "3.0%"), ("Hist. inf.", "3.0%"), ("Espera hum.", "60s"), ("Espera desh", "60s"), ("Min encend.", "60s"), ("Forzar hum.", "Auto"), ("Forzar desh", "Auto"), ("Volver", "")]
 add(f"""
 <h2 class="nueva">HUMEDAD</h2>
-<div class="pantallas">{lista("HUMEDAD", HUM, 0)}{lista("HUMEDAD", HUM, 3)}{lista("HUMEDAD", HUM, 5)}</div>
+<div class="pantallas">{lista("HUMEDAD", HUM, 1)}{lista("HUMEDAD", HUM, 4)}{lista("HUMEDAD", HUM, 6)}{lista("HUMEDAD", [("Humidif: NO SE USA", "")] + HUM[1:], 0)}</div>
 {tabla([
+ ("Humid/desh: ...", "<b>Solo lectura.</b> Dice si el humidificador y el deshumidificador se usan (<code>en uso</code>) o están apagados a pedido: <code>Humidif: NO SE USA</code>, <code>Deshum.: NO SE USA</code> o <code>Hum/Desh NO SE USA</code>. Se cambia desde la web (casillas \"Usar el humidificador / deshumidificador\" en Setpoints o en un perfil). Apagado, ese equipo no prende solo (queda apagado y el otro no lo reemplaza); el forzado manual y la protección de seguridad siguen andando. Al entrar a Humedad el cursor arranca en Objetivo y este estado queda arriba.", "—"),
  ("Objetivo", "Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis inferior. Deshumidificador: prende si HR &gt; objetivo + histéresis superior. Los dos apagan al llegar al objetivo.", "40,0 a 100,0 %, de a 0,5"),
  ("Hist. sup.", "Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.", "0,5 a 40,0 %, de a 0,5"),
  ("Hist. inf.", "Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.", "0,5 a 40,0 %, de a 0,5"),
@@ -260,7 +263,7 @@ add(f"""
 <li>Mientras dura, el control automático, el ventilador y los forzados quedan suspendidos. Un click (o mantener) lo detiene.</li>
 <li>Al terminar: <code>Test terminado / Todo en automatico</code>; AUX1 y AUX2 vuelven a como estaban.</li>
 </ul>
-<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.34 OTA")}</div>
+<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.35 OTA")}</div>
 """)
 
 # ---------------------------------------------------------------- editar / confirmar

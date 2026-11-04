@@ -25,6 +25,7 @@ Estado est;
 static Preferences prefs;
 static uint32_t cambioHum = 0, cambioDesh = 0, cambioFrio = 0;   // millis() del último cambio
 static uint32_t ultimaLecturaOk = 0;
+static uint8_t  perfilCargado = 0;                               // 1..4: último perfil cargado o guardado (NVS "perfCarg"); lo usa el LCD para decir "modificada"
 static uint32_t pideHumDesde = 0, pideDeshDesde = 0;             // millis() desde que la humedad pasó el límite de encendido (0 = no lo pasó)
 static uint32_t manualFin[3] = {0, 0, 0};                         // millis() en que vence cada forzado
 
@@ -140,6 +141,8 @@ void controlInit() {
   cfg.humEsperaS      = prefs.getUShort("humEsp",   DEF_ESPERA_HUM_S);
   cfg.deshEsperaS     = prefs.getUShort("deshEsp",  DEF_ESPERA_HUM_S);
   cfg.humOff          = prefs.getBool("humOff",     false);
+  perfilCargado       = prefs.getUChar("perfCarg",  0);
+  if (perfilCargado > PERFILES_N) perfilCargado = 0;
   cfg.deshOff         = prefs.getBool("deshOff",    false);
   cfg.minOnS          = prefs.getUShort("minOnS",   DEF_MIN_ON_S);
   cfg.minOnTempS      = prefs.getUShort("minOnT",   DEF_MIN_ON_S);
@@ -275,7 +278,9 @@ bool controlPerfilGuardar(uint8_t i) {
   Perfil p;
   controlPerfilLeer(i, p);                       // conserva el nombre elegido
   controlPerfilActual(p);
-  return perfilEscribir(i, p);
+  const bool ok = perfilEscribir(i, p);
+  if (ok) { perfilCargado = i + 1; prefs.putUChar("perfCarg", perfilCargado); }   // ahora los ajustes actuales son los de este perfil
+  return ok;
 }
 
 // Guarda valores editados a mano en el perfil SIN tocar la configuración de la cámara. Mismos rangos que al cargar.
@@ -329,8 +334,22 @@ bool controlPerfilCargar(uint8_t i) {
   cfg.humOff  = p.v2 ? p.humOff  : false;      // un perfil anterior a la v1.0.31 deja los dos equipos encendidos
   cfg.deshOff = p.v2 ? p.deshOff : false;
   pideHumDesde = pideDeshDesde = 0;              // los objetivos cambiaron: la espera de confirmación empieza de cero
+  perfilCargado = i + 1;
+  prefs.putUChar("perfCarg", perfilCargado);
   controlGuardarConfig();
   return true;
+}
+
+bool controlPerfilEtapa(char* nombre, size_t n, bool& modificado) {
+  modificado = false;
+  const uint8_t i = controlPerfilActivo();            // también deja cargada la copia en RAM
+  if (i) { snprintf(nombre, n, "%s", perfilCache[i - 1].nombre); return true; }
+  if (perfilCargado && perfilCargado <= PERFILES_N && perfilCache[perfilCargado - 1].lleno) {
+    modificado = true;                                  // se cambió algo después de cargarlo
+    snprintf(nombre, n, "%s", perfilCache[perfilCargado - 1].nombre);
+    return true;
+  }
+  return false;
 }
 
 uint8_t controlPerfilActivo() {

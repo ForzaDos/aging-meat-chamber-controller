@@ -25,7 +25,7 @@ ul.notas, ol.pasos { font-size: 9.8pt; padding-left: 20px; margin: 6px 0; } li {
 code { font-family: Consolas, monospace; background: #f3eeea; padding: 0 3px; border-radius: 3px; font-size: 9.2pt; }
 </style></head><body><section>
 <h1>Cámara de curado — Menú del LCD</h1>
-<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.34 OTA · generado desde <code>menu.cpp</code></p>
+<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.35 OTA · generado desde <code>menu.cpp</code></p>
 
 <h2>Cómo se maneja</h2>
 <table class="ctl">
@@ -60,8 +60,9 @@ Ven:ON AUX1:-- AUX2:</pre></div>
 <h2>Mapa del menú</h2>
 <pre class="arbol">
 MENU
+├── Etapa: ...           solo lectura: el perfil cargado (con * = se cambió algo después)
 ├── Temperatura  &gt;      Objetivo · Histeresis · Alarma +/- · Min encend. · Forzar frio
-├── Humedad      &gt;      Objetivo · Histeresis · Espera hum./desh · Min encend. · Forzar hum. · Forzar desh
+├── Humedad      &gt;      Uso (solo lectura) · Objetivo · Histeresis · Espera hum./desh · Min encend. · Forzar hum. · Forzar desh
 ├── Ventilador   &gt;      Programa · Cada · Duracion
 ├── AUX1                 ON / OFF          (el nombre se cambia en la web)
 ├── AUX2                 ON / OFF
@@ -77,17 +78,20 @@ MENU
 <code>TEST_AVANZADO 1</code>, "Test reles" abre un submenú con tres modos (De a uno · Sumar 1 a 6 · Todos juntos).</p>
 </section><section>
 <h2 class="nueva">MENU (principal)</h2>
-<div class="pantallas"><div class="lcd"><pre>MENU            1/12
+<div class="pantallas"><div class="lcd"><pre>MENU            2/13
+ Etapa: Estufado    
 &gt;Temperatura       &gt;
- Humedad           &gt;
- Ventilador        &gt;</pre></div><div class="lcd"><pre>MENU            6/12
+ Humedad           &gt;</pre></div><div class="lcd"><pre>MENU            7/13
  AUX2            OFF
 &gt;Control      Activo
- Balanza           &gt;</pre></div><div class="lcd"><pre>MENU           12/12
+ Balanza           &gt;</pre></div><div class="lcd"><pre>MENU           13/13
  Diagnostico       &gt;
  APAGAR TODO        
-&gt;Salir              </pre></div></div>
-<table><tr><th>Opción (LCD)</th><th>Qué hace</th><th>Valores</th></tr><tr><td class='op'>Temperatura &gt;</td><td>Submenú de temperatura y refrigeración.</td><td class='val'>—</td></tr><tr><td class='op'>Humedad &gt;</td><td>Submenú de humedad, humidificador y deshumidificador.</td><td class='val'>—</td></tr><tr><td class='op'>Ventilador &gt;</td><td>Programa del ventilador.</td><td class='val'>—</td></tr><tr><td class='op'>AUX1 / AUX2</td><td>Prende o apaga a mano los relés 5 y 6. Muestran el nombre elegido en la web (hasta 12 letras).</td><td class='val'>ON · OFF</td></tr><tr><td class='op'>Control</td><td>Pausa el control automático: clima apagado (salvo el frío de seguridad si hace demasiado calor). AUX1/AUX2 no se tocan. También con el atajo: mantener apretado en la pantalla normal.</td><td class='val'>Activo · PAUSA</td></tr><tr><td class='op'>Balanza &gt;</td><td>Peso y merma de la pieza testigo, conexión con la balanza Wi-Fi.</td><td class='val'>—</td></tr><tr><td class='op'>Tiempos &gt;</td><td>Tiempos que valen para los tres relés de clima.</td><td class='val'>—</td></tr><tr><td class='op'>Calibracion &gt;</td><td>Ajustes del sensor y asistente de calibración con sal.</td><td class='val'>—</td></tr><tr><td class='op'>Diagnostico &gt;</td><td>Red, Wi-Fi, test de relés y versión.</td><td class='val'>—</td></tr><tr><td class='op'>APAGAR TODO</td><td><b>Parada de emergencia.</b> Apaga los 6 relés y suspende el control (sin clima, sin ventilador y sin protección de temperatura). Pide dos confirmaciones, con el cursor siempre en NO. Se mantiene aunque se reinicie el equipo. Mientras está activa el ítem se llama <b>REANUDAR TODO</b> y la pantalla normal muestra <b>** PARADA TOTAL **</b> fijo.</td><td class='val'>—</td></tr><tr><td class='op'>Salir</td><td>Vuelve a la pantalla normal.</td><td class='val'>—</td></tr></table>
+&gt;Salir              </pre></div><div class="lcd"><pre>MENU            1/13
+&gt;Etapa: Estufado*   
+ Temperatura       &gt;
+ Humedad           &gt;</pre></div></div>
+<table><tr><th>Opción (LCD)</th><th>Qué hace</th><th>Valores</th></tr><tr><td class='op'>Etapa: ...</td><td><b>Solo lectura.</b> Dice qué perfil de la web coincide con los ajustes actuales, por ejemplo <code>Etapa: Estufado</code>. Con un <b>*</b> al final (<code>Etapa: Estufado*</code>) se cambió algo después de cargarlo; <code>Etapa: ninguna</code> si no coincide con ninguno. Un click muestra el detalle. Los perfiles se cargan y se editan desde la web. Al entrar al menú el cursor arranca en Temperatura y la etapa queda arriba.</td><td class='val'>—</td></tr><tr><td class='op'>Temperatura &gt;</td><td>Submenú de temperatura y refrigeración.</td><td class='val'>—</td></tr><tr><td class='op'>Humedad &gt;</td><td>Submenú de humedad, humidificador y deshumidificador.</td><td class='val'>—</td></tr><tr><td class='op'>Ventilador &gt;</td><td>Programa del ventilador.</td><td class='val'>—</td></tr><tr><td class='op'>AUX1 / AUX2</td><td>Prende o apaga a mano los relés 5 y 6. Muestran el nombre elegido en la web (hasta 12 letras).</td><td class='val'>ON · OFF</td></tr><tr><td class='op'>Control</td><td>Pausa el control automático: clima apagado (salvo el frío de seguridad si hace demasiado calor). AUX1/AUX2 no se tocan. También con el atajo: mantener apretado en la pantalla normal.</td><td class='val'>Activo · PAUSA</td></tr><tr><td class='op'>Balanza &gt;</td><td>Peso y merma de la pieza testigo, conexión con la balanza Wi-Fi.</td><td class='val'>—</td></tr><tr><td class='op'>Tiempos &gt;</td><td>Tiempos que valen para los tres relés de clima.</td><td class='val'>—</td></tr><tr><td class='op'>Calibracion &gt;</td><td>Ajustes del sensor y asistente de calibración con sal.</td><td class='val'>—</td></tr><tr><td class='op'>Diagnostico &gt;</td><td>Red, Wi-Fi, test de relés y versión.</td><td class='val'>—</td></tr><tr><td class='op'>APAGAR TODO</td><td><b>Parada de emergencia.</b> Apaga los 6 relés y suspende el control (sin clima, sin ventilador y sin protección de temperatura). Pide dos confirmaciones, con el cursor siempre en NO. Se mantiene aunque se reinicie el equipo. Mientras está activa el ítem se llama <b>REANUDAR TODO</b> y la pantalla normal muestra <b>** PARADA TOTAL **</b> fijo.</td><td class='val'>—</td></tr><tr><td class='op'>Salir</td><td>Vuelve a la pantalla normal.</td><td class='val'>—</td></tr></table>
 <h3>Parada de emergencia</h3>
 <div class="pantallas">
 <div class="lcd"><pre>APAGAR TODO!        
@@ -116,17 +120,20 @@ funcionar. Seguro?
 <table><tr><th>Opción (LCD)</th><th>Qué hace</th><th>Valores</th></tr><tr><td class='op'>Objetivo</td><td>Temperatura objetivo. La heladera prende si T &gt; objetivo + histéresis superior y apaga si T &le; objetivo − histéresis inferior.</td><td class='val'>5,0 a 30,0 °C, de a 0,5</td></tr><tr><td class='op'>Hist. sup.</td><td>Cuánto se deja subir la temperatura sobre el objetivo antes de prender el frío.</td><td class='val'>0,5 a 5,0 °C, de a 0,5</td></tr><tr><td class='op'>Hist. inf.</td><td>Cuánto por debajo del objetivo se deja bajar antes de apagar el frío. Con 0 apaga justo en el objetivo.</td><td class='val'>0,0 a 5,0 °C, de a 0,5</td></tr><tr><td class='op'>Alarma +/-</td><td>Si la temperatura se aleja más que esto del objetivo, aparece ALARMA TEMPERATURA.</td><td class='val'>1,0 a 10,0 °C, de a 0,5</td></tr><tr><td class='op'>Min encend.</td><td>Tiempo mínimo encendida la refrigeración (protege el compresor).</td><td class='val'>0 a 600 s, de a 10</td></tr><tr><td class='op'>Forzar frio</td><td>Fuerza la refrigeración a mano durante "Dur forzado" minutos y después vuelve sola a Auto. Encender respeta el mínimo apagado: si no se puede todavía, avisa <code>No se puede aun / Espera m:ss</code>.</td><td class='val'>Auto · ON · OFF</td></tr></table>
 </section><section>
 <h2 class="nueva">HUMEDAD</h2>
-<div class="pantallas"><div class="lcd"><pre>HUMEDAD         1/9 
+<div class="pantallas"><div class="lcd"><pre>HUMEDAD         2/10
+ Humid/desh: en uso 
 &gt;Objetivo      75.0%
- Hist. sup.     3.0%
- Hist. inf.     3.0%</pre></div><div class="lcd"><pre>HUMEDAD         4/9 
+ Hist. sup.     3.0%</pre></div><div class="lcd"><pre>HUMEDAD         5/10
  Hist. inf.     3.0%
 &gt;Espera hum.     60s
- Espera desh     60s</pre></div><div class="lcd"><pre>HUMEDAD         6/9 
+ Espera desh     60s</pre></div><div class="lcd"><pre>HUMEDAD         7/10
  Espera desh     60s
 &gt;Min encend.     60s
- Forzar hum.    Auto</pre></div></div>
-<table><tr><th>Opción (LCD)</th><th>Qué hace</th><th>Valores</th></tr><tr><td class='op'>Objetivo</td><td>Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis inferior. Deshumidificador: prende si HR &gt; objetivo + histéresis superior. Los dos apagan al llegar al objetivo.</td><td class='val'>40,0 a 100,0 %, de a 0,5</td></tr><tr><td class='op'>Hist. sup.</td><td>Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.</td><td class='val'>0,5 a 40,0 %, de a 0,5</td></tr><tr><td class='op'>Hist. inf.</td><td>Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.</td><td class='val'>0,5 a 40,0 %, de a 0,5</td></tr><tr><td class='op'>Espera hum.</td><td>Segundos que la humedad debe seguir bajo el límite antes de prender el humidificador. Filtra caídas de segundos (por ejemplo al arrancar el frío). 0 = enseguida.</td><td class='val'>0 a 300 s, de a 5</td></tr><tr><td class='op'>Espera desh</td><td>Lo mismo para el deshumidificador: la humedad debe seguir sobre el límite todo ese tiempo. 0 = enseguida.</td><td class='val'>0 a 300 s, de a 5</td></tr><tr><td class='op'>Min encend.</td><td>Tiempo mínimo encendidos el humidificador y el deshumidificador.</td><td class='val'>0 a 600 s, de a 10</td></tr><tr><td class='op'>Forzar hum.</td><td>Fuerza el humidificador a mano. Prender uno apaga el otro (nunca los dos juntos).</td><td class='val'>Auto · ON · OFF</td></tr><tr><td class='op'>Forzar desh</td><td>Fuerza el deshumidificador a mano.</td><td class='val'>Auto · ON · OFF</td></tr></table>
+ Forzar hum.    Auto</pre></div><div class="lcd"><pre>HUMEDAD         1/10
+&gt;Humidif: NO SE USA 
+ Objetivo      75.0%
+ Hist. sup.     3.0%</pre></div></div>
+<table><tr><th>Opción (LCD)</th><th>Qué hace</th><th>Valores</th></tr><tr><td class='op'>Humid/desh: ...</td><td><b>Solo lectura.</b> Dice si el humidificador y el deshumidificador se usan (<code>en uso</code>) o están apagados a pedido: <code>Humidif: NO SE USA</code>, <code>Deshum.: NO SE USA</code> o <code>Hum/Desh NO SE USA</code>. Se cambia desde la web (casillas "Usar el humidificador / deshumidificador" en Setpoints o en un perfil). Apagado, ese equipo no prende solo (queda apagado y el otro no lo reemplaza); el forzado manual y la protección de seguridad siguen andando. Al entrar a Humedad el cursor arranca en Objetivo y este estado queda arriba.</td><td class='val'>—</td></tr><tr><td class='op'>Objetivo</td><td>Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis inferior. Deshumidificador: prende si HR &gt; objetivo + histéresis superior. Los dos apagan al llegar al objetivo.</td><td class='val'>40,0 a 100,0 %, de a 0,5</td></tr><tr><td class='op'>Hist. sup.</td><td>Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.</td><td class='val'>0,5 a 40,0 %, de a 0,5</td></tr><tr><td class='op'>Hist. inf.</td><td>Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.</td><td class='val'>0,5 a 40,0 %, de a 0,5</td></tr><tr><td class='op'>Espera hum.</td><td>Segundos que la humedad debe seguir bajo el límite antes de prender el humidificador. Filtra caídas de segundos (por ejemplo al arrancar el frío). 0 = enseguida.</td><td class='val'>0 a 300 s, de a 5</td></tr><tr><td class='op'>Espera desh</td><td>Lo mismo para el deshumidificador: la humedad debe seguir sobre el límite todo ese tiempo. 0 = enseguida.</td><td class='val'>0 a 300 s, de a 5</td></tr><tr><td class='op'>Min encend.</td><td>Tiempo mínimo encendidos el humidificador y el deshumidificador.</td><td class='val'>0 a 600 s, de a 10</td></tr><tr><td class='op'>Forzar hum.</td><td>Fuerza el humidificador a mano. Prender uno apaga el otro (nunca los dos juntos).</td><td class='val'>Auto · ON · OFF</td></tr><tr><td class='op'>Forzar desh</td><td>Fuerza el deshumidificador a mano.</td><td class='val'>Auto · ON · OFF</td></tr></table>
 </section><section>
 <h2 class="nueva">VENTILADOR</h2>
 <div class="pantallas"><div class="lcd"><pre>VENTILADOR      1/4 
@@ -246,7 +253,7 @@ Prende 1x1 los 6
 <div class="pantallas"><div class="lcd"><pre>Camara de curado    
 Software hecho por  
 ForzaDos            
-Version v1.0.34 OTA </pre></div></div>
+Version v1.0.35 OTA </pre></div></div>
 </section><section>
 <h2 class="nueva">Cambiar un valor (todas las opciones)</h2>
 <div class="pantallas">

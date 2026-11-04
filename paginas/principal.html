@@ -277,6 +277,7 @@ input[type=range]::-moz-range-thumb{pointer-events:auto}
 .paso button{flex:1;min-height:46px;font-size:17px;touch-action:manipulation}
 .zoomb{grid-template-columns:1.7fr 1fr 1fr 1fr}
 .zoomb span{display:flex;align-items:center;justify-content:center;padding:0 6px;font-size:13px;font-weight:600;color:var(--tenue);background:var(--placa2);border-right:1px solid var(--borde)}
+.fila b.nousa{color:var(--laton);font-weight:700}   /* más específica que .fila b */
 .etapa{margin-top:2px;font-size:15px;font-weight:600;color:var(--laton)}
 .perfilesBox{margin-top:14px;padding-top:12px;border-top:1px solid var(--borde)}
 .perfBtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
@@ -821,7 +822,7 @@ details.test{border-radius:12px}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.34 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.35 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
@@ -988,8 +989,13 @@ function pintar(e) {
   if (chart) chart.draw();
 
   const ea = on => on ? 'encendido' : 'apagado';
-  rele('hum', e.releHum,  ea(e.releHum));
-  rele('des', e.releDesh, ea(e.releDesh));
+  // "NO SE USA": apagado a pedido (casilla de Setpoints o perfil). Un forzado manual lo pisa.
+  const noUsa = (off, i) => !!off && !(e.manual && e.manual[i]);
+  const nuH = noUsa(e.humOff, 0), nuD = noUsa(e.deshOff, 1);
+  rele('hum', e.releHum,  nuH ? 'NO SE USA' + (e.releHum ? ' (se apaga)' : '') : ea(e.releHum));
+  rele('des', e.releDesh, nuD ? 'NO SE USA' + (e.releDesh ? ' (se apaga)' : '') : ea(e.releDesh));
+  $('#s_hum').classList.toggle('nousa', nuH);
+  $('#s_des').classList.toggle('nousa', nuD);
   rele('fri', e.releFrio, ea(e.releFrio));
 
   let v;

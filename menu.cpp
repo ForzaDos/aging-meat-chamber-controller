@@ -21,7 +21,7 @@ enum : uint8_t { T_TEMP, T_HUM, T_HTEMP, T_HHUM, T_VACT, T_VPER, T_VDUR, T_LUZ, 
                  T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_IP, T_SUB_CAL, T_VOLVER, T_SALIR, T_VERIP, T_WIFI, T_TEST, T_CALIB,
                  T_TSUMA, T_TTODOS, T_ACERCA, T_SUB_TIEMPOS, T_MINOFF, T_SUB_TEST, T_TUNO,
                  T_SUB_BAL, T_BVER, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_BSEG, T_PARADA, T_BSEL,
-                 T_HTEMPI, T_HHUMI, T_ESPH, T_ESPD, T_N };
+                 T_HTEMPI, T_HHUMI, T_ESPH, T_ESPD, T_ETAPA, T_USO, T_N };
 
 struct Item { const char* corto; const char* largo; };
 static const Item ITEMS[T_N] = {
@@ -75,11 +75,34 @@ static const Item ITEMS[T_N] = {
   { "Hist. inf.", "Hist. hum. inferior" },
   { "Espera hum.", "Espera prender hum." },
   { "Espera desh", "Espera prender desh." },
+  { "Etapa",      "Etapa cargada" },        // informativas, sin valor: el texto se arma en textoInfo()
+  { "Hum/desh",   "Uso de hum y desh" },
 };
 
+// Filas informativas (solo lectura): el texto ocupa todo el ancho. Se usa enseguida, antes de pedir otro.
+//   Etapa: Estufado        perfil que coincide con los ajustes actuales
+//   Etapa: Estufado*       se cambió algo después de cargarlo (* = modificada)
+//   Humidif: NO SE USA     el humidificador y/o el deshumidificador están apagados a pedido (se cambia en la web)
+static const char* textoInfo(uint8_t t) {
+  static char b[24];
+  if (t == T_ETAPA) {
+    char nom[13]; bool mod = false;
+    if (!controlPerfilEtapa(nom, sizeof(nom), mod)) snprintf(b, sizeof(b), "Etapa: ninguna");
+    else if (mod)                                   snprintf(b, sizeof(b), "Etapa: %.11s*", nom);
+    else                                            snprintf(b, sizeof(b), "Etapa: %.12s", nom);
+  } else {
+    if (cfg.humOff && cfg.deshOff) snprintf(b, sizeof(b), "Hum/Desh NO SE USA");
+    else if (cfg.humOff)           snprintf(b, sizeof(b), "Humidif: NO SE USA");
+    else if (cfg.deshOff)          snprintf(b, sizeof(b), "Deshum.: NO SE USA");
+    else                           snprintf(b, sizeof(b), "Humid/desh: en uso");
+  }
+  return b;
+}
+static bool esInfo(uint8_t t) { return t == T_ETAPA || t == T_USO; }
+
 // Nombre a mostrar: AUX1 y AUX2 usan el nombre elegido en la web.
-static const char* corto(uint8_t t) { return t == T_LUZ ? cfg.nomAux1 : t == T_OTROS ? cfg.nomAux2 : (t == T_PARADA && controlParadaActiva()) ? "REANUDAR TODO" : ITEMS[t].corto; }
-static const char* largo(uint8_t t) { return t == T_LUZ ? cfg.nomAux1 : t == T_OTROS ? cfg.nomAux2 : (t == T_PARADA && controlParadaActiva()) ? "REANUDAR TODO" : ITEMS[t].largo; }
+static const char* corto(uint8_t t) { return esInfo(t) ? textoInfo(t) : t == T_LUZ ? cfg.nomAux1 : t == T_OTROS ? cfg.nomAux2 : (t == T_PARADA && controlParadaActiva()) ? "REANUDAR TODO" : ITEMS[t].corto; }
+static const char* largo(uint8_t t) { return esInfo(t) ? textoInfo(t) : t == T_LUZ ? cfg.nomAux1 : t == T_OTROS ? cfg.nomAux2 : (t == T_PARADA && controlParadaActiva()) ? "REANUDAR TODO" : ITEMS[t].largo; }
 
 // Listas del menú: la principal y los submenús. El forzado manual de cada relé de clima está
 // dentro de su categoría (refrigeración en Temperatura; humidificador y deshumidificador en Humedad);
@@ -87,14 +110,14 @@ static const char* largo(uint8_t t) { return t == T_LUZ ? cfg.nomAux1 : t == T_O
 struct Lista { const char* titulo; const uint8_t* it; uint8_t n; uint8_t padre; };   // padre: adónde lleva "Volver"
 enum : uint8_t { LI_PRINC, LI_TEMP, LI_HUM, LI_VENT, LI_DIAG, LI_CAL, LI_TIEMPOS, LI_TEST, LI_BAL, LI_N };
 #if USAR_BALANZA
-static const uint8_t L_PRINC[] = { T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
+static const uint8_t L_PRINC[] = { T_ETAPA, T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
                                    T_SUB_BAL, T_SUB_TIEMPOS, T_SUB_CAL, T_IP, T_PARADA, T_SALIR };
 #else
-static const uint8_t L_PRINC[] = { T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
+static const uint8_t L_PRINC[] = { T_ETAPA, T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
                                    T_SUB_TIEMPOS, T_SUB_CAL, T_IP, T_PARADA, T_SALIR };
 #endif
 static const uint8_t L_TEMP[]  = { T_TEMP, T_HTEMP, T_HTEMPI, T_BANDA, T_MINONT, T_FFRIO, T_VOLVER };
-static const uint8_t L_HUM[]   = { T_HUM, T_HHUM, T_HHUMI, T_ESPH, T_ESPD, T_MINON, T_FHUM, T_FDESH, T_VOLVER };
+static const uint8_t L_HUM[]   = { T_USO, T_HUM, T_HHUM, T_HHUMI, T_ESPH, T_ESPD, T_MINON, T_FHUM, T_FDESH, T_VOLVER };
 static const uint8_t L_VENT[]  = { T_VACT, T_VPER, T_VDUR, T_VOLVER };
 #if TEST_AVANZADO
 static const uint8_t L_DIAG[]  = { T_VERIP, T_WIFI, T_SUB_TEST, T_ACERCA, T_VOLVER };   // test: submenú con los 3 modos
@@ -125,7 +148,7 @@ static bool esSubmenu(uint8_t t) {
 static bool sinValor(uint8_t t) {
   return t == T_SALIR || t == T_VOLVER || t == T_VERIP || t == T_WIFI || t == T_ACERCA ||
          t == T_TEST || t == T_TUNO || t == T_TSUMA || t == T_TTODOS ||
-         t == T_BVER || t == T_BESTADO || t == T_BRECON || t == T_BOLV || t == T_PARADA;
+         t == T_BVER || t == T_BESTADO || t == T_BRECON || t == T_BOLV || t == T_PARADA || t == T_ETAPA || t == T_USO;
 }
 // Acciones inmediatas (no se guardan como ajuste): la confirmación dice "Aplicar".
 static bool esAccion(uint8_t t) { return t == T_LUZ || t == T_OTROS || t == T_FHUM || t == T_FDESH || t == T_FFRIO || t == T_BBLE || t == T_BSEG; }
@@ -358,7 +381,7 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
         if (boton) controlTestPedirModo(TEST_NINGUNO);
         break;
       }
-      if (boton == BTN_CLICK) { estado = M_LISTA; lista = LI_PRINC; volverOff = false; ultAct = ahora; memset(cursores, 0, sizeof(cursores)); }
+      if (boton == BTN_CLICK) { estado = M_LISTA; lista = LI_PRINC; volverOff = false; ultAct = ahora; memset(cursores, 0, sizeof(cursores)); cursores[LI_PRINC] = 1; }   // el cursor arranca en Temperatura; arriba se ve la etapa
       else if (boton == BTN_LARGO) {                  // atajo: pausar / reanudar con confirmación
         sel = T_PAUSA;
         editVal = cfg.activo ? 1 : 0;                 // el valor opuesto al actual
@@ -376,7 +399,7 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
       if (boton == BTN_LARGO) { estado = M_OFF; break; }
       if (boton == BTN_CLICK) {
         const uint8_t t = L.it[cur];
-        auto abrir = [&](uint8_t li) { lista = li; cursores[li] = 0; };
+        auto abrir = [&](uint8_t li) { lista = li; cursores[li] = (li == LI_HUM) ? 1 : 0; };   // en Humedad el cursor queda en "Objetivo" y se ve arriba el estado de uso
         if      (t == T_SALIR)    estado = M_OFF;
         else if (t == T_VOLVER)   lista = L.padre;               // vuelve a la lista de arriba, donde estaba
         else if (t == T_SUB_TEMP) abrir(LI_TEMP);
@@ -396,6 +419,13 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
 #if USAR_BALANZA
         else if (t == T_BRECON)   { balanzaReconectar(balSel); volverOff = false; mostrarMensaje("Buscando la", "balanza en la red", ahora, 1500); }
 #endif
+        else if (t == T_ETAPA) {
+          char nom[13]; bool mod = false;
+          volverOff = false;
+          if (!controlPerfilEtapa(nom, sizeof(nom), mod)) mostrarMensaje("Sin etapa cargada", "Perfiles: en la web", ahora, 2200);
+          else mostrarMensaje(nom, mod ? "se cambio despues" : "igual al perfil", ahora, 2200);
+        }
+        else if (t == T_USO)      { volverOff = false; mostrarMensaje("Se cambia en la web", "Ajustes > Setpoints", ahora, 2200); }
         else if (t == T_PARADA)   { paradaPaso = controlParadaActiva() ? 3 : 1; confSi = false; estado = M_PARADA; }
         else if (t == T_CALIB)    { calPaso = calibActivo() ? 10 : 2; confSi = false; estado = M_CAL; }
         else if (t == T_VERIP)    { rssiInicio = true; infoAcerca = false; estado = M_INFO; }
