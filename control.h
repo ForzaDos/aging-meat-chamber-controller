@@ -92,6 +92,22 @@ bool    controlPerfilCargar(uint8_t i);                  // aplica y persiste; f
 bool    controlPerfilRenombrar(uint8_t i, const char* nombre);   // vacío = nombre de fábrica
 uint8_t controlPerfilActivo();                           // 1..4 si los ajustes actuales coinciden con ese perfil, 0 si con ninguno
 void    controlActualizar(float t, float h, bool ok);    // una vez por lectura del sensor
+
+// Diagnóstico del sensor (DHT22): cuántas lecturas fallan, cuándo y si coinciden con el cambio de un relé (interferencia).
+// Se cuenta desde el arranque y se muestra en /api/diag (objeto "sensor") y en Ajustes > Diagnóstico.
+struct SensorDiag {
+  uint32_t lecturas = 0;       // intentos de lectura
+  uint32_t errores = 0;        // intentos que fallaron
+  uint32_t seguidos = 0;       // fallas seguidas ahora (0 = la última fue buena)
+  uint32_t maxSeguidos = 0;    // la peor racha de fallas seguidas desde el arranque
+  uint32_t caidas = 0;         // veces que sensorOk pasó a falso (5 min sin lectura buena)
+  uint32_t errTrasRele = 0;    // fallas dentro de los 6 s siguientes a que un relé prendió o apagó
+  uint32_t ultOkMs = 0;        // millis() de la última lectura buena (0 = ninguna desde el arranque)
+  uint32_t ultCaidaMs = 0;
+  uint32_t ultOkHora = 0;      // hora real (epoch) de la última lectura buena y de la última caída (0 = sin hora)
+  uint32_t ultCaidaHora = 0;
+};
+const SensorDiag& controlSensorDiag();
 void    controlSetLuz(bool on);                          // relé 5 = AUX1 (antes "luz"), manual
 void    controlSetOtros(bool on);                        // relé 6 = AUX2 (antes "otros"), manual
 // Cambia el nombre de AUX1 (cual = 0) o AUX2 (cual = 1). Solo letras sin acentos, números,

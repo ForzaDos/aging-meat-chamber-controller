@@ -479,8 +479,31 @@ static void ventilador() {
   aplicarDirecto(est.releVent, PIN_RELE_VENT, EV_VENT, quiere);
 }
 
+static SensorDiag sensorDiag;
+static uint8_t     masRelesDiag = 0;     // relés prendidos en la lectura anterior (bit por relé)
+static uint32_t    ultConmDiag = 0;      // millis() del último cambio de algún relé
+const SensorDiag& controlSensorDiag() { return sensorDiag; }
+
+static uint32_t horaRealDiag() { const time_t t = time(nullptr); return t > 1700000000 ? (uint32_t)t : 0; }
+
 void controlActualizar(float t, float h, bool ok) {
   const uint32_t ahora = millis();
+
+  // Diagnóstico del sensor
+  const uint8_t reles = (est.releHum ? 1 : 0) | (est.releDesh ? 2 : 0) | (est.releFrio ? 4 : 0) | (est.releVent ? 8 : 0) | (est.releLuz ? 16 : 0) | (est.releOtros ? 32 : 0);
+  if (reles != masRelesDiag) { masRelesDiag = reles; ultConmDiag = ahora; }
+  sensorDiag.lecturas++;
+  if (ok) {
+    if (sensorDiag.seguidos > sensorDiag.maxSeguidos) sensorDiag.maxSeguidos = sensorDiag.seguidos;
+    sensorDiag.seguidos = 0;
+    sensorDiag.ultOkMs = ahora;
+    sensorDiag.ultOkHora = horaRealDiag();
+  } else {
+    sensorDiag.errores++;
+    sensorDiag.seguidos++;
+    if (sensorDiag.seguidos > sensorDiag.maxSeguidos) sensorDiag.maxSeguidos = sensorDiag.seguidos;
+    if (ultConmDiag && (ahora - ultConmDiag) < 6000UL) sensorDiag.errTrasRele++;
+  }
 
   if (ok) {
     est.temp = t;
@@ -488,7 +511,12 @@ void controlActualizar(float t, float h, bool ok) {
     est.sensorOk = true;
     ultimaLecturaOk = ahora;
   } else {
-    if (est.sensorOk && (ahora - ultimaLecturaOk) > TIMEOUT_SENSOR_MS) est.sensorOk = false;
+    if (est.sensorOk && (ahora - ultimaLecturaOk) > TIMEOUT_SENSOR_MS) {
+      est.sensorOk = false;
+      sensorDiag.caidas++;
+      sensorDiag.ultCaidaMs = ahora;
+      sensorDiag.ultCaidaHora = horaRealDiag();
+    }
   }
 
   est.alarmaTemp = est.sensorOk && fabsf(est.temp - cfg.tempSP) > cfg.tempBanda;

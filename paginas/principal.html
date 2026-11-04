@@ -821,7 +821,7 @@ details.test{border-radius:12px}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.31 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.34 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
@@ -1815,6 +1815,17 @@ function duracion(s) {
   const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
   return (d ? d + ' d ' : '') + h + ' h ' + m + ' min';
 }
+// Resumen del sensor DHT22 para Ajustes > Diagnóstico: cuántas lecturas fallan, cuándo, y si coincide con un cambio de relé.
+function sensorDiag(s) {
+  if (!s) return '';
+  const hora = t => t ? new Date(t * 1000).toLocaleTimeString('es-AR', { hourCycle: 'h23' }) : '–';
+  const pct = s.lecturas ? (100 * s.errores / s.lecturas).toFixed(1).replace('.', ',') : '0';
+  const ult = s.ultOkHaceS < 0 ? 'ninguna desde el arranque' : 'hace ' + (s.ultOkHaceS < 60 ? s.ultOkHaceS + ' s' : duracion(s.ultOkHaceS)) + ' (' + hora(s.ultOkHora) + ')';
+  return `Sensor DHT22: ${s.ok ? 'responde' : 'SIN LECTURA'} · ${s.errores} fallas en ${s.lecturas} lecturas (${pct} %)\n` +
+    `  Fallas seguidas ahora: ${s.seguidos} · la peor racha: ${s.maxSeguidos} · veces que se cayó: ${s.caidas} (la última a las ${hora(s.ultCaidaHora)})\n` +
+    `  Fallas justo después de que un relé cambió: ${s.errTrasRele} · última lectura buena: ${ult}\n` +
+    `  Cable de datos en reposo: ${s.pin ? 'alto (normal)' : 'BAJO (corto o sensor trabado)'}\n`;
+}
 $('#diag').addEventListener('toggle', async () => {
   if (!$('#diag').open) return;
   const box = $('#diagTxt');
@@ -1826,6 +1837,7 @@ $('#diag').addEventListener('toggle', async () => {
       `Programa: ${d.version || '?'} · página: ${PAGINA_VERSION}${d.version && d.version !== PAGINA_VERSION ? '  (¡distintos! recargá la página con Ctrl+F5)' : ''}\n` +
       `Memoria libre: ${kb(d.heapLibre)} (bloque más grande: ${kb(d.heapBloqueMayor)})\n` +
       `Hora de internet: ${d.horaOk ? 'sí' : 'NO'}\n` +
+      sensorDiag(d.sensor) +
       `Encendido hace: ${duracion(d.uptime)}\n` +
       `Último reinicio: ${d.reinicio}\n` +
       `Datos guardados: 1 hora ${h[4] ?? 0}/360 (no se guarda), 1 día ${h[0]}/1440, 1 semana ${h[1]}/2016, 1 mes ${h[2]}/1440, 3 meses ${h[3]}/1440\n` +

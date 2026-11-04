@@ -101,7 +101,7 @@ details.test{border-radius:12px}
   <h2>Punto de acceso</h2>
   <div class="dato"><span>Conectada a</span><b id="eAp">–</b></div>
   <div class="dato"><span>Fijada a</span><b id="eFijo">ninguno (cualquiera)</b></div>
-  <p class="ayuda">Si hay un repetidor con el mismo nombre de red, la placa se conecta al primero que encuentra y puede cambiar en cada reinicio. Fijándola al del repetidor, siempre intenta ese primero; si en 20 segundos no lo logra, usa cualquiera, así nunca se queda sin red. Tocá el que quieras fijar (el de mejor señal figura primero). Se reconecta sola y esta página puede cortarse unos segundos: si cambia de IP, la nueva se ve en Menú &rsaquo; Diagnóstico &rsaquo; Ver IP.</p>
+  <p class="ayuda">Si hay un repetidor con el mismo nombre de red, la placa elige sola el de mejor señal cada vez que se conecta y lo vuelve a revisar cada 5 minutos (cambia si hay uno al menos 10 dB mejor). Si querés forzar otro, fijala a ese: siempre intenta ese primero; si en 20 segundos no lo logra, usa cualquiera, así nunca se queda sin red. Tocá el que quieras fijar (el de mejor señal figura primero). Se reconecta sola y esta página puede cortarse unos segundos: si cambia de IP, la nueva se ve en Menú &rsaquo; Diagnóstico &rsaquo; Ver IP.</p>
   <ul id="aps"></ul>
   <button type="button" class="sec" id="bSoltar">Soltar (que se conecte a cualquiera)</button>
   <div class="msg" id="msgAp" hidden></div>
@@ -185,7 +185,7 @@ $('#aps').onclick = e => {
   if (!confirm('¿Fijar la placa a este punto de acceso (' + b.dataset.b + ')? Se reconecta y la página puede cortarse unos segundos.')) return;
   postAp({ bssid: b.dataset.b }, 'Fijado. La placa se está reconectando a ' + b.dataset.b + '. Si la página no responde, abrila de nuevo en unos segundos.');
 };
-$('#bSoltar').onclick = () => postAp({ accion: 'quitar' }, 'Suelto. La placa se reconecta al punto de acceso que encuentre.');
+$('#bSoltar').onclick = () => postAp({ accion: 'quitar' }, 'Suelto. La placa sigue conectada y en unos segundos revisa si hay un punto de acceso de mejor señal.');
 $('#ver').onchange = e => { $('#clave').type = e.target.checked ? 'text' : 'password'; };
 $('#bCon').onclick = async () => {
   const s = $('#ssid').value.trim(), c = $('#clave').value;

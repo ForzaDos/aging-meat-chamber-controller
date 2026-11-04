@@ -28,13 +28,21 @@ static uint8_t  busIntentos = 0;
 
 // Punto de acceso fijado (BSSID). Si un repetidor comparte el nombre de la red, el ESP32 se conecta al primero que encuentra, no al
 // mejor, y puede cambiar en cada reinicio. Fijado, intenta primero ese y, si en 20 s no lo logra, vale cualquiera: nunca se queda
-// sin red por esto. Mientras esté en otro, cada 30 min vuelve a probar el fijado.
+// sin red por esto. Mientras esté en otro, cada 5 min vuelve a probar el fijado (un corte de luz suele reiniciar la cámara antes que el repetidor).
 static uint8_t  bssidFijo[6];
 static bool     tieneFijo = false;
 static uint32_t intentoFijo = 0;         // millis() del intento con el punto de acceso fijado (0 = no hay uno en curso)
 static uint32_t ultRepin = 0;
 static volatile uint8_t pendFijoAccion = 0;   // pedido de la web: 1 = fijar pendFijo, 2 = soltar (lo aplica wifiLoop)
 static uint8_t  pendFijo[6];
+
+// Elegir el mejor punto de acceso: al conectar se escanean todos los canales y se elige el de mejor señal (sin esto el ESP32 toma el primero que
+// encuentra: con un repetidor del mismo nombre quedaba en el malo). Ya conectada, cada 5 min se escanea y, si hay otro del mismo nombre al menos
+// 10 dB mejor, se pasa a ese. Si el elegido no deja conectar en 25 s, se usa cualquiera (y el chequeo se espacia a 30 min).
+static bool     roamEnCurso = false;
+static uint32_t ultRoam = 0;             // millis() del último chequeo
+static uint32_t roamDesde = 0;           // millis() en que se desconectó para pasar a otro (0 = no hay un cambio en curso)
+static uint32_t intervaloRoam = 300000UL;
 
 static void cargar() {
   pw.begin("redwifi", false);
@@ -60,6 +68,8 @@ static void guardar(const char* s, const char* c) {
 
 // Arranca una conexión a la red guardada: primero al punto de acceso fijado (si hay), si no a cualquiera.
 static void conectar() {
+  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);          // mira todos los canales...
+  WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);      // ...y elige el de mejor señal entre los que tienen este nombre
   if (tieneFijo) {
     WiFi.begin(ssidG, claveG, 0, bssidFijo);
     intentoFijo = millis() | 1;
@@ -198,10 +208,14 @@ void wifiLoop() {
     if (a == 1) { memcpy(bssidFijo, pendFijo, 6); pw.putBytes("bssid", bssidFijo, 6); tieneFijo = true; }
     else { pw.remove("bssid"); tieneFijo = false; }
     pw.end();
-    Serial.println(a == 1 ? "Wi-Fi: punto de acceso fijado" : "Wi-Fi: punto de acceso suelto (cualquiera)");
-    WiFi.disconnect();
-    conectar();
-    ultRepin = ahora;
+    Serial.println(a == 1 ? "Wi-Fi: punto de acceso fijado" : "Wi-Fi: punto de acceso suelto (elige el de mejor señal)");
+    if (a == 1) {
+      WiFi.disconnect();
+      conectar();
+      ultRepin = ahora;
+    } else {
+      ultRoam = ahora - intervaloRoam + 10000UL;      // sigue conectada: en unos 10 s revisa si hay un punto de acceso mejor
+    }
     return;
   }
 
@@ -235,7 +249,7 @@ void wifiLoop() {
   if (con && !sinSleep) { WiFi.setSleep(false); sinSleep = true; }
   if (!con) sinSleep = false;
 
-  // Punto de acceso fijado: si conectó, listo; si en 20 s no, se conecta a cualquiera (y cada 30 min vuelve a probar el fijado).
+  // Punto de acceso fijado: si conectó, listo; si en 20 s no, se conecta a cualquiera (y cada 5 min vuelve a probar el fijado).
   if (intentoFijo) {
     if (con) intentoFijo = 0;
     else if (ahora - intentoFijo > 20000UL && prueba != WF_PROBANDO && !busPausoSta) {
@@ -245,7 +259,7 @@ void wifiLoop() {
       ultRepin = ahora;
       Serial.println("Wi-Fi: el punto de acceso fijado no responde; se conecta a cualquiera");
     }
-  } else if (con && tieneFijo && prueba != WF_PROBANDO && !apActivo && !busEnCurso && !busPedida && ahora - ultRepin > 1800000UL) {
+  } else if (con && tieneFijo && prueba != WF_PROBANDO && !apActivo && !busEnCurso && !busPedida && ahora - ultRepin > 300000UL) {
     const uint8_t* b = WiFi.BSSID();
     ultRepin = ahora;
     if (b && memcmp(b, bssidFijo, 6) != 0) {
@@ -253,6 +267,44 @@ void wifiLoop() {
       WiFi.disconnect();
       conectar();
     }
+  }
+
+  // Elegir siempre el mejor punto de acceso (ver arriba).
+  if (roamEnCurso) {
+    const int16_t n = WiFi.scanComplete();
+    if (n >= 0) {
+      roamEnCurso = false;
+      const uint8_t* act = WiFi.BSSID();
+      int rActual = -127, rMejor = -127;
+      for (int i = 0; i < n; i++) {
+        if (WiFi.SSID(i) != ssidG) continue;
+        const int r = WiFi.RSSI(i);
+        if (act && memcmp(WiFi.BSSID(i), act, 6) == 0) rActual = r;
+        if (r > rMejor) rMejor = r;
+      }
+      if (con && rMejor >= rActual + 10) {
+        Serial.printf("Wi-Fi: hay un punto de acceso mejor (%d dBm contra %d dBm); se pasa a ese\n", rMejor, rActual);
+        roamDesde = ahora;
+        WiFi.disconnect();
+        conectar();
+      }
+    } else if (n == WIFI_SCAN_FAILED || ahora - ultRoam > 20000UL) {
+      roamEnCurso = false;
+    }
+  } else if (roamDesde) {
+    if (con) { roamDesde = 0; intervaloRoam = 300000UL; }
+    else if (ahora - roamDesde > 25000UL) {                 // el mejor no dejó conectar: vale el primero que responda
+      roamDesde = 0;
+      intervaloRoam = 1800000UL;
+      WiFi.disconnect();
+      WiFi.setScanMethod(WIFI_FAST_SCAN);
+      WiFi.begin(ssidG, claveG);
+      Serial.println("Wi-Fi: el punto de acceso elegido no dejó conectar; se conecta al primero que responda");
+    }
+  } else if (con && !tieneFijo && !apActivo && prueba != WF_PROBANDO && !busEnCurso && !busPedida && !busPausoSta && !pedido && ahora - ultRoam > intervaloRoam) {
+    ultRoam = ahora;
+    WiFi.scanNetworks(true);                                 // en segundo plano; los resultados los usa también la página /wifi
+    roamEnCurso = true;
   }
 
   if (con) {

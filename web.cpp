@@ -478,6 +478,22 @@ static void enviarDiag(AsyncWebServerRequest* r) {
   d["ota"]             = esp_ota_get_next_update_partition(nullptr) != nullptr;
   JsonArray h = d["historial"].to<JsonArray>();
   for (uint8_t i = 0; i < HIST_NIVELES; i++) h.add(historialCantidad(i));
+  {
+    ControlCandado c;
+    const SensorDiag& s = controlSensorDiag();
+    JsonObject so = d["sensor"].to<JsonObject>();
+    so["ok"]           = est.sensorOk;
+    so["lecturas"]     = s.lecturas;
+    so["errores"]      = s.errores;
+    so["seguidos"]     = s.seguidos;
+    so["maxSeguidos"]  = s.maxSeguidos;
+    so["caidas"]       = s.caidas;
+    so["errTrasRele"]  = s.errTrasRele;
+    so["ultOkHaceS"]   = s.ultOkMs ? (int32_t)((millis() - s.ultOkMs) / 1000UL) : -1;
+    so["ultOkHora"]    = s.ultOkHora;
+    so["ultCaidaHora"] = s.ultCaidaHora;
+    so["pin"]          = digitalRead(PIN_DHT);   // el cable de datos en reposo tiene que estar en alto (resistencia a 3V3); en bajo = corto o sensor trabado
+  }
   enviarJson(r, d);
 }
 

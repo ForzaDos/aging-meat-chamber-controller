@@ -4,7 +4,7 @@
 Controlador de una heladera convertida en cámara de curado: ESP32 + DHT22 + 6 relés + encoder + LCD 20x4,
 con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 lee por Wi-Fi la
 **balanza** (`../balanza`) donde cuelga la **pieza testigo** y sigue su merma.
-**Versión actual: v1.0.31 OTA** (4/11/2026, se actualiza por Wi-Fi). Historial de versiones en `plan.md`.
+**Versión actual: v1.0.34 OTA** (4/11/2026, se actualiza por Wi-Fi). Historial de versiones en `plan.md`.
 
 ## Versión
 - `config.h`: `SOFTWARE_VERSION` (LCD al arrancar, LCD > Diagnostico > Acerca de, pie de la web) y
@@ -40,14 +40,24 @@ con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 l
 - Con el repetidor, el router ve la cámara con **otra MAC** (el repetidor le cambia el prefijo; la propia del ESP32, la que informa `/api/diag`
   desde la v1.0.30 como `mac`, no cambia). Por eso una reserva de IP hecha con la MAC original no valía y el router le dio otra IP.
   Si algún día se saca el repetidor, la cámara vuelve a verse con la MAC original: rehacer la reserva.
-- **Estado desde el 4/11/2026: la cámara está FIJADA al punto de acceso del repetidor** (IP 192.168.18.103). Si se saca el repetidor o cambia, soltarla en `/wifi`.
+- **Estado (4/11/2026, 18:00): la cámara está en el laboratorio, SUELTA y eligiendo sola el mejor punto de acceso** (v1.0.34): quedó en el router, IP 192.168.18.88, −45 dBm. Probado: fijada al repetidor (−72 dBm) y soltada, en ~16 s se pasó sola al router. **Al llevarla a la heladera no hay que fijar nada**: allá el repetidor da −53 dBm y el router −84, así que debería quedar en el repetidor (IP .103) sola; si un corte de luz la hace arrancar antes que el repetidor, a los 5 min lo encuentra y se pasa. Sin probar en la heladera.
+- **Elige sola el punto de acceso de mejor señal (v1.0.34)**: `conectar()` (`redwifi.cpp`) usa `WIFI_ALL_CHANNEL_SCAN` + `WIFI_CONNECT_AP_BY_SIGNAL` y, ya conectada y sin fijar, cada 5 min escanea
+  y pasa a otro punto de acceso del mismo nombre si es ≥ 10 dB mejor (si el elegido no deja conectar en 25 s usa el primero que responda y espacia el chequeo a 30 min). Soltar el fijado ya no corta
+  la conexión: en ~10 s revisa si hay uno mejor. Con esto no hace falta fijar nada para ir y volver entre el laboratorio (router) y la heladera (repetidor).
 - **Punto de acceso fijado (v1.0.31)**: en `/wifi` (sección "Punto de acceso") se puede fijar la cámara al BSSID del repetidor (o soltarla). Se guarda
   en NVS (`redwifi`/`bssid`); al conectar intenta primero ese y, si en 20 s no lo logra, usa cualquiera (`conectar()` y el respaldo en `wifiLoop`);
-  estando en otro, cada 30 min vuelve a probar el fijado. Cambiar de red lo borra. API: `GET /api/wifi` trae `bssid` y `fijo`, `/api/wifi/scan` trae
+  estando en otro, cada 5 min vuelve a probar el fijado. Cambiar de red lo borra. API: `GET /api/wifi` trae `bssid` y `fijo`, `/api/wifi/scan` trae
   `aps` (los puntos de acceso de la red guardada), `POST /api/wifi/fijar` (`bssid=` | `accion=quitar`).
 - Todo apunta a .103: `subir.mjs`, `AGENTS.md`, `LEEME.txt`, el hub de domótica (`config.json`). El hub, si no la encuentra en su IP, la
   busca en la red por la `mac` de `/api/diag` (`domotica/hub/src/drivers/http/buscar.js`).
 - Al monitorear una subida por OTA, mirar la IP actual: un monitor apuntado a la IP vieja no la ve volver (pasó el 4/11).
+
+## Diagnóstico del sensor (v1.0.33)
+- `controlActualizar()` cuenta lecturas, fallas, fallas seguidas, la peor racha, caídas (`sensorOk` pasa a falso después de `TIMEOUT_SENSOR_MS` = 5 min sin
+  lectura buena: hasta entonces la web muestra el último valor congelado) y fallas dentro de los 6 s siguientes a que un relé cambió (para distinguir
+  interferencia de un cable flojo). Va en `/api/diag` > `sensor` (más `pin`: nivel del cable de datos en reposo, tiene que ser alto) y en Ajustes >
+  Diagnóstico. Los contadores son de RAM: se reinician con cada arranque.
+- Caso del 4/11/2026: tras un corte de luz el DHT22 dejó de leer a los pocos minutos, dos veces seguidas, y volvía al reconectar el cable.
 
 ## Memoria (importante)
 - Con Wi-Fi + web + historial en RAM (~67 KB) + cliente de la balanza quedan **~94 KB de heap libre**
