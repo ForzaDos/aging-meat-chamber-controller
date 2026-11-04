@@ -40,6 +40,7 @@ con web propia (Secadero / Ajustes / Balanza / Diario de secado). Desde la v41 l
 - Con el repetidor, el router ve la cámara con **otra MAC** (el repetidor le cambia el prefijo; la propia del ESP32, la que informa `/api/diag`
   desde la v1.0.30 como `mac`, no cambia). Por eso una reserva de IP hecha con la MAC original no valía y el router le dio otra IP.
   Si algún día se saca el repetidor, la cámara vuelve a verse con la MAC original: rehacer la reserva.
+- **Estado desde el 4/11/2026: la cámara está FIJADA al punto de acceso del repetidor** (IP 192.168.18.103). Si se saca el repetidor o cambia, soltarla en `/wifi`.
 - **Punto de acceso fijado (v1.0.31)**: en `/wifi` (sección "Punto de acceso") se puede fijar la cámara al BSSID del repetidor (o soltarla). Se guarda
   en NVS (`redwifi`/`bssid`); al conectar intenta primero ese y, si en 20 s no lo logra, usa cualquiera (`conectar()` y el respaldo en `wifiLoop`);
   estando en otro, cada 30 min vuelve a probar el fijado. Cambiar de red lo borra. API: `GET /api/wifi` trae `bssid` y `fijo`, `/api/wifi/scan` trae
