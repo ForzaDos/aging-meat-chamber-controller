@@ -27,6 +27,18 @@ static uint32_t cambioHum = 0, cambioDesh = 0, cambioFrio = 0;   // millis() del
 static uint32_t ultimaLecturaOk = 0;
 static uint8_t  perfilCargado = 0;                               // 1..4: último perfil cargado o guardado (NVS "perfCarg"); lo usa el LCD para decir "modificada"
 static uint32_t pideHumDesde = 0, pideDeshDesde = 0;             // millis() desde que la humedad pasó el límite de encendido (0 = no lo pasó)
+// Humidificador (v1.0.39): promedio lento, tanda de pulsos y bloqueo después del frío. Solo del humidificador: el deshumidificador no se toca.
+#define PROM_TAU_S     600.0f     // constante de tiempo del promedio lento (10 min)
+#define BLOQ_MAX_MS    1800000UL  // un bloqueo nunca dura más de 30 min seguidos
+static float    promHum = 0;                                      // promedio exponencial de la humedad
+static bool     promOk = false;                                   // false = hay que arrancarlo con la próxima lectura
+static uint32_t promUlt = 0, promIni = 0;                         // millis() de la última muestra y del arranque
+static uint32_t bajoAcumMs = 0;                                   // tiempo con el promedio bajo el límite (el frío y su bloqueo no cuentan)
+static uint32_t bloqDesde = 0;                                    // millis() desde que empezó el bloqueo actual (0 = no bloqueado)
+static bool     tanda = false;                                    // tanda de pulsos en curso
+static bool     valv = false;                                     // pulso de la válvula en curso (humedad muy baja durante el bloqueo): no toca la tanda ni el contador
+static bool     promPrev = false;                                 // el promedio estaba activo en la vuelta anterior (si cambia, se arranca de cero)
+static void humReiniciar() { valv = false; promOk = false; bajoAcumMs = 0; bloqDesde = 0; tanda = false; est.humProm = NAN; est.humBajoMin = 0; est.humFase = 0; }
 static uint32_t manualFin[3] = {0, 0, 0};                         // millis() en que vence cada forzado
 
 // Límites absolutos (hardware.h, SEG_*), con la lectura sin ajuste. Los calcula controlActualizar().
@@ -91,9 +103,11 @@ static uint16_t minOffDe(uint8_t pin) {
 static void aplicar(bool& actual, uint8_t pin, uint8_t ev, bool deseado, uint32_t& ultimoCambio, bool forzar, bool manual = false) {
   if (deseado == actual) return;
   if (deseado && paradaOn) return;                 // parada de emergencia: solo se apaga
-  // Para encender hay que haber estado apagado minOffS; para apagar, encendido minOnS.
-  const uint16_t minOn = (pin == PIN_RELE_FRIO) ? cfg.minOnTempS : cfg.minOnS;
-  uint32_t espera = (uint32_t)(deseado ? minOffDe(pin) : minOn) * 1000UL;
+  // REGLA INVIOLABLE: humidificador y deshumidificador NUNCA juntos. Por esta barrera pasan el automático, el forzado manual, la web, el LCD
+  // y el hub: para prender uno, el otro tiene que estar apagado (controlForzar() lo apaga antes). Ver también controlVerificarExclusion().
+  if (deseado && ((pin == PIN_RELE_HUM && est.releDesh) || (pin == PIN_RELE_DESH && est.releHum))) return;
+  // Para encender hay que haber estado apagado minOffS; apagar es inmediato (no hay mínimo encendido desde la v1.0.39).
+  uint32_t espera = deseado ? (uint32_t)minOffDe(pin) * 1000UL : 0;
   if (!forzar && (millis() - ultimoCambio) < espera) return;
   actual = deseado;
   ultimoCambio = millis();
@@ -137,15 +151,17 @@ void controlInit() {
   cfg.tempSP          = prefs.getFloat("tempSP",    DEF_TEMP_SP);
   cfg.tempHistSup     = prefs.isKey("tempHistSup") ? prefs.getFloat("tempHistSup", tempVieja) : tempVieja;
   cfg.tempHistInf     = prefs.getFloat("tempHistInf", DEF_TEMP_HIST_INF);
-  cfg.tempBanda       = prefs.getFloat("tempBanda", DEF_TEMP_BANDA);
   cfg.humEsperaS      = prefs.getUShort("humEsp",   DEF_ESPERA_HUM_S);
   cfg.deshEsperaS     = prefs.getUShort("deshEsp",  DEF_ESPERA_HUM_S);
   cfg.humOff          = prefs.getBool("humOff",     false);
   perfilCargado       = prefs.getUChar("perfCarg",  0);
   if (perfilCargado > PERFILES_N) perfilCargado = 0;
   cfg.deshOff         = prefs.getBool("deshOff",    false);
-  cfg.minOnS          = prefs.getUShort("minOnS",   DEF_MIN_ON_S);
-  cfg.minOnTempS      = prefs.getUShort("minOnT",   DEF_MIN_ON_S);
+  cfg.humPulsoS       = prefs.getUShort("humPul",   DEF_HUM_PULSO_S);
+  cfg.humDescansoS    = prefs.getUShort("humDes",   DEF_HUM_DESC_S);
+  cfg.humBloqueoS     = prefs.getUShort("humBlq",   DEF_HUM_BLOQ_S);
+  cfg.humPromMin      = prefs.getUShort("humPro",   DEF_HUM_PROM_MIN);
+  cfg.humPisoV        = prefs.getUShort("humPiso",  DEF_HUM_PISO);
   cfg.minOffS         = prefs.getUShort("minOffS",  DEF_MIN_OFF_S);
   cfg.ventActivo      = prefs.getBool("ventAct",    DEF_VENT_ACTIVO);
   cfg.ventPeriodoH    = prefs.getUChar("ventPer",   DEF_VENT_PERIODO_H);
@@ -166,11 +182,13 @@ void controlInit() {
   cfg.tempSP    = limitar(cfg.tempSP,    TEMP_SP_MIN, TEMP_SP_MAX, DEF_TEMP_SP);
   cfg.tempHistSup = limitar(cfg.tempHistSup, HIST_TEMP_MIN, HIST_TEMP_MAX, DEF_TEMP_HIST);
   cfg.tempHistInf = limitar(cfg.tempHistInf, 0.0f,          HIST_TEMP_MAX, DEF_TEMP_HIST_INF);
-  cfg.tempBanda = limitar(cfg.tempBanda, 1.0f, 10.0f, DEF_TEMP_BANDA);
   if (cfg.humEsperaS  > ESPERA_MAX_S) cfg.humEsperaS  = ESPERA_MAX_S;
   if (cfg.deshEsperaS > ESPERA_MAX_S) cfg.deshEsperaS = ESPERA_MAX_S;
-  if (cfg.minOnS  > 600) cfg.minOnS  = 600;
-  if (cfg.minOnTempS > 600) cfg.minOnTempS = 600;
+  if (cfg.humPulsoS    > HUM_PULSO_MAX_S)  cfg.humPulsoS    = HUM_PULSO_MAX_S;
+  if (cfg.humDescansoS > HUM_DESC_MAX_S)   cfg.humDescansoS = HUM_DESC_MAX_S;
+  if (cfg.humBloqueoS  > HUM_BLOQ_MAX_S)   cfg.humBloqueoS  = HUM_BLOQ_MAX_S;
+  if (cfg.humPromMin   > HUM_PROM_MAX_MIN) cfg.humPromMin   = HUM_PROM_MAX_MIN;
+  if (cfg.humPisoV     > HUM_PISO_MAX)     cfg.humPisoV     = HUM_PISO_MAX;
   if (cfg.minOffS > 600) cfg.minOffS = 600;
   cfg.ventPeriodoH = controlPeriodoValido(cfg.ventPeriodoH);
   if (cfg.ventDuracionMin > VENT_DURACION_MAX) cfg.ventDuracionMin = VENT_DURACION_MAX;
@@ -192,13 +210,15 @@ void controlGuardarConfig() {
   prefs.putFloat("tempHistInf", cfg.tempHistInf);
   prefs.putFloat("tempHistSup", cfg.tempHistSup);
   prefs.putFloat("tempHist",    cfg.tempHistSup);
-  prefs.putFloat("tempBanda", cfg.tempBanda);
   prefs.putUShort("humEsp",   cfg.humEsperaS);
   prefs.putUShort("deshEsp",  cfg.deshEsperaS);
   prefs.putBool("humOff",     cfg.humOff);
   prefs.putBool("deshOff",    cfg.deshOff);
-  prefs.putUShort("minOnS",   cfg.minOnS);
-  prefs.putUShort("minOnT",   cfg.minOnTempS);
+  prefs.putUShort("humPul",   cfg.humPulsoS);
+  prefs.putUShort("humDes",   cfg.humDescansoS);
+  prefs.putUShort("humBlq",   cfg.humBloqueoS);
+  prefs.putUShort("humPro",   cfg.humPromMin);
+  prefs.putUShort("humPiso",  cfg.humPisoV);
   prefs.putUShort("minOffS",  cfg.minOffS);
   prefs.putBool("ventAct",    cfg.ventActivo);
   prefs.putUChar("ventPer",   cfg.ventPeriodoH);
@@ -266,11 +286,13 @@ static bool perfilEscribir(uint8_t i, const Perfil& p) {
 void controlPerfilActual(Perfil& p) {
   p.lleno = true;                                // el nombre no se toca
   p.humSP = cfg.humSP; p.humHistInf = cfg.humHistInf; p.humHistSup = cfg.humHistSup;
-  p.tempSP = cfg.tempSP; p.tempHistInf = cfg.tempHistInf; p.tempHistSup = cfg.tempHistSup; p.tempBanda = cfg.tempBanda;
+  p.tempSP = cfg.tempSP; p.tempHistInf = cfg.tempHistInf; p.tempHistSup = cfg.tempHistSup;
   p.humEsperaS = cfg.humEsperaS; p.deshEsperaS = cfg.deshEsperaS;
   p.ventActivo = cfg.ventActivo; p.ventPeriodoH = cfg.ventPeriodoH;
   p.ventDuracionMin = cfg.ventDuracionMin; p.ventAnclaMin = cfg.ventAnclaMin;
   p.v2 = 1; p.humOff = cfg.humOff; p.deshOff = cfg.deshOff;
+  p.v3 = 1; p.humPulsoS = cfg.humPulsoS; p.humDescansoS = cfg.humDescansoS; p.humBloqueoS = cfg.humBloqueoS; p.humPromMin = cfg.humPromMin;
+  p.v4 = 1; p.humPisoV = cfg.humPisoV;
 }
 
 bool controlPerfilGuardar(uint8_t i) {
@@ -291,13 +313,18 @@ bool controlPerfilEditar(uint8_t i, const Perfil& nuevo) {
   strcpy(p.nombre, g.nombre);                    // el nombre se cambia aparte
   p.lleno = true;
   p.v2 = 1;
+  p.v3 = 1; p.v4 = 1;
   p.humSP       = limitar(p.humSP,       HUM_SP_MIN,   HUM_SP_MAX,   DEF_HUM_SP);
   p.humHistInf  = limitar(p.humHistInf,  HIST_HUM_MIN,  HIST_HUM_MAX,  DEF_HUM_HIST);
   p.humHistSup  = limitar(p.humHistSup,  HIST_HUM_MIN,  HIST_HUM_MAX,  DEF_HUM_HIST);
   p.tempSP      = limitar(p.tempSP,      TEMP_SP_MIN,  TEMP_SP_MAX,  DEF_TEMP_SP);
   p.tempHistInf = limitar(p.tempHistInf, 0.0f,         HIST_TEMP_MAX, DEF_TEMP_HIST_INF);
   p.tempHistSup = limitar(p.tempHistSup, HIST_TEMP_MIN, HIST_TEMP_MAX, DEF_TEMP_HIST);
-  p.tempBanda   = limitar(p.tempBanda,   1.0f, 10.0f, DEF_TEMP_BANDA);
+  if (p.humPulsoS    > HUM_PULSO_MAX_S)  p.humPulsoS    = HUM_PULSO_MAX_S;
+  if (p.humDescansoS > HUM_DESC_MAX_S)   p.humDescansoS = HUM_DESC_MAX_S;
+  if (p.humBloqueoS  > HUM_BLOQ_MAX_S)   p.humBloqueoS  = HUM_BLOQ_MAX_S;
+  if (p.humPromMin   > HUM_PROM_MAX_MIN) p.humPromMin   = HUM_PROM_MAX_MIN;
+  if (p.humPisoV     > HUM_PISO_MAX)     p.humPisoV     = HUM_PISO_MAX;
   if (p.humEsperaS  > ESPERA_MAX_S) p.humEsperaS  = ESPERA_MAX_S;
   if (p.deshEsperaS > ESPERA_MAX_S) p.deshEsperaS = ESPERA_MAX_S;
   p.ventPeriodoH    = controlPeriodoValido(p.ventPeriodoH);
@@ -324,7 +351,6 @@ bool controlPerfilCargar(uint8_t i) {
   cfg.tempSP      = limitar(p.tempSP,      TEMP_SP_MIN,  TEMP_SP_MAX,  cfg.tempSP);
   cfg.tempHistInf = limitar(p.tempHistInf, 0.0f,         HIST_TEMP_MAX, cfg.tempHistInf);
   cfg.tempHistSup = limitar(p.tempHistSup, HIST_TEMP_MIN, HIST_TEMP_MAX, cfg.tempHistSup);
-  cfg.tempBanda   = limitar(p.tempBanda,   1.0f, 10.0f, cfg.tempBanda);
   cfg.humEsperaS  = p.humEsperaS  > ESPERA_MAX_S ? ESPERA_MAX_S : p.humEsperaS;
   cfg.deshEsperaS = p.deshEsperaS > ESPERA_MAX_S ? ESPERA_MAX_S : p.deshEsperaS;
   cfg.ventActivo      = p.ventActivo;
@@ -333,6 +359,14 @@ bool controlPerfilCargar(uint8_t i) {
   cfg.ventAnclaMin    = p.ventAnclaMin > 1439 ? 0 : p.ventAnclaMin;
   cfg.humOff  = p.v2 ? p.humOff  : false;      // un perfil anterior a la v1.0.31 deja los dos equipos encendidos
   cfg.deshOff = p.v2 ? p.deshOff : false;
+  if (p.v3) {                                    // un perfil anterior a la v1.0.39 deja esos cuatro ajustes como están
+    cfg.humPulsoS    = p.humPulsoS    > HUM_PULSO_MAX_S  ? HUM_PULSO_MAX_S  : p.humPulsoS;
+    cfg.humDescansoS = p.humDescansoS > HUM_DESC_MAX_S   ? HUM_DESC_MAX_S   : p.humDescansoS;
+    cfg.humBloqueoS  = p.humBloqueoS  > HUM_BLOQ_MAX_S   ? HUM_BLOQ_MAX_S   : p.humBloqueoS;
+    cfg.humPromMin   = p.humPromMin   > HUM_PROM_MAX_MIN ? HUM_PROM_MAX_MIN : p.humPromMin;
+  }
+  if (p.v4) cfg.humPisoV = p.humPisoV > HUM_PISO_MAX ? HUM_PISO_MAX : p.humPisoV;
+  humReiniciar();                                // otros objetivos: el promedio y la tanda arrancan de cero
   pideHumDesde = pideDeshDesde = 0;              // los objetivos cambiaron: la espera de confirmación empieza de cero
   perfilCargado = i + 1;
   prefs.putUChar("perfCarg", perfilCargado);
@@ -352,6 +386,14 @@ bool controlPerfilEtapa(char* nombre, size_t n, bool& modificado) {
   return false;
 }
 
+bool controlPerfilCopia(uint8_t i, Perfil& p) {
+  memset(&p, 0, sizeof p);
+  if (i >= PERFILES_N) return false;
+  controlPerfilActivo();                              // deja cargada la copia en RAM
+  p = perfilCache[i];
+  return p.lleno;
+}
+
 uint8_t controlPerfilActivo() {
   auto igual = [](float a, float b) { return fabsf(a - b) < 0.05f; };
   if (!perfilCacheOk) {
@@ -363,12 +405,24 @@ uint8_t controlPerfilActivo() {
     if (!p.lleno) continue;
     if (igual(p.humSP, cfg.humSP) && igual(p.humHistInf, cfg.humHistInf) && igual(p.humHistSup, cfg.humHistSup) &&
         igual(p.tempSP, cfg.tempSP) && igual(p.tempHistInf, cfg.tempHistInf) && igual(p.tempHistSup, cfg.tempHistSup) &&
-        igual(p.tempBanda, cfg.tempBanda) && p.humEsperaS == cfg.humEsperaS && p.deshEsperaS == cfg.deshEsperaS &&
+        p.humEsperaS == cfg.humEsperaS && p.deshEsperaS == cfg.deshEsperaS &&
         p.ventActivo == cfg.ventActivo && p.ventPeriodoH == cfg.ventPeriodoH &&
         (p.v2 ? p.humOff : false) == cfg.humOff && (p.v2 ? p.deshOff : false) == cfg.deshOff &&
+        (!p.v3 || (p.humPulsoS == cfg.humPulsoS && p.humDescansoS == cfg.humDescansoS && p.humBloqueoS == cfg.humBloqueoS && p.humPromMin == cfg.humPromMin)) &&
+        (!p.v4 || p.humPisoV == cfg.humPisoV) &&
         p.ventDuracionMin == cfg.ventDuracionMin && p.ventAnclaMin == cfg.ventAnclaMin) return i + 1;
   }
   return 0;
+}
+
+// Red de seguridad de la regla inviolable (humidificador y deshumidificador NUNCA juntos). La barrera de aplicar() debería hacerla
+// imposible; si por un error de programa aparecieran los dos prendidos, se apagan los dos enseguida. Se llama en cada vuelta del loop().
+void controlVerificarExclusion() {
+  if (est.releHum && est.releDesh) {
+    aplicar(est.releHum,  PIN_RELE_HUM,  EV_HUM,  false, cambioHum,  true);
+    aplicar(est.releDesh, PIN_RELE_DESH, EV_DESH, false, cambioDesh, true);
+    Serial.println("SEGURIDAD: humidificador y deshumidificador juntos; se apagaron los dos");
+  }
 }
 
 void controlNombreAux(uint8_t cual, const char* nombre) {
@@ -538,10 +592,10 @@ void controlActualizar(float t, float h, bool ok) {
     }
   }
 
-  est.alarmaTemp = est.sensorOk && fabsf(est.temp - cfg.tempSP) > cfg.tempBanda;
   if (otaOn && millis() - otaIni > OTA_MAX_MS) controlOta(false);   // la carga quedó colgada
   if (testOn || otaOn || paradaOn) {         // test de relés, actualización o parada de emergencia: el automático no toca nada
     pideHumDesde = pideDeshDesde = 0;
+    humReiniciar();
     return;
   }
 
@@ -574,6 +628,7 @@ void controlActualizar(float t, float h, bool ok) {
     // Pausa manual, sensor muerto o sensor en el frasco de calibración: clima apagado, sin esperar tiempos mínimos.
     // Excepción: en pausa, si hace demasiado calor el frío enciende igual (respetando el mínimo apagado).
     pideHumDesde = pideDeshDesde = 0;   // la espera de confirmación empieza de cero al volver
+    humReiniciar();                     // y el promedio lento también (si no, un promedio viejo podría prender el humidificador al volver)
     if (aHum) aplicar(est.releHum,  PIN_RELE_HUM,  EV_HUM,  false, cambioHum,  true);
     if (aDesh) aplicar(est.releDesh, PIN_RELE_DESH, EV_DESH, false, cambioDesh, true);
     if (aFrio) aplicar(est.releFrio, PIN_RELE_FRIO, EV_FRIO, segCalor, cambioFrio, !segCalor);
@@ -588,22 +643,67 @@ void controlActualizar(float t, float h, bool ok) {
     // Pasar el límite no alcanza para prender: tiene que seguir pasado durante la espera de confirmación
     // (humEsperaS / deshEsperaS), así una caída o subida de segundos no lo dispara. Una vez prendido, sigue
     // hasta el objetivo como siempre. Un forzado manual reinicia la cuenta.
-    const bool bajaHum = hr < cfg.humSP - cfg.humHistInf;
+    const float umbralHum = cfg.humSP - cfg.humHistInf;
+    const bool bajaHum = hr < umbralHum;
     const bool altaHum = hr > cfg.humSP + cfg.humHistSup;
-    if (!bajaHum || !aHum || cfg.humOff)    pideHumDesde  = 0; else if (!pideHumDesde)  pideHumDesde  = ahora | 1;
+
+    // ---- Humidificador (v1.0.39): bloqueo después del frío, promedio lento, tanda de pulsos y descanso ----
+    // Con el compresor prendido la humedad cae rápido y al apagarse rebota: esa humedad no dice nada del producto. Mientras el frío está
+    // prendido, y hasta humBloqueoS después de apagarse, no se empieza a humidificar, el promedio no se mueve y el tiempo no se cuenta.
+    // Válvula (piso ajustable, humPisoV): si la humedad cae por debajo del piso durante el bloqueo, da UN pulso corto de chequeo (con su descanso) sin reiniciar ni frenar
+    // el contador de la tanda. Además un bloqueo nunca dura más de 30 min seguidos.
+    const float piso = (float)cfg.humPisoV;     // 0 = sin válvula
+    const bool enBloq = cfg.humBloqueoS > 0 && (est.releFrio || (ahora - cambioFrio) < (uint32_t)cfg.humBloqueoS * 1000UL);
+    bool bloq = false;
+    if (enBloq) { if (!bloqDesde) bloqDesde = ahora | 1; bloq = (ahora - bloqDesde) < BLOQ_MAX_MS; } else bloqDesde = 0;
+    const bool valvula = enBloq && cfg.humPisoV > 0 && hr < piso && aHum && !cfg.humOff;
+    const bool promOn = cfg.humPromMin > 0;
+    if (promOn != promPrev) { promPrev = promOn; promOk = false; bajoAcumMs = 0; tanda = false; }   // se prendió o apagó el promedio desde los ajustes
+    if (!promOn || !aHum || cfg.humOff) {
+      promOk = false; bajoAcumMs = 0; est.humProm = NAN; est.humBajoMin = 0;
+    } else if (!promOk) {                      // arranque (o vuelta de una pausa): parte de la lectura actual y espera unos minutos antes de decidir
+      promHum = hr; promOk = true; promUlt = promIni = ahora; bajoAcumMs = 0;
+    } else {
+      uint32_t dt = ahora - promUlt; promUlt = ahora;
+      if (dt > 60000UL) dt = 60000UL;
+      if (!enBloq) {
+        promHum += (1.0f - expf(-(float)dt / 1000.0f / PROM_TAU_S)) * (hr - promHum);
+        const uint32_t calent = (uint32_t)(cfg.humPromMin < 10 ? cfg.humPromMin : 10) * 60000UL;
+        if (promHum >= umbralHum) bajoAcumMs = 0;
+        else if (ahora - promIni >= calent) bajoAcumMs += dt;
+      }
+      est.humProm = promHum; est.humBajoMin = (uint16_t)(bajoAcumMs / 60000UL);
+    }
+    const bool promBajo = promOn && promOk && promHum < umbralHum;
+
+    if (!bajaHum || !aHum || cfg.humOff || bloq || promOn) pideHumDesde = 0; else if (!pideHumDesde) pideHumDesde = ahora | 1;
     if (!altaHum || !aDesh || cfg.deshOff)  pideDeshDesde = 0; else if (!pideDeshDesde) pideDeshDesde = ahora | 1;
     const bool confHum  = pideHumDesde  && (ahora - pideHumDesde)  >= (uint32_t)cfg.humEsperaS  * 1000UL;
     const bool confDesh = pideDeshDesde && (ahora - pideDeshDesde) >= (uint32_t)cfg.deshEsperaS * 1000UL;
 
-    if      (confHum)                quiereHum = true;
-    else if (hr >= cfg.humSP)        quiereHum = false;
+    if (!aHum || cfg.humOff) {
+      tanda = false; valv = false;
+    } else if (est.releHum && valv) {          // pulso de la válvula: termina por tiempo (o al volver al límite) y NO toca la tanda ni el contador
+      if (hr >= umbralHum || (cfg.humPulsoS > 0 && (ahora - cambioHum) >= (uint32_t)cfg.humPulsoS * 1000UL)) { quiereHum = false; valv = false; }
+    } else if (est.releHum) {                  // prendido: hasta el objetivo, o hasta que termine el pulso
+      if (hr >= cfg.humSP) { quiereHum = false; tanda = false; bajoAcumMs = 0; }
+      else if (cfg.humPulsoS > 0 && (ahora - cambioHum) >= (uint32_t)cfg.humPulsoS * 1000UL) quiereHum = false;   // fin del pulso: ahora se evalúa el promedio
+    } else {                                   // apagado: ¿empieza o sigue la tanda?
+      if (tanda && (hr >= cfg.humSP || (promOn && !promBajo))) { tanda = false; bajoAcumMs = 0; }   // el promedio se recuperó: se termina la tanda
+      const bool empieza = promOn ? (promOk && bajoAcumMs >= (uint32_t)cfg.humPromMin * 60000UL) : confHum;
+      const bool descanso = cfg.humDescansoS > 0 && (ahora - cambioHum) < (uint32_t)cfg.humDescansoS * 1000UL;
+      if ((tanda || empieza) && !descanso && !bloq && hr < cfg.humSP) { quiereHum = true; tanda = true; pideHumDesde = 0; }
+      else if (valvula && !descanso && hr < cfg.humSP) { quiereHum = true; valv = true; }   // chequeo: un pulso, sin tocar tanda ni contador
+      else quiereHum = false;
+    }
+    est.humFase = (!aHum || cfg.humOff) ? 0 : est.releHum ? ((cfg.humPulsoS > 0 || valv) ? 3 : 0) : bloq ? 1 : (cfg.humDescansoS > 0 && (ahora - cambioHum) < (uint32_t)cfg.humDescansoS * 1000UL && tanda) ? 2 : tanda ? 4 : 0;
 
     if      (confDesh)               quiereDesh = true;
     else if (hr <= cfg.humSP)        quiereDesh = false;
 
     if (segHumNo)  quiereHum  = false;
     if (segDeshNo) quiereDesh = false;
-    if (cfg.humOff)  quiereHum  = false;   // apagado a pedido (perfil o ajustes): no prende solo; si estaba prendido, se apaga respetando el mínimo encendido
+    if (cfg.humOff)  quiereHum  = false;   // apagado a pedido (perfil o ajustes): no prende solo; si estaba prendido, se apaga enseguida
     if (cfg.deshOff) quiereDesh = false;
 
     // Primero se apaga, después se enciende; nunca los dos a la vez.

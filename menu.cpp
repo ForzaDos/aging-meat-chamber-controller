@@ -14,14 +14,14 @@
 
 static uint8_t balSel = 0;            // balanza que se opera desde el menú (índice de BALANZAS[])
 
-enum : uint8_t { M_OFF, M_LISTA, M_EDIT, M_CONF, M_MSG, M_INFO, M_WIFI, M_TEST, M_CAL, M_BAL, M_PARADA };
+enum : uint8_t { M_OFF, M_LISTA, M_EDIT, M_CONF, M_MSG, M_INFO, M_WIFI, M_TEST, M_CAL, M_BAL, M_PARADA, M_PERFIL };
 // Tipos de entrada. Los primeros son valores editables; los últimos son submenús o acciones.
 enum : uint8_t { T_TEMP, T_HUM, T_HTEMP, T_HHUM, T_VACT, T_VPER, T_VDUR, T_LUZ, T_OTROS, T_PAUSA,
-                 T_FHUM, T_FDESH, T_FFRIO, T_MANMIN, T_MINON, T_MINONT, T_BANDA, T_OFFT, T_OFFH,
+                 T_FHUM, T_FDESH, T_FFRIO, T_MANMIN, T_HPULSO, T_HDESC, T_HBLOQ, T_OFFT, T_OFFH,
                  T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_IP, T_SUB_CAL, T_VOLVER, T_SALIR, T_VERIP, T_WIFI, T_TEST, T_CALIB,
                  T_TSUMA, T_TTODOS, T_ACERCA, T_SUB_TIEMPOS, T_MINOFF, T_SUB_TEST, T_TUNO,
                  T_SUB_BAL, T_BVER, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_BSEG, T_PARADA, T_BSEL,
-                 T_HTEMPI, T_HHUMI, T_ESPH, T_ESPD, T_ETAPA, T_USO, T_N };
+                 T_HTEMPI, T_HHUMI, T_ESPH, T_ESPD, T_ETAPA, T_USOH, T_USOD, T_CARGAR, T_P1, T_P2, T_P3, T_P4, T_HPROM, T_HPISO, T_N };
 
 struct Item { const char* corto; const char* largo; };
 static const Item ITEMS[T_N] = {
@@ -39,9 +39,9 @@ static const Item ITEMS[T_N] = {
   { "Forzar desh", "Forzar deshumidific." },
   { "Forzar frio", "Forzar refrigeracion" },
   { "Dur forzado","Duracion del forzado" },
-  { "Min encend.","Min encendido humed." },
-  { "Min encend.","Min encendido frio" },
-  { "Alarma +/-", "Alarma temp. +/-" },
+  { "Pulso hum.", "Pulso humidificador" },     // v1.0.39: 0 = Apagado (cada humidificacion sigue hasta el objetivo)
+  { "Descanso",   "Descanso humidific." },
+  { "Bloq. frio", "Bloqueo despues frio" },
   { "Ajuste T",   "Ajuste temperatura" },
   { "Ajuste H",   "Ajuste humedad" },
   { "Temperatura","Temperatura" },
@@ -76,10 +76,18 @@ static const Item ITEMS[T_N] = {
   { "Espera hum.", "Espera prender hum." },
   { "Espera desh", "Espera prender desh." },
   { "Etapa",      "Etapa cargada" },        // informativas, sin valor: el texto se arma en textoInfo()
-  { "Hum/desh",   "Uso de hum y desh" },
+  { "Usar hum.",  "Usar humidificador" },    // editables: la fila de la lista muestra el estado completo (textoInfo)
+  { "Usar desh.", "Usar deshumidific." },
+  { "Cargar perf.", "Cargar perfil" },        // submenú con los 4 perfiles de la web (solo se cargan; se editan en la web)
+  { "Perfil 1",   "Perfil 1" },             // la fila muestra el nombre del perfil (textoPerfil)
+  { "Perfil 2",   "Perfil 2" },
+  { "Perfil 3",   "Perfil 3" },
+  { "Perfil 4",   "Perfil 4" },
+  { "Prom. lento","Promedio lento hum." },
+  { "Piso valv.", "Piso de la valvula" },     // 0 = Apagado
 };
 
-// Filas informativas (solo lectura): el texto ocupa todo el ancho. Se usa enseguida, antes de pedir otro.
+// Filas con el estado escrito completo, ocupando todo el ancho. Se usa enseguida, antes de pedir otro.
 //   Etapa: Estufado        perfil que coincide con los ajustes actuales
 //   Etapa: Estufado*       se cambió algo después de cargarlo (* = modificada)
 //   Humidif: NO SE USA     el humidificador y/o el deshumidificador están apagados a pedido (se cambia en la web)
@@ -90,34 +98,47 @@ static const char* textoInfo(uint8_t t) {
     if (!controlPerfilEtapa(nom, sizeof(nom), mod)) snprintf(b, sizeof(b), "Etapa: ninguna");
     else if (mod)                                   snprintf(b, sizeof(b), "Etapa: %.11s*", nom);
     else                                            snprintf(b, sizeof(b), "Etapa: %.12s", nom);
+  } else if (t == T_USOH) {
+    snprintf(b, sizeof(b), "Humidif: %s", cfg.humOff ? "NO SE USA" : "en uso");
   } else {
-    if (cfg.humOff && cfg.deshOff) snprintf(b, sizeof(b), "Hum/Desh NO SE USA");
-    else if (cfg.humOff)           snprintf(b, sizeof(b), "Humidif: NO SE USA");
-    else if (cfg.deshOff)          snprintf(b, sizeof(b), "Deshum.: NO SE USA");
-    else                           snprintf(b, sizeof(b), "Humid/desh: en uso");
+    snprintf(b, sizeof(b), "Deshum.: %s", cfg.deshOff ? "NO SE USA" : "en uso");
   }
   return b;
 }
-static bool esInfo(uint8_t t) { return t == T_ETAPA || t == T_USO; }
+static bool esInfo(uint8_t t) { return t == T_ETAPA; }   // solo lectura. T_USOH / T_USOD se ven igual en la lista pero se editan con click
+
+// Texto de una fila de la lista: las de estado (etapa, uso del humidificador y del deshumidificador) muestran el estado completo.
+static const char* nombreFila(uint8_t t);
 
 // Nombre a mostrar: AUX1 y AUX2 usan el nombre elegido en la web.
 static const char* corto(uint8_t t) { return esInfo(t) ? textoInfo(t) : t == T_LUZ ? cfg.nomAux1 : t == T_OTROS ? cfg.nomAux2 : (t == T_PARADA && controlParadaActiva()) ? "REANUDAR TODO" : ITEMS[t].corto; }
+// Fila de un perfil en la lista de Cargar perfil: "1 Estufado", con " *" si coincide con los ajustes actuales o " (vacio)" si no tiene nada guardado.
+static const char* textoPerfil(uint8_t t) {
+  static char b[28];
+  const uint8_t i = t - T_P1;
+  Perfil p;
+  const bool lleno = controlPerfilCopia(i, p);
+  const bool enUso = lleno && controlPerfilActivo() == i + 1;
+  snprintf(b, sizeof(b), "%u %.12s%s", (unsigned)(i + 1), p.nombre, !lleno ? " (vacio)" : enUso ? " *" : "");
+  return b;
+}
+static const char* nombreFila(uint8_t t) { return (t == T_ETAPA || t == T_USOH || t == T_USOD) ? textoInfo(t) : (t >= T_P1 && t <= T_P4) ? textoPerfil(t) : corto(t); }
 static const char* largo(uint8_t t) { return esInfo(t) ? textoInfo(t) : t == T_LUZ ? cfg.nomAux1 : t == T_OTROS ? cfg.nomAux2 : (t == T_PARADA && controlParadaActiva()) ? "REANUDAR TODO" : ITEMS[t].largo; }
 
 // Listas del menú: la principal y los submenús. El forzado manual de cada relé de clima está
 // dentro de su categoría (refrigeración en Temperatura; humidificador y deshumidificador en Humedad);
 // lo que vale para los tres relés de clima (tiempo mínimo apagado, duración del forzado) va en Tiempos.
 struct Lista { const char* titulo; const uint8_t* it; uint8_t n; uint8_t padre; };   // padre: adónde lleva "Volver"
-enum : uint8_t { LI_PRINC, LI_TEMP, LI_HUM, LI_VENT, LI_DIAG, LI_CAL, LI_TIEMPOS, LI_TEST, LI_BAL, LI_N };
+enum : uint8_t { LI_PRINC, LI_TEMP, LI_HUM, LI_VENT, LI_DIAG, LI_CAL, LI_TIEMPOS, LI_TEST, LI_BAL, LI_PERF, LI_N };
 #if USAR_BALANZA
-static const uint8_t L_PRINC[] = { T_ETAPA, T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
+static const uint8_t L_PRINC[] = { T_ETAPA, T_SUB_TEMP, T_SUB_HUM, T_CARGAR, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
                                    T_SUB_BAL, T_SUB_TIEMPOS, T_SUB_CAL, T_IP, T_PARADA, T_SALIR };
 #else
-static const uint8_t L_PRINC[] = { T_ETAPA, T_SUB_TEMP, T_SUB_HUM, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
+static const uint8_t L_PRINC[] = { T_ETAPA, T_SUB_TEMP, T_SUB_HUM, T_CARGAR, T_SUB_VENT, T_LUZ, T_OTROS, T_PAUSA,
                                    T_SUB_TIEMPOS, T_SUB_CAL, T_IP, T_PARADA, T_SALIR };
 #endif
-static const uint8_t L_TEMP[]  = { T_TEMP, T_HTEMP, T_HTEMPI, T_BANDA, T_MINONT, T_FFRIO, T_VOLVER };
-static const uint8_t L_HUM[]   = { T_USO, T_HUM, T_HHUM, T_HHUMI, T_ESPH, T_ESPD, T_MINON, T_FHUM, T_FDESH, T_VOLVER };
+static const uint8_t L_TEMP[]  = { T_TEMP, T_HTEMP, T_HTEMPI, T_FFRIO, T_VOLVER };
+static const uint8_t L_HUM[]   = { T_HUM, T_USOH, T_USOD, T_HHUM, T_HHUMI, T_ESPH, T_ESPD, T_HPULSO, T_HDESC, T_HBLOQ, T_HPISO, T_HPROM, T_FHUM, T_FDESH, T_VOLVER };
 static const uint8_t L_VENT[]  = { T_VACT, T_VPER, T_VDUR, T_VOLVER };
 #if TEST_AVANZADO
 static const uint8_t L_DIAG[]  = { T_VERIP, T_WIFI, T_SUB_TEST, T_ACERCA, T_VOLVER };   // test: submenú con los 3 modos
@@ -127,6 +148,7 @@ static const uint8_t L_DIAG[]  = { T_VERIP, T_WIFI, T_TEST, T_ACERCA, T_VOLVER }
 static const uint8_t L_CAL[]   = { T_OFFT, T_OFFH, T_CALIB, T_VOLVER };
 static const uint8_t L_TIEMPOS[] = { T_MINOFF, T_MANMIN, T_VOLVER };
 static const uint8_t L_TEST[]  = { T_TUNO, T_TSUMA, T_TTODOS, T_VOLVER };
+static const uint8_t L_PERF[]  = { T_P1, T_P2, T_P3, T_P4, T_VOLVER };
 static const uint8_t L_BAL[]   = { T_BSEL, T_BVER, T_BSEG, T_BBLE, T_BESTADO, T_BRECON, T_BOLV, T_VOLVER };
 static const Lista LISTAS[LI_N] = {
   { "MENU",        L_PRINC,   sizeof(L_PRINC),   LI_PRINC },
@@ -138,17 +160,18 @@ static const Lista LISTAS[LI_N] = {
   { "TIEMPOS",     L_TIEMPOS, sizeof(L_TIEMPOS), LI_PRINC },
   { "TEST RELES",  L_TEST,    sizeof(L_TEST),    LI_DIAG },
   { "BALANZA",     L_BAL,     sizeof(L_BAL),     LI_PRINC },
+  { "CARGAR PERFIL", L_PERF,  sizeof(L_PERF),    LI_PRINC },
 };
 
 // Opciones que abren otra lista (llevan ">" a la derecha).
 static bool esSubmenu(uint8_t t) {
-  return t == T_SUB_TEMP || t == T_SUB_HUM || t == T_SUB_VENT || t == T_IP || t == T_SUB_CAL || t == T_SUB_TIEMPOS || t == T_SUB_TEST || t == T_SUB_BAL;
+  return t == T_SUB_TEMP || t == T_SUB_HUM || t == T_SUB_VENT || t == T_IP || t == T_SUB_CAL || t == T_SUB_TIEMPOS || t == T_SUB_TEST || t == T_SUB_BAL || t == T_CARGAR;
 }
 // Opciones que abren una pantalla o hacen algo (no tienen un valor que mostrar).
 static bool sinValor(uint8_t t) {
   return t == T_SALIR || t == T_VOLVER || t == T_VERIP || t == T_WIFI || t == T_ACERCA ||
          t == T_TEST || t == T_TUNO || t == T_TSUMA || t == T_TTODOS ||
-         t == T_BVER || t == T_BESTADO || t == T_BRECON || t == T_BOLV || t == T_PARADA || t == T_ETAPA || t == T_USO;
+         t == T_BVER || t == T_BESTADO || t == T_BRECON || t == T_BOLV || t == T_PARADA || t == T_ETAPA || t == T_USOH || t == T_USOD || (t >= T_P1 && t <= T_P4);
 }
 // Acciones inmediatas (no se guardan como ajuste): la confirmación dice "Aplicar".
 static bool esAccion(uint8_t t) { return t == T_LUZ || t == T_OTROS || t == T_FHUM || t == T_FDESH || t == T_FFRIO || t == T_BBLE || t == T_BSEG; }
@@ -160,6 +183,7 @@ static const char* const ETQ_SEG[]   = { "Sigue", "PAUSA" };   // seguimiento de
 static const char* const ETQ_BAL[]   = { "1 kg", "10 kg" };   // una por balanza (BALANZAS[])
 static_assert(BALANZAS_MAX == sizeof(ETQ_BAL) / sizeof(ETQ_BAL[0]), "ETQ_BAL: una etiqueta por balanza");
 static const char* const ETQ_FORZ[]  = { "Auto", "ON", "OFF" };
+static const char* const ETQ_USO[]   = { "En uso", "NO SE USA" };   // humidificador / deshumidificador: se usa o queda apagado
 static const char* const ETQ_PER[]   = { "1 h", "2 h", "3 h", "4 h", "6 h", "8 h", "12 h", "24 h" };
 
 struct Campo {
@@ -179,16 +203,20 @@ static Campo campo(uint8_t t) {
     case T_HTEMPI: return { false, 0.0f,          HIST_TEMP_MAX, 0.5f, 1, "C",   0, nullptr };
     case T_HHUM:
     case T_HHUMI:  return { false, HIST_HUM_MIN, HIST_HUM_MAX, 0.5f, 1, "%",   0, nullptr };
-    case T_BANDA:  return { false, 1.0f, 10.0f, 0.5f, 1, "C",   0, nullptr };
     case T_OFFT:   return { false, -OFF_T_MAX, OFF_T_MAX, 0.1f, 1, "C", 0, nullptr };
     case T_OFFH:   return { false, -OFF_H_MAX, OFF_H_MAX, 0.1f, 1, "%", 0, nullptr };
     case T_VDUR:   return { false, 0, VENT_DURACION_MAX, 1, 0, "min", 0, nullptr };
-    case T_MINON:
-    case T_MINONT: return { false, 0, 600, 10, 0, "s", 0, nullptr };
+    case T_HPULSO: return { false, 0, HUM_PULSO_MAX_S, 10, 0, "s", 0, nullptr };
+    case T_HDESC:  return { false, 0, HUM_DESC_MAX_S, 30, 0, "s", 0, nullptr };
+    case T_HBLOQ:  return { false, 0, HUM_BLOQ_MAX_S / 60, 1, 0, "min", 0, nullptr };     // se guarda en segundos, se ve en minutos
+    case T_HPROM:  return { false, 0, HUM_PROM_MAX_MIN, 5, 0, "min", 0, nullptr };
+    case T_HPISO:  return { false, 0, HUM_PISO_MAX, 5, 0, "%", 0, nullptr };
     case T_MANMIN: return { false, MANUAL_MIN_MIN, MANUAL_MIN_MAX, 5, 0, "min", 0, nullptr };
     case T_MINOFF: return { false, 0, 600, 10, 0, "s", 0, nullptr };
     case T_ESPH:
     case T_ESPD:   return { false, 0, ESPERA_MAX_S, 5, 0, "s", 0, nullptr };
+    case T_USOH:
+    case T_USOD:   return { true, 0, 1, 1, 0, "", 2, ETQ_USO };
     case T_VACT:  return { true, 0, 1, 1, 0, "", 2, ETQ_VACT };
     case T_VPER:   return { true, 0, 7, 1, 0, "", 8, ETQ_PER };
     case T_LUZ:
@@ -209,7 +237,6 @@ static float valorActual(uint8_t t) {
     case T_HTEMPI: return cfg.tempHistInf;
     case T_HHUM:   return cfg.humHistSup;
     case T_HHUMI:  return cfg.humHistInf;
-    case T_BANDA:  return cfg.tempBanda;
     case T_OFFT:   return cfg.offT;
     case T_OFFH:   return cfg.offH;
     case T_VACT:   return cfg.ventActivo ? 1 : 0;
@@ -218,6 +245,8 @@ static float valorActual(uint8_t t) {
       return 0;
     }
     case T_VDUR:   return cfg.ventDuracionMin;
+    case T_USOH:   return cfg.humOff ? 1 : 0;
+    case T_USOD:   return cfg.deshOff ? 1 : 0;
     case T_LUZ:    return est.releLuz ? 1 : 0;
     case T_OTROS:  return est.releOtros ? 1 : 0;
     case T_PAUSA:  return cfg.activo ? 0 : 1;
@@ -225,8 +254,11 @@ static float valorActual(uint8_t t) {
     case T_FDESH:  return est.manual[R_DESH];
     case T_FFRIO:  return est.manual[R_FRIO];
     case T_MANMIN: return cfg.manualMin;
-    case T_MINON:  return cfg.minOnS;
-    case T_MINONT: return cfg.minOnTempS;
+    case T_HPULSO: return cfg.humPulsoS;
+    case T_HDESC:  return cfg.humDescansoS;
+    case T_HBLOQ:  return cfg.humBloqueoS / 60;
+    case T_HPROM:  return cfg.humPromMin;
+    case T_HPISO:  return cfg.humPisoV;
     case T_MINOFF: return cfg.minOffS;
     case T_ESPH:   return cfg.humEsperaS;
     case T_ESPD:   return cfg.deshEsperaS;
@@ -246,6 +278,8 @@ static void textoValor(uint8_t t, float v, char* b, size_t n) {
     if (i < 0) i = 0;
     if (i >= c.n) i = c.n - 1;
     snprintf(b, n, "%s", c.et[i]);
+  } else if ((t == T_HPULSO || t == T_HDESC || t == T_HBLOQ || t == T_HPROM || t == T_HPISO) && v < 0.5f) {
+    snprintf(b, n, "Apagado");                                      // 0 = esa funcion del humidificador apagada
   } else if (t == T_OFFT || t == T_OFFH) {
     snprintf(b, n, "%+.1f%s", fabsf(v) < 0.05f ? 0.0f : v, c.uni);   // ajustes con signo
   } else {
@@ -264,12 +298,13 @@ static uint32_t aplicarValor(uint8_t t, float v) {
     case T_HTEMPI: cfg.tempHistInf = v; break;
     case T_HHUM:   cfg.humHistSup = v; break;
     case T_HHUMI:  cfg.humHistInf = v; break;
-    case T_BANDA:  cfg.tempBanda = v; break;
     case T_OFFT:   cfg.offT = v; break;
     case T_OFFH:   cfg.offH = v; break;
     case T_VACT:   cfg.ventActivo = (i != 0); break;
     case T_VPER:   cfg.ventPeriodoH = PERIODOS_VENT[i < 0 ? 0 : (i > 7 ? 7 : i)]; break;
     case T_VDUR:   cfg.ventDuracionMin = (uint16_t)(v + 0.5f); break;
+    case T_USOH:   cfg.humOff  = (i != 0); break;
+    case T_USOD:   cfg.deshOff = (i != 0); break;
     case T_LUZ:    controlSetLuz(i != 0); return 0;
     case T_OTROS:  controlSetOtros(i != 0); return 0;
 #if USAR_BALANZA
@@ -287,8 +322,11 @@ static uint32_t aplicarValor(uint8_t t, float v) {
     case T_FDESH:  return controlForzar(R_DESH, (uint8_t)i);
     case T_FFRIO:  return controlForzar(R_FRIO, (uint8_t)i);
     case T_MANMIN: cfg.manualMin = (uint16_t)(v + 0.5f); break;
-    case T_MINON:  cfg.minOnS     = (uint16_t)(v + 0.5f); break;
-    case T_MINONT: cfg.minOnTempS = (uint16_t)(v + 0.5f); break;
+    case T_HPULSO: cfg.humPulsoS    = (uint16_t)(v + 0.5f); break;
+    case T_HDESC:  cfg.humDescansoS = (uint16_t)(v + 0.5f); break;
+    case T_HBLOQ:  cfg.humBloqueoS  = (uint16_t)((int)(v + 0.5f) * 60); break;
+    case T_HPROM:  cfg.humPromMin   = (uint16_t)(v + 0.5f); break;
+    case T_HPISO:  cfg.humPisoV     = (uint16_t)(v + 0.5f); break;
     case T_MINOFF: cfg.minOffS    = (uint16_t)(v + 0.5f); break;
     case T_ESPH:   cfg.humEsperaS  = (uint16_t)(v + 0.5f); break;
     case T_ESPD:   cfg.deshEsperaS = (uint16_t)(v + 0.5f); break;
@@ -308,6 +346,7 @@ static bool     wifiConf = false;      // config Wi-Fi: true = pantalla de confi
 static uint8_t  calPaso = 0;          // calibración: 2 confirmar inicio, 10 estado, 11 opciones, 12 aplicar, 13 cancelar
 static uint8_t  calOp = 0;
 static bool     msgACal = false;      // al cerrar el mensaje, volver a la pantalla de calibración
+static uint8_t  perfSel = 0, perfPaso = 0;   // cargar perfil: cuál (0..3) y el paso (1 primera confirmación, 2 última)
 static uint8_t  paradaPaso = 0;        // parada de emergencia: 1 advertencia, 2 ultima confirmacion, 3 reanudar
 static uint8_t  testPaso = 0;         // test de relés: 1 y 2 = advertencias, 3 = corriendo
 static bool     infoAcerca = false;       // M_INFO muestra "Acerca de" en vez de la red
@@ -399,7 +438,7 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
       if (boton == BTN_LARGO) { estado = M_OFF; break; }
       if (boton == BTN_CLICK) {
         const uint8_t t = L.it[cur];
-        auto abrir = [&](uint8_t li) { lista = li; cursores[li] = (li == LI_HUM) ? 1 : 0; };   // en Humedad el cursor queda en "Objetivo" y se ve arriba el estado de uso
+        auto abrir = [&](uint8_t li) { lista = li; cursores[li] = 0; };
         if      (t == T_SALIR)    estado = M_OFF;
         else if (t == T_VOLVER)   lista = L.padre;               // vuelve a la lista de arriba, donde estaba
         else if (t == T_SUB_TEMP) abrir(LI_TEMP);
@@ -410,6 +449,7 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
         else if (t == T_SUB_TIEMPOS) abrir(LI_TIEMPOS);
         else if (t == T_SUB_TEST) abrir(LI_TEST);
         else if (t == T_SUB_BAL)  abrir(LI_BAL);
+        else if (t == T_CARGAR)   abrir(LI_PERF);
         else if (t == T_BVER)     { balPant = 0; estado = M_BAL; }
         else if (t == T_BESTADO)  { balPant = 1; estado = M_BAL; }
         else if (t == T_BOLV)     { balPant = 2; confSi = false; estado = M_BAL; }
@@ -425,7 +465,12 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
           if (!controlPerfilEtapa(nom, sizeof(nom), mod)) mostrarMensaje("Sin etapa cargada", "Perfiles: en la web", ahora, 2200);
           else mostrarMensaje(nom, mod ? "se cambio despues" : "igual al perfil", ahora, 2200);
         }
-        else if (t == T_USO)      { volverOff = false; mostrarMensaje("Se cambia en la web", "Ajustes > Setpoints", ahora, 2200); }
+        else if (t >= T_P1 && t <= T_P4) {
+          Perfil p;
+          volverOff = false;
+          if (!controlPerfilCopia(t - T_P1, p)) mostrarMensaje(p.nombre, "esta vacio", ahora, 2000);
+          else { perfSel = t - T_P1; perfPaso = 1; confSi = false; estado = M_PERFIL; }
+        }
         else if (t == T_PARADA)   { paradaPaso = controlParadaActiva() ? 3 : 1; confSi = false; estado = M_PARADA; }
         else if (t == T_CALIB)    { calPaso = calibActivo() ? 10 : 2; confSi = false; estado = M_CAL; }
         else if (t == T_VERIP)    { rssiInicio = true; infoAcerca = false; estado = M_INFO; }
@@ -514,6 +559,20 @@ void menuEntrada(int16_t giro, uint8_t boton, uint32_t ahora) {
         volverOff = false;
         if (paradaPaso == 2) { controlParada(true);  mostrarMensaje("TODO APAGADO", "Reanudar: Menu", ahora, 3000); }
         else                 { controlParada(false); mostrarMensaje("Control reanudado", "Clima automatico", ahora, 2500); }
+      }
+      break;
+
+    case M_PERFIL:                                      // cargar un perfil: doble confirmación, el cursor siempre arranca en NO
+      if (giro) confSi = !confSi;
+      if (boton == BTN_LARGO) { estado = M_LISTA; break; }
+      if (boton == BTN_CLICK) {
+        if (!confSi) { estado = M_LISTA; break; }
+        if (perfPaso == 1) { perfPaso = 2; confSi = false; break; }
+        Perfil p;
+        controlPerfilCopia(perfSel, p);
+        volverOff = false;
+        if (controlPerfilCargar(perfSel)) mostrarMensaje("Perfil cargado", p.nombre, ahora, 2500);
+        else                              mostrarMensaje("No se pudo cargar", p.nombre, ahora, 2500);
       }
       break;
 
@@ -622,11 +681,11 @@ void menuLineas(char l[4][21], uint8_t filas) {
           const uint8_t it = L.it[top + r];
           valor(it, b, sizeof(b));
           const char m = (top + r) == cur ? '>' : ' ';
-          if (b[0]) snprintf(l[r + 1], 21, "%c%-11.11s%8.8s", m, corto(it), b);
-          else      snprintf(l[r + 1], 21, "%c%.19s", m, corto(it));          // sin valor: el nombre puede ser más largo
+          if (b[0]) snprintf(l[r + 1], 21, "%c%-11.11s%8.8s", m, nombreFila(it), b);
+          else      snprintf(l[r + 1], 21, "%c%.19s", m, nombreFila(it));     // sin valor: el nombre puede ser más largo
         }
       } else {
-        snprintf(l[0], 21, ">%s", corto(L.it[cur]));
+        snprintf(l[0], 21, ">%s", nombreFila(L.it[cur]));
         valor(L.it[cur], l[1], 21);
       }
       break;
@@ -719,6 +778,31 @@ void menuLineas(char l[4][21], uint8_t filas) {
         snprintf(l[1], 21, "%s", siNo(filas));
       }
       break;
+
+    case M_PERFIL: {
+      Perfil p;
+      controlPerfilCopia(perfSel, p);
+      if (filas >= 4) {
+        if (perfPaso == 1) {
+          snprintf(l[0], 21, "CARGAR PERFIL");
+          snprintf(l[1], 21, "%.20s", p.nombre);
+          snprintf(l[2], 21, "T %.1fC  H %.1f%%", p.tempSP, p.humSP);
+          snprintf(l[3], 21, "%s", siNo(filas));
+        } else {
+          snprintf(l[0], 21, "ULTIMA CONFIRMACION");
+          snprintf(l[1], 21, "Cambia los objetivos");
+          snprintf(l[2], 21, "ahora mismo. Seguro?");
+          snprintf(l[3], 21, "%s", siNo(filas));
+        }
+      } else if (perfPaso == 1) {
+        snprintf(l[0], 21, "Cargar %.12s?", p.nombre);
+        snprintf(l[1], 21, "%s", siNo(filas));
+      } else {
+        snprintf(l[0], 21, "Seguro? Cambia T/HR");
+        snprintf(l[1], 21, "%s", siNo(filas));
+      }
+      break;
+    }
 
     case M_TEST:
       if (testPaso == 3) { menuLineasTest(l, filas); break; }

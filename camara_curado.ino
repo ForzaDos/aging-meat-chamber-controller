@@ -92,6 +92,7 @@ void loop() {
     menuLoop();                  // gira / click: menú del LCD (puede cambiar objetivos y forzar relés)
     controlManualLoop();         // vence los forzados manuales (vuelven a automático)
     controlTestLoop();           // modo test de relés (si está activo)
+    controlVerificarExclusion(); // regla inviolable: humidificador y deshumidificador nunca juntos
 
     if (hayLectura) {
       if (ok) {

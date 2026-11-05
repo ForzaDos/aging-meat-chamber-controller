@@ -18,13 +18,15 @@ struct Config {
   float    tempSP;          // °C objetivo
   float    tempHistInf;     // histéresis inferior de temperatura (°C): el frío apaga en objetivo - esto (0 = apaga en el objetivo)
   float    tempHistSup;     // histéresis superior de temperatura (°C): el frío prende por encima de objetivo + esto
-  float    tempBanda;       // ± °C tolerados antes de mostrar alarma
   uint16_t humEsperaS;      // segundos que la humedad debe estar bajo el límite antes de prender el humidificador (0 = enseguida)
   uint16_t deshEsperaS;     // ídem sobre el límite antes de prender el deshumidificador
   bool     humOff;          // true = el humidificador NO prende solo (queda apagado; el forzado manual sigue andando)
   bool     deshOff;         // ídem para el deshumidificador
-  uint16_t minOnS;          // segundos mínimos encendido del humidificador y el deshumidificador
-  uint16_t minOnTempS;      // segundos mínimos encendido de la refrigeración
+  uint16_t humPulsoS;       // humidificador: segundos prendido por pulso corto (0 = sin pulsos: sigue hasta el objetivo)
+  uint16_t humDescansoS;    // humidificador: descanso obligatorio entre un apagado y el próximo encendido, en segundos (0 = sin descanso)
+  uint16_t humBloqueoS;     // humidificador: no empieza hasta pasados estos segundos de apagarse el frío (0 = sin bloqueo)
+  uint16_t humPisoV;        // humidificador: piso de la válvula, % HR; durante el bloqueo del frío, si la humedad cae bajo este valor da un pulso de chequeo (0 = sin válvula)
+  uint16_t humPromMin;      // humidificador: promedio lento; minutos con el promedio bajo el límite antes de empezar (0 = decide por la lectura del momento)
   uint16_t minOffS;         // segundos mínimos apagado (los tres relés de clima; solo se cambia desde la web)
   bool     ventActivo;      // habilita el programa del ventilador
   uint8_t  ventPeriodoH;    // se repite cada N horas: 1, 2, 3, 4, 6, 8, 12 o 24
@@ -49,7 +51,9 @@ struct Estado {
   bool     releVent  = false;
   bool     releLuz   = false;
   bool     releOtros = false;
-  bool     alarmaTemp = false;
+  float    humProm    = NAN;    // promedio lento de la humedad (NAN = no se usa o todavía no arrancó)
+  uint16_t humBajoMin = 0;      // minutos acumulados con el promedio bajo el límite (sin contar el frío)
+  uint8_t  humFase    = 0;      // 0 normal, 1 bloqueado por el frío, 2 descanso, 3 pulso, 4 tanda en curso (entre pulsos)
   bool     sensorOk   = false;
   int32_t  ventSeg    = -1;     // ventilador: encendido = segundos que le quedan; apagado = segundos al próximo encendido; -1 = no aplica
   uint8_t  manual[3]    = {0, 0, 0};   // por relé de clima (hum, desh, frío): MAN_AUTO / MAN_ON / MAN_OFF
@@ -68,6 +72,7 @@ void    controlBloquear();
 void    controlLiberar();
 struct ControlCandado { ControlCandado() { controlBloquear(); } ~ControlCandado() { controlLiberar(); } };
 void    controlGuardarConfig();                          // persiste cfg en NVS
+void    controlVerificarExclusion();                     // regla inviolable: humidificador y deshumidificador NUNCA juntos (red de seguridad, en cada vuelta del loop)
 
 // PERFILES DE SETPOINTS (v1.0.28): 4 casilleros (Estufado, Secado 1, Secado 2, Otros) con una foto de los ajustes de clima
 // y del programa del ventilador. NO guardan calibración, tiempos de protección, pausa ni parada. Van en NVS, namespace "perfiles".
@@ -83,6 +88,12 @@ struct Perfil {
   // Agregados en la v1.0.31. Un perfil guardado antes es más corto: se lee con esto en cero (todo encendido). Solo se agrega al final.
   uint32_t v2;             // 1 = el perfil trae humOff / deshOff
   bool     humOff, deshOff;
+  // Agregados en la v1.0.39 (pulso, descanso, bloqueo, promedio del humidificador). Un perfil anterior se carga SIN tocar esos cuatro ajustes.
+  uint32_t v3;             // 1 = el perfil trae los cuatro
+  uint16_t humPulsoS, humDescansoS, humBloqueoS, humPromMin;
+  // Agregado en la v1.0.39 (después): piso de la válvula. Un perfil sin v4 se carga sin tocar ese ajuste.
+  uint32_t v4;             // 1 = el perfil trae humPisoV
+  uint16_t humPisoV;
 };
 bool    controlPerfilLeer(uint8_t i, Perfil& p);         // i = 0..3; devuelve p.lleno (el nombre viene siempre)
 void    controlPerfilActual(Perfil& p);                  // copia a p los ajustes actuales de la cámara (no toca el nombre)
@@ -93,6 +104,8 @@ bool    controlPerfilRenombrar(uint8_t i, const char* nombre);   // vacío = nom
 // Etapa para el LCD: nombre del perfil que coincide con los ajustes actuales (modificado = false) o, si ya no coinciden, el del último
 // perfil cargado o guardado desde la cámara (modificado = true). false = ninguno.
 bool    controlPerfilEtapa(char* nombre, size_t n, bool& modificado);
+// Copia en RAM del perfil i (0..3) para el LCD (no lee la memoria permanente). Devuelve true si está lleno; el nombre viene siempre.
+bool    controlPerfilCopia(uint8_t i, Perfil& p);
 uint8_t controlPerfilActivo();                           // 1..4 si los ajustes actuales coinciden con ese perfil, 0 si con ninguno
 void    controlActualizar(float t, float h, bool ok);    // una vez por lectura del sensor
 

@@ -587,6 +587,38 @@ details.test{border-radius:12px}
           <input type="range" name="deshEsperaS" min="0" max="300" step="5" data-fmt="0">
           <p class="ayuda">Prende solo si la humedad sigue por encima del límite todo este tiempo. 0 = enseguida.</p>
         </div>
+        <h4 style="margin:.9rem 0 0">Humidificador: cuidar el vapor</h4>
+        <label class="chk" style="margin-top:.6rem"><input type="checkbox" name="humPulsoOn"> Pulso corto</label>
+        <div class="ctl">
+          <div class="ctl-top"><span>Prendido por pulso</span><b><output id="o_humPulsoS"></output> s</b></div>
+          <input type="range" name="humPulsoS" min="10" max="300" step="10" data-fmt="0">
+          <p class="ayuda">Cada vez que prende trabaja solo este tiempo y se apaga, aunque no haya llegado al objetivo. Destildado, sigue prendido hasta el objetivo.</p>
+        </div>
+        <label class="chk" style="margin-top:.6rem"><input type="checkbox" name="humDescansoOn"> Descanso obligatorio</label>
+        <div class="ctl">
+          <div class="ctl-top"><span>Descanso entre pulsos</span><b><output id="o_humDescansoS"></output> s</b></div>
+          <input type="range" name="humDescansoS" min="30" max="900" step="30" data-fmt="0">
+          <p class="ayuda">Después de apagarse no vuelve a prender antes de este tiempo.</p>
+        </div>
+        <label class="chk" style="margin-top:.6rem"><input type="checkbox" name="humBloqueoOn"> Bloqueo después del frío</label>
+        <div class="ctl">
+          <div class="ctl-top"><span>Bloqueo después de apagarse el frío</span><b><output id="o_humBloqueoMin"></output> min</b></div>
+          <input type="range" name="humBloqueoMin" min="1" max="60" step="1" data-fmt="0">
+          <p class="ayuda">Mientras el compresor trabaja, y este tiempo después de que se apaga, no empieza a humidificar: con el frío la humedad baja de golpe y rebota, y eso no dice nada del producto. Si durante el bloqueo la humedad cae por debajo del piso de la válvula (se ajusta abajo), da un pulso corto de chequeo, descansa y vuelve a mirar, sin reiniciar la cuenta de los minutos. Un bloqueo nunca dura más de 30 min.</p>
+        </div>
+        <label class="chk" style="margin-top:.6rem"><input type="checkbox" name="humPisoOn"> Válvula (piso de humedad)</label>
+        <div class="ctl">
+          <div class="ctl-top"><span>Piso de la válvula</span><b><output id="o_humPisoV"></output> %</b></div>
+          <input type="range" name="humPisoV" min="20" max="70" step="1" data-fmt="0">
+          <p class="ayuda">Durante el bloqueo del frío, si la humedad cae por debajo de este valor da UN pulso corto de chequeo, descansa y vuelve a mirar, sin reiniciar la cuenta de los minutos del promedio. Ponelo por debajo del fondo normal que alcanza la humedad en cada ciclo de frío. Destildado, el bloqueo es total (salvo que dure más de 30 min).</p>
+        </div>
+        <label class="chk" style="margin-top:.6rem"><input type="checkbox" name="humPromOn"> Funcionar por promedio lento</label>
+        <div class="ctl">
+          <div class="ctl-top"><span>Minutos con el promedio bajo el límite</span><b><output id="o_humPromMin"></output> min</b></div>
+          <input type="range" name="humPromMin" min="5" max="120" step="5" data-fmt="0">
+          <p class="ayuda">No decide con la lectura del momento sino con un promedio lento (10 min) que no cuenta el rato con el frío prendido. Empieza a humidificar cuando el promedio estuvo más de este tiempo por debajo del límite; entonces da pulsos y, después de cada uno, vuelve a mirar el promedio. Con esto activo, "Esperar antes de prender el humidificador" no se usa.</p>
+        </div>
+        <p class="ayuda" id="ayudaHx"></p>
         <p class="ayuda" id="ayudaH"></p>
       </div>
       <div class="grupo">
@@ -605,10 +637,6 @@ details.test{border-radius:12px}
           <input type="range" name="tempHistInf" min="0" max="5" step="0.5" data-fmt="1" hidden>
           <div class="paso"><button type="button" class="sec" data-p="tempHistInf" data-d="-1">− 0,5</button><button type="button" class="sec" data-p="tempHistInf" data-d="1">+ 0,5</button></div>
         </div>
-        <div class="ctl">
-          <div class="ctl-top"><span>Alarma si se aparta más de</span><b>± <output id="o_tempBanda"></output> °C</b></div>
-          <input type="range" name="tempBanda" min="1" max="10" step="0.5" data-fmt="1">
-        </div>
         <p class="ayuda" id="ayudaT"></p>
       </div>
     </div>
@@ -616,17 +644,6 @@ details.test{border-radius:12px}
       <summary>Tiempos de protección de los relés de clima</summary>
       <div class="leyenda">
         <p><b>Para qué sirven:</b> evitan que un equipo prenda y apague a cada rato, lo que lo desgasta (sobre todo el compresor de la heladera). Valen para el humidificador, el deshumidificador y el frío, y se cuentan desde el último cambio de cada uno.</p>
-        <p><b>Ejemplo:</b> si la humedad llega al objetivo a los 30 s de haber prendido el humidificador y el mínimo encendido es 120 s, el humidificador sigue prendido hasta cumplir los 120 s.</p>
-      </div>
-      <div class="ctl">
-        <div class="ctl-top"><span>Mínimo prendido: humidificador y deshumidificador</span><b><output id="o_minOnS"></output> s</b></div>
-        <input type="range" name="minOnS" min="0" max="600" step="10" data-fmt="0">
-        <p class="ayuda">Una vez que prende, no se apaga antes de este tiempo, aunque la humedad ya llegó al objetivo.</p>
-      </div>
-      <div class="ctl">
-        <div class="ctl-top"><span>Mínimo prendido: frío (compresor)</span><b><output id="o_minOnTempS"></output> s</b></div>
-        <input type="range" name="minOnTempS" min="0" max="600" step="10" data-fmt="0">
-        <p class="ayuda">Lo mismo para el compresor: una vez que arranca, trabaja al menos este tiempo.</p>
       </div>
       <div class="ctl">
         <div class="ctl-top"><span>Mínimo apagado (descanso)</span><b><output id="o_minOffS"></output> s</b></div>
@@ -822,12 +839,20 @@ details.test{border-radius:12px}
 
 <script src="/chart.js"></script>
 <script>
-const PAGINA_VERSION = 'v1.0.35 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
+const PAGINA_VERSION = 'v1.0.39 OTA';   // lo completa generar.py con VERSION_PROGRAMA de config.h (no editar a mano)
 const $ = s => document.querySelector(s);
 const HX = { 'X-Camara': '1' };   // va en todo POST: el equipo rechaza escrituras sin él (protección contra otras páginas)
 const f  = $('#f'), fv = $('#fv'), fn = $('#fn');
 const PERIODOS = [1, 2, 3, 4, 6, 8, 12, 24];
-const CAMPOS_F  = ['humSP','humHistInf','humHistSup','humEsperaS','deshEsperaS','tempSP','tempHistSup','tempHistInf','tempBanda','minOnS','minOnTempS','minOffS','manualMin'];
+const CAMPOS_F  = ['humSP','humHistInf','humHistSup','humEsperaS','deshEsperaS','tempSP','tempHistSup','tempHistInf','minOffS','manualMin'];
+// Humidificador (v1.0.39): cada función tiene casilla + deslizable; sin tildar se manda 0. k = clave de la API, s = deslizable, m = deslizable → API.
+const HUMX = [
+  { k: 'humPulsoS', s: 'humPulsoS', c: 'humPulsoOn', def: 60, m: 1 },
+  { k: 'humDescansoS', s: 'humDescansoS', c: 'humDescansoOn', def: 180, m: 1 },
+  { k: 'humBloqueoS', s: 'humBloqueoMin', c: 'humBloqueoOn', def: 10, m: 60 },
+  { k: 'humPromMin', s: 'humPromMin', c: 'humPromOn', def: 30, m: 1 },
+  { k: 'humPisoV', s: 'humPisoV', c: 'humPisoOn', def: 50, m: 1 },
+];
 const COL_T = '#f2a83b', COL_H = '#5fb3f0';
 let UMB = null;   // umbrales vigentes { t: [inferior, objetivo, superior], h: [...] }, los carga pintar()
 let verTip = true;   // ventana flotante con los valores del gráfico
@@ -956,12 +981,19 @@ function regla(id, val, min, max, lo, hi, sp) {
 function ayuda() {
   const v = n => +f.elements[n].value;
   txt('#ayudaH', `Humidifica por debajo de ${num(v('humSP') - v('humHistInf'), 1)} % y deshumidifica por encima de ${num(v('humSP') + v('humHistSup'), 1)} %. Ambos se detienen en ${num(v('humSP'), 1)} %. Para prender, la humedad tiene que seguir pasada del límite ${v('humEsperaS') ? v('humEsperaS') + ' s (humidificador)' : '0 s: el humidificador prende enseguida'} y ${v('deshEsperaS') ? v('deshEsperaS') + ' s (deshumidificador)' : '0 s: el deshumidificador prende enseguida'}.`);
-  txt('#ayudaT', `Enfría por encima de ${num(v('tempSP') + v('tempHistSup'), 1)} °C y se detiene en ${num(v('tempSP') - v('tempHistInf'), 1)} °C.` + (v('tempHistInf') >= v('tempBanda') ? ' Ojo: ese punto cae dentro de la zona de alarma.' : ''));
+  txt('#ayudaT', `Enfría por encima de ${num(v('tempSP') + v('tempHistSup'), 1)} °C y se detiene en ${num(v('tempSP') - v('tempHistInf'), 1)} °C.`);
 
-  const cicloHum = v('minOnS') + v('minOffS'), cicloFrio = v('minOnTempS') + Math.max(v('minOffS'), 180);
+  const cicloHum = v('minOffS'), cicloFrio = Math.max(v('minOffS'), 180);
   const cada = c => c < 60 ? `${c} s` : tiempo(c);
   const porHora = c => c > 0 ? ` (hasta ${Math.floor(3600 / c)} veces por hora)` : '';
-  $('#ayudaTm').innerHTML = `<b>Con estos valores:</b> el humidificador o el deshumidificador prenden como mucho una vez cada ${cada(cicloHum)}${porHora(cicloHum)} y el compresor una vez cada ${cada(cicloFrio)}${porHora(cicloFrio)}.`;
+  $('#ayudaTm').innerHTML = `<b>Con estos valores:</b> el humidificador o el deshumidificador prenden como mucho una vez cada ${cada(cicloHum)}${porHora(cicloHum)} y el compresor una vez cada ${cada(cicloFrio)}${porHora(cicloFrio)}. Apagar es siempre inmediato.`;
+  const hx = [];
+  hx.push(f.elements.humPulsoOn.checked ? `pulsos de ${v('humPulsoS')} s` : 'sin pulsos (sigue hasta el objetivo)');
+  if (f.elements.humDescansoOn.checked) hx.push(`descanso de ${v('humDescansoS')} s`);
+  if (f.elements.humBloqueoOn.checked) hx.push(`bloqueo de ${v('humBloqueoMin')} min después del frío` + (f.elements.humPisoOn.checked ? ` (válvula si baja de ${v('humPisoV')} %)` : ' (sin válvula)'));
+  hx.push(f.elements.humPromOn.checked ? `promedio lento (más de ${v('humPromMin')} min bajo el límite)` : 'decide por la lectura del momento');
+  txt('#ayudaHx', `Humidificador: ${hx.join(', ')}. El forzado manual no usa nada de esto: dura lo que diga "Vuelve solo a automático". El deshumidificador no cambia.`);
+  for (const h of HUMX) f.elements[h.s].disabled = !f.elements[h.c].checked;
 
   const per = PERIODOS[+fv.elements.ventPer.value], dur = +fv.elements.ventDuracionMin.value, anc = +fv.elements.ventAnclaMin.value;
   let a;
@@ -992,7 +1024,8 @@ function pintar(e) {
   // "NO SE USA": apagado a pedido (casilla de Setpoints o perfil). Un forzado manual lo pisa.
   const noUsa = (off, i) => !!off && !(e.manual && e.manual[i]);
   const nuH = noUsa(e.humOff, 0), nuD = noUsa(e.deshOff, 1);
-  rele('hum', e.releHum,  nuH ? 'NO SE USA' + (e.releHum ? ' (se apaga)' : '') : ea(e.releHum));
+  const fase = ['', ' · bloqueado por el frío', ' · descanso', ' · pulso', ' · tanda entre pulsos'][e.humFase | 0] || '';
+  rele('hum', e.releHum,  nuH ? 'NO SE USA' + (e.releHum ? ' (se apaga)' : '') : ea(e.releHum) + fase + (e.humProm != null && !e.releHum ? ` · prom. ${num(e.humProm, 1)} %` : ''));
   rele('des', e.releDesh, nuD ? 'NO SE USA' + (e.releDesh ? ' (se apaga)' : '') : ea(e.releDesh));
   $('#s_hum').classList.toggle('nousa', nuH);
   $('#s_des').classList.toggle('nousa', nuD);
@@ -1066,7 +1099,6 @@ function pintar(e) {
   else if (e.test && e.test.activo) { m = 'TEST DE RELÉS EN CURSO: el control automático está suspendido. Se puede detener en Ajustes › Diagnóstico › Modo test de relés.'; c += ' test'; }
   else if (!e.sensorOk)        m = 'El sensor no responde. Humedad y temperatura están apagadas.';
   else if (!e.activo)   { m = `Control en pausa. Las salidas automáticas están apagadas (${RELES[4].nombre} y ${RELES[5].nombre} siguen a mano). Tocá "Reanudar control" para volver.`; c += ' pausa'; }
-  else if (e.alarmaTemp)  m = 'La temperatura está fuera de la banda de alarma.';
   const av = $('#aviso');
   av.hidden = !m; av.className = c; av.textContent = m;
 
@@ -1076,6 +1108,11 @@ function pintar(e) {
     for (const n of CAMPOS_F) poner(f, n, e[n]);
     f.elements.humUsar.checked = !e.humOff;
     f.elements.deshUsar.checked = !e.deshOff;
+    for (const h of HUMX) {
+      const v = (e[h.k] | 0) / h.m;
+      f.elements[h.c].checked = v > 0;
+      poner(f, h.s, v > 0 ? v : h.def);
+    }
   }
   if (!sucio.fv) {
     fv.elements.ventActivo.checked = !!e.ventActivo;
@@ -1169,6 +1206,7 @@ function lineasPerfil(p) {
     `Temperatura: objetivo ${num(p.tempSP, 1)} °C. El frío prende a +${num(p.tempHistSup, 1)} y apaga a −${num(p.tempHistInf, 1)}.`,
     `Humedad: objetivo ${num(p.humSP, 1)} %. ${p.humOff ? 'Humidificador APAGADO' : 'Humidifica a −' + num(p.humHistInf, 1)} y ${p.deshOff ? 'deshumidificador APAGADO' : 'deshumidifica a +' + num(p.humHistSup, 1)}.`,
     `Espera de confirmación: humidificador ${p.humEsperaS} s, deshumidificador ${p.deshEsperaS} s.`,
+    `Humidificador: ${p.humPulsoS ? 'pulsos de ' + p.humPulsoS + ' s' : 'sin pulsos'}, ${p.humDescansoS ? 'descanso ' + p.humDescansoS + ' s' : 'sin descanso'}, ${p.humBloqueoS ? 'bloqueo ' + Math.round(p.humBloqueoS / 60) + ' min tras el frío' + (p.humPisoV ? ' (válvula bajo ' + p.humPisoV + ' %)' : ' (sin válvula)') : 'sin bloqueo'}, ${p.humPromMin ? 'promedio lento ' + p.humPromMin + ' min' : 'sin promedio'}.`,
     `Ventilador: ${ventPerfil(p)}.`,
   ];
 }
@@ -1206,11 +1244,15 @@ const CAMPOS_ED = [
   { n: 'humHistSup', l: 'Histéresis superior (deshumidificador)', pre: '+ ', u: '%', min: 0.5, max: 40, st: 0.5, f: '1', pasos: [-10, -1, 1, 10] },
   { n: 'humEsperaS', l: 'Esperar antes de prender el humidificador', u: 's', min: 0, max: 300, st: 5, f: '0' },
   { n: 'deshEsperaS', l: 'Esperar antes de prender el deshumidificador', u: 's', min: 0, max: 300, st: 5, f: '0' },
+  { hx: HUMX[0], n: 'humPulsoS', l: 'Pulso corto: prendido por pulso', u: 's', min: 10, max: 300, st: 10, f: '0' },
+  { hx: HUMX[1], n: 'humDescansoS', l: 'Descanso obligatorio entre pulsos', u: 's', min: 30, max: 900, st: 30, f: '0' },
+  { hx: HUMX[2], n: 'humBloqueoMin', l: 'Bloqueo después del frío', u: 'min', min: 1, max: 60, st: 1, f: '0' },
+  { hx: HUMX[3], n: 'humPromMin', l: 'Promedio lento: minutos bajo el límite', u: 'min', min: 5, max: 120, st: 5, f: '0' },
+  { hx: HUMX[4], n: 'humPisoV', l: 'Válvula: piso de humedad', u: '%', min: 20, max: 70, st: 1, f: '0' },
   { h: 'Temperatura' },
   { n: 'tempSP', l: 'Temperatura objetivo', u: '°C', min: 5, max: 30, st: 0.5, f: '1' },
   { n: 'tempHistSup', l: 'Histéresis superior (prende el frío)', pre: '+ ', u: '°C', min: 0.5, max: 5, st: 0.5, f: '1', pasos: [-1, 1] },
   { n: 'tempHistInf', l: 'Histéresis inferior (apaga el frío)', pre: '− ', u: '°C', min: 0, max: 5, st: 0.5, f: '1', pasos: [-1, 1] },
-  { n: 'tempBanda', l: 'Alarma si se aparta más de', pre: '± ', u: '°C', min: 1, max: 10, st: 0.5, f: '1' },
   { h: 'Ventilador' },
   { chk: true },
   { n: 'ventPer', l: 'Repetir cada', u: 'h', min: 0, max: 7, st: 1, f: 'per', de: 'ventPeriodoH' },
@@ -1237,18 +1279,28 @@ function pintarEditor(box, p) {
     h += c.h ? `<h5>${c.h}</h5>`
       : c.chk ? '<label class="chk" style="margin-top:0"><input type="checkbox" name="e_ventActivo"> Usar el programa del ventilador</label>'
       : c.usar ? `<label class="chk" style="margin-top:0"><input type="checkbox" name="e_${c.usar}Usar"> Usar el ${c.usar === 'hum' ? 'humidificador' : 'deshumidificador'}</label>`
+      : c.hx ? `<label class="chk" style="margin-top:.4rem"><input type="checkbox" name="e_${c.hx.c}"> ${c.l.split(':')[0]}</label>` + campoEd(c)
       : campoEd(c);
   }
   f.innerHTML = h;
-  f.addEventListener('input', ev => { if (ev.target.type === 'range') salida(ev.target); });
+  f.addEventListener('input', ev => {
+    if (ev.target.type === 'range') salida(ev.target);
+    for (const h of HUMX) f.elements['e_' + h.s].disabled = !f.elements['e_' + h.c].checked;
+  });
   box.append(f);
   const base = p.lleno ? p : (ultEst || {});          // un perfil vacío arranca con lo que tiene la cámara ahora
   for (const c of CAMPOS_ED) {
-    if (!c.n) continue;
+    if (!c.n || c.hx) continue;
     const el = f.elements['e_' + c.n];
     const v = c.n === 'ventPer' ? Math.max(0, PERIODOS.indexOf(base.ventPeriodoH)) : base[c.n];
     if (v !== undefined && v !== null) el.value = v;
     salida(el);
+  }
+  for (const h of HUMX) {
+    const v = (base[h.k] | 0) / h.m;
+    f.elements['e_' + h.c].checked = v > 0;
+    const el = f.elements['e_' + h.s];
+    el.value = v > 0 ? v : h.def; salida(el); el.disabled = !(v > 0);
   }
   f.elements.e_ventActivo.checked = !!base.ventActivo;
   f.elements.e_humUsar.checked = !base.humOff;
@@ -1257,10 +1309,11 @@ function pintarEditor(box, p) {
 function datosEditor() {
   const f = $('#fpe'), q = new URLSearchParams();
   for (const c of CAMPOS_ED) {
-    if (!c.n) continue;
+    if (!c.n || c.hx) continue;
     const v = f.elements['e_' + c.n].value;
     if (c.n === 'ventPer') q.set('ventPeriodoH', PERIODOS[+v]); else q.set(c.n, v);
   }
+  for (const h of HUMX) q.set(h.k, f.elements['e_' + h.c].checked ? Math.round(+f.elements['e_' + h.s].value * h.m) : 0);
   q.set('ventActivo', f.elements.e_ventActivo.checked ? '1' : '0');
   q.set('humOff', f.elements.e_humUsar.checked ? '0' : '1');
   q.set('deshOff', f.elements.e_deshUsar.checked ? '0' : '1');
@@ -1410,6 +1463,7 @@ f.addEventListener('submit', ev => {
   for (const n of CAMPOS_F) p.set(n, f.elements[n].value);
   p.set('humOff', f.elements.humUsar.checked ? '0' : '1');
   p.set('deshOff', f.elements.deshUsar.checked ? '0' : '1');
+  for (const h of HUMX) p.set(h.k, f.elements[h.c].checked ? Math.round(+f.elements[h.s].value * h.m) : 0);
   enviar(f, 'f', p);
 });
 

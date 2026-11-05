@@ -48,7 +48,7 @@ add = S.append
 # ---------------------------------------------------------------- portada / uso
 add(f"""
 <h1>Cámara de curado — Menú del LCD</h1>
-<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.35 OTA · generado desde <code>menu.cpp</code></p>
+<p class="sub">Pantalla 20x4 + encoder rotativo con pulsador · firmware v1.0.39 OTA · generado desde <code>menu.cpp</code></p>
 
 <h2>Cómo se maneja</h2>
 <table class="ctl">
@@ -73,7 +73,7 @@ add(f"""
 <p>Renglón 1 y 2: temperatura y humedad medidas, con su objetivo.</p>
 <p>Renglón 3: relés de clima (refrigeración, humidificador, deshumidificador).</p>
 <p>Renglón 4: <b>rota cada 4 s</b> entre ventilador/AUX1/AUX2, la cuenta regresiva de los forzados manuales
-(<code>MANUAL Hum ON 12:30</code>) y los avisos: <code>CONTROL EN PAUSA</code>, <code>ALARMA TEMPERATURA</code>,
+(<code>MANUAL Hum ON 12:30</code>) y los avisos: <code>CONTROL EN PAUSA</code>,
 <code>CALIBRANDO SENSOR</code>, <code>Sin Wi-Fi</code>, <code>CONFIG WI-FI (celu)</code>.</p>
 </div></div>
 """)
@@ -84,8 +84,9 @@ add("""
 <pre class="arbol">
 MENU
 ├── Etapa: ...           solo lectura: el perfil cargado (con * = se cambió algo después)
-├── Temperatura  &gt;      Objetivo · Histeresis · Alarma +/- · Min encend. · Forzar frio
-├── Humedad      &gt;      Uso (solo lectura) · Objetivo · Histeresis · Espera hum./desh · Min encend. · Forzar hum. · Forzar desh
+├── Temperatura  &gt;      Objetivo · Histeresis · Forzar frio
+├── Humedad      &gt;      Objetivo · Usar hum. / Usar desh. · Histeresis · Espera hum./desh · Pulso · Descanso · Bloqueo · Piso valv. · Promedio · Forzar hum. · Forzar desh
+├── Cargar perfil &gt;     Perfil 1 · 2 · 3 · 4   (los carga; se editan en la web; doble confirmación)
 ├── Ventilador   &gt;      Programa · Cada · Duracion
 ├── AUX1                 ON / OFF          (el nombre se cambia en la web)
 ├── AUX2                 ON / OFF
@@ -102,15 +103,16 @@ MENU
 """)
 
 # ---------------------------------------------------------------- menú principal
-PRINC = [("Etapa: Estufado", ""), ("Temperatura", ">"), ("Humedad", ">"), ("Ventilador", ">"), ("AUX1", "OFF"), ("AUX2", "OFF"),
+PRINC = [("Etapa: Estufado", ""), ("Temperatura", ">"), ("Humedad", ">"), ("Cargar perfil", ">"), ("Ventilador", ">"), ("AUX1", "OFF"), ("AUX2", "OFF"),
          ("Control", "Activo"), ("Balanza", ">"), ("Tiempos", ">"), ("Calibracion", ">"), ("Diagnostico", ">"), ("APAGAR TODO", ""), ("Salir", "")]
 add(f"""
 <h2 class="nueva">MENU (principal)</h2>
-<div class="pantallas">{lista("MENU", PRINC, 1)}{lista("MENU", PRINC, 6)}{lista("MENU", PRINC, 12)}{lista("MENU", [("Etapa: Estufado*", "")] + PRINC[1:], 0)}</div>
+<div class="pantallas">{lista("MENU", PRINC, 1)}{lista("MENU", PRINC, 7)}{lista("MENU", PRINC, 13)}{lista("MENU", [("Etapa: Estufado*", "")] + PRINC[1:], 0)}</div>
 {tabla([
  ("Etapa: ...", "<b>Solo lectura.</b> Dice qué perfil de la web coincide con los ajustes actuales, por ejemplo <code>Etapa: Estufado</code>. Con un <b>*</b> al final (<code>Etapa: Estufado*</code>) se cambió algo después de cargarlo; <code>Etapa: ninguna</code> si no coincide con ninguno. Un click muestra el detalle. Los perfiles se cargan y se editan desde la web. Al entrar al menú el cursor arranca en Temperatura y la etapa queda arriba.", "—"),
  ("Temperatura &gt;", "Submenú de temperatura y refrigeración.", "—"),
  ("Humedad &gt;", "Submenú de humedad, humidificador y deshumidificador.", "—"),
+ ("Cargar perfil &gt;", "Lista los 4 perfiles de la web; elegir uno y confirmar <b>carga de golpe</b> sus objetivos, histéresis, esperas, programa del ventilador y si el humidificador y el deshumidificador se usan. <b>Doble confirmación</b>, con el cursor siempre en NO. Un perfil vacío no se puede cargar. En la lista, <code>*</code> marca el que coincide con los ajustes actuales. Los perfiles se guardan, editan y renombran desde la web.", "—"),
  ("Ventilador &gt;", "Programa del ventilador.", "—"),
  ("AUX1 / AUX2", "Prende o apaga a mano los relés 5 y 6. Muestran el nombre elegido en la web (hasta 12 letras).", "ON · OFF"),
  ("Control", "Pausa el control automático: clima apagado (salvo el frío de seguridad si hace demasiado calor). AUX1/AUX2 no se tocan. También con el atajo: mantener apretado en la pantalla normal.", "Activo · PAUSA"),
@@ -128,10 +130,16 @@ add(f"""
 {lcd("REANUDAR TODO", "El clima vuelve a", "funcionar. Seguro?", "    [NO]      SI")}
 </div>
 <p class="nota">En la web es el botón rojo <b>APAGAR TODO</b> de arriba. Un botón por software no reemplaza cortar la corriente.</p>
+<h3>Cargar un perfil</h3>
+<div class="pantallas">
+{lista("CARGAR PERFIL", [("1 Estufado *", ""), ("2 Secado 1", ""), ("3 Secado 2 (vacio)", ""), ("4 Otros (vacio)", ""), ("Volver", "")], 0)}
+{lcd("CARGAR PERFIL", "Secado 1", "T 14.0C  H 80.0%", "    [NO]      SI")}
+{lcd("ULTIMA CONFIRMACION", "Cambia los objetivos", "ahora mismo. Seguro?", "    [NO]      SI")}
+</div>
 """)
 
 # ---------------------------------------------------------------- temperatura
-TEMP = [("Objetivo", "14.0C"), ("Hist. sup.", "2.0C"), ("Hist. inf.", "0.0C"), ("Alarma +/-", "3.0C"), ("Min encend.", "120s"), ("Forzar frio", "Auto"), ("Volver", "")]
+TEMP = [("Objetivo", "14.0C"), ("Hist. sup.", "2.0C"), ("Hist. inf.", "0.0C"), ("Forzar frio", "Auto"), ("Volver", "")]
 add(f"""
 <h2 class="nueva">TEMPERATURA</h2>
 <div class="pantallas">{lista("TEMPERATURA", TEMP, 0)}{lista("TEMPERATURA", TEMP, 4)}</div>
@@ -139,25 +147,28 @@ add(f"""
  ("Objetivo", "Temperatura objetivo. La heladera prende si T &gt; objetivo + histéresis superior y apaga si T &le; objetivo − histéresis inferior.", "5,0 a 30,0 °C, de a 0,5"),
  ("Hist. sup.", "Cuánto se deja subir la temperatura sobre el objetivo antes de prender el frío.", "0,5 a 5,0 °C, de a 0,5"),
  ("Hist. inf.", "Cuánto por debajo del objetivo se deja bajar antes de apagar el frío. Con 0 apaga justo en el objetivo.", "0,0 a 5,0 °C, de a 0,5"),
- ("Alarma +/-", "Si la temperatura se aleja más que esto del objetivo, aparece ALARMA TEMPERATURA.", "1,0 a 10,0 °C, de a 0,5"),
- ("Min encend.", "Tiempo mínimo encendida la refrigeración (protege el compresor).", "0 a 600 s, de a 10"),
  ("Forzar frio", f"Fuerza la refrigeración a mano durante \"Dur forzado\" minutos y después vuelve sola a Auto. Encender respeta el mínimo apagado: si no se puede todavía, avisa <code>No se puede aun / Espera m:ss</code>.", "Auto · ON · OFF"),
 ])}
 """)
 
 # ---------------------------------------------------------------- humedad
-HUM = [("Humid/desh: en uso", ""), ("Objetivo", "75.0%"), ("Hist. sup.", "3.0%"), ("Hist. inf.", "3.0%"), ("Espera hum.", "60s"), ("Espera desh", "60s"), ("Min encend.", "60s"), ("Forzar hum.", "Auto"), ("Forzar desh", "Auto"), ("Volver", "")]
+HUM = [("Objetivo", "75.0%"), ("Humidif: en uso", ""), ("Deshum.: en uso", ""), ("Hist. sup.", "3.0%"), ("Hist. inf.", "3.0%"), ("Espera hum.", "60s"), ("Espera desh", "60s"), ("Pulso hum.", "60s"), ("Descanso", "180s"), ("Bloq. frio", "10min"), ("Piso valv.", "50%"), ("Prom. lento", "30min"), ("Forzar hum.", "Auto"), ("Forzar desh", "Auto"), ("Volver", "")]
 add(f"""
 <h2 class="nueva">HUMEDAD</h2>
-<div class="pantallas">{lista("HUMEDAD", HUM, 1)}{lista("HUMEDAD", HUM, 4)}{lista("HUMEDAD", HUM, 6)}{lista("HUMEDAD", [("Humidif: NO SE USA", "")] + HUM[1:], 0)}</div>
+<div class="pantallas">{lista("HUMEDAD", HUM, 0)}{lista("HUMEDAD", HUM, 3)}{lista("HUMEDAD", HUM, 5)}{lista("HUMEDAD", [HUM[0], ("Humidif: NO SE USA", ""), HUM[2]] + HUM[3:], 1)}</div>
 {tabla([
- ("Humid/desh: ...", "<b>Solo lectura.</b> Dice si el humidificador y el deshumidificador se usan (<code>en uso</code>) o están apagados a pedido: <code>Humidif: NO SE USA</code>, <code>Deshum.: NO SE USA</code> o <code>Hum/Desh NO SE USA</code>. Se cambia desde la web (casillas \"Usar el humidificador / deshumidificador\" en Setpoints o en un perfil). Apagado, ese equipo no prende solo (queda apagado y el otro no lo reemplaza); el forzado manual y la protección de seguridad siguen andando. Al entrar a Humedad el cursor arranca en Objetivo y este estado queda arriba.", "—"),
+ ("Humidif: en uso / NO SE USA", "Si el <b>humidificador</b> se usa o queda apagado a pedido. Click, girar y confirmar, como cualquier ajuste. <b>NO SE USA</b>: no prende solo (queda apagado y el deshumidificador no lo reemplaza); si estaba prendido se apaga enseguida. El forzado manual y la protección de seguridad siguen andando. También se cambia desde la web (Setpoints o un perfil).", "En uso · NO SE USA"),
+ ("Deshum.: en uso / NO SE USA", "Lo mismo para el <b>deshumidificador</b>.", "En uso · NO SE USA"),
  ("Objetivo", "Humedad objetivo. Humidificador: prende si HR &lt; objetivo − histéresis inferior. Deshumidificador: prende si HR &gt; objetivo + histéresis superior. Los dos apagan al llegar al objetivo.", "40,0 a 100,0 %, de a 0,5"),
  ("Hist. sup.", "Cuánto sobre el objetivo se deja subir la humedad antes de prender el deshumidificador.", "0,5 a 40,0 %, de a 0,5"),
  ("Hist. inf.", "Cuánto bajo el objetivo se deja bajar la humedad antes de prender el humidificador.", "0,5 a 40,0 %, de a 0,5"),
  ("Espera hum.", "Segundos que la humedad debe seguir bajo el límite antes de prender el humidificador. Filtra caídas de segundos (por ejemplo al arrancar el frío). 0 = enseguida.", "0 a 300 s, de a 5"),
  ("Espera desh", "Lo mismo para el deshumidificador: la humedad debe seguir sobre el límite todo ese tiempo. 0 = enseguida.", "0 a 300 s, de a 5"),
- ("Min encend.", "Tiempo mínimo encendidos el humidificador y el deshumidificador.", "0 a 600 s, de a 10"),
+ ("Pulso hum.", "Pulso corto del <b>humidificador</b>: cada vez que prende trabaja solo este tiempo y se apaga, aunque no haya llegado al objetivo. <b>Apagado</b> (0): sigue hasta el objetivo. No vale para el forzado manual.", "Apagado · 10 a 300 s, de a 10"),
+ ("Descanso", "Descanso obligatorio del humidificador: después de apagarse no vuelve a prender antes de este tiempo. <b>Apagado</b> (0): sin descanso.", "Apagado · 30 a 900 s, de a 30"),
+ ("Bloq. frio", "Bloqueo después del frío: mientras el compresor trabaja, y este tiempo después de que se apaga, el humidificador no empieza (con el frío la humedad baja de golpe y rebota). Si en el bloqueo la humedad cae bajo el piso de la válvula (fila siguiente), da un pulso corto de chequeo sin tocar el contador. <b>Apagado</b> (0): sin bloqueo.", "Apagado · 1 a 60 min, de a 1"),
+ ("Piso valv.", "Piso de la válvula: durante el bloqueo del frío, si la humedad cae bajo este valor el humidificador da un pulso corto de chequeo (y descansa) sin tocar el contador del promedio. <b>Apagado</b> (0): sin válvula, el bloqueo es total. Conviene ponerlo por debajo del fondo normal de cada ciclo de frío.", "Apagado · 5 a 70 %, de a 5"),
+ ("Prom. lento", "Promedio lento (10 min, sin contar el rato con el frío prendido). El humidificador empieza cuando el promedio estuvo más de estos minutos bajo el límite; da pulsos y, después de cada uno, vuelve a mirar el promedio. Con esto activo, \"Espera hum.\" no se usa. <b>Apagado</b> (0): decide por la lectura del momento.", "Apagado · 5 a 120 min, de a 5"),
  ("Forzar hum.", "Fuerza el humidificador a mano. Prender uno apaga el otro (nunca los dos juntos).", "Auto · ON · OFF"),
  ("Forzar desh", "Fuerza el deshumidificador a mano.", "Auto · ON · OFF"),
 ])}
@@ -263,7 +274,7 @@ add(f"""
 <li>Mientras dura, el control automático, el ventilador y los forzados quedan suspendidos. Un click (o mantener) lo detiene.</li>
 <li>Al terminar: <code>Test terminado / Todo en automatico</code>; AUX1 y AUX2 vuelven a como estaban.</li>
 </ul>
-<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.35 OTA")}</div>
+<div class="pantallas">{lcd("Camara de curado", "Software hecho por", "ForzaDos", "Version v1.0.39 OTA")}</div>
 """)
 
 # ---------------------------------------------------------------- editar / confirmar

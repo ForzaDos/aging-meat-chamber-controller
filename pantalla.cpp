@@ -110,8 +110,6 @@ static void dibujar() {
     snprintf(pg[np++], 24, "Clima apagado");
   } else if (!cfg.activo) {
     snprintf(pg[np++], 24, "CONTROL EN PAUSA");
-  } else if (est.alarmaTemp) {
-    snprintf(pg[np++], 24, "ALARMA TEMPERATURA");
   } else if (WiFi.status() != WL_CONNECTED) {
     snprintf(pg[np++], 24, "Sin Wi-Fi");
   }   // la IP se ve en el menú: Diagnostico

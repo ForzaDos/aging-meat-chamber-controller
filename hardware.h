@@ -90,6 +90,12 @@ static const BalanzaDef BALANZAS[BALANZAS_MAX] = {
 // quedarse más allá del límite todo ese tiempo. Filtra caídas o subidas de segundos (por ejemplo al arrancar el frío).
 #define DEF_ESPERA_HUM_S   60
 #define ESPERA_MAX_S      300
+// Humidificador (v1.0.39): topes. Los rangos están repetidos en control.cpp, web.cpp, menu.cpp y los deslizables de principal.html.
+#define HUM_PULSO_MAX_S   300     // pulso corto, segundos
+#define HUM_DESC_MAX_S    900     // descanso obligatorio, segundos
+#define HUM_BLOQ_MAX_S    3600    // bloqueo después del frío, segundos (la web y el LCD lo muestran en minutos)
+#define HUM_PROM_MAX_MIN  120     // promedio lento, minutos
+#define HUM_PISO_MAX      70      // piso de la válvula, % HR (0 = apagada)
 #define HIST_TEMP_MIN  0.5f
 #define HIST_TEMP_MAX  5.0f
 #define DEF_MANUAL_MIN         15      // minutos que dura un forzado manual antes de volver a automático (5 a 120)
@@ -104,6 +110,10 @@ static const BalanzaDef BALANZAS[BALANZAS_MAX] = {
 //     varios relés encendidos). Pensado para el armado y el servicio técnico.
 // 0 = solo el test de a uno (versión para el usuario final).
 #define TEST_AVANZADO    0
+// REGLA INVIOLABLE: el humidificador y el deshumidificador NUNCA pueden estar prendidos juntos. Los modos avanzados ("Sumar 1 a 6" y
+// "Todos juntos") los prenden a la vez, por eso no se pueden activar. Si algún día hace falta probar la fuente con carga, hay que
+// excluir a uno de los dos en testMascaraEn() (control.cpp) antes de sacar esta barrera.
+static_assert(TEST_AVANZADO == 0, "Los modos de test avanzados prenden el humidificador y el deshumidificador juntos (ver la regla en CLAUDE.md)");
 
 // ---------- Protecciones fijas ----------
 // No se pueden cambiar desde la web ni desde el menú: solo acá, recompilando.

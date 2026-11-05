@@ -7,10 +7,10 @@
 
 // ---------- Software (se ve al arrancar, en el menu "Acerca de" y en la web) ----------
 #define SOFTWARE_AUTOR    "ForzaDos"
-#define SOFTWARE_VERSION  "v1.0.35 OTA"   // cambiala aca cuando hagas una version nueva
+#define SOFTWARE_VERSION  "v1.0.39 OTA"   // cambiala aca cuando hagas una version nueva
 // Versión interna del programa (se ve en la web, Diagnóstico). paginas/generar.py la copia a la
 // página principal: si el navegador muestra una página vieja guardada, Diagnóstico lo avisa.
-#define VERSION_PROGRAMA  "v1.0.35 OTA"
+#define VERSION_PROGRAMA  "v1.0.39 OTA"
 
 // ---------- Red ----------
 #define WIFI_SSID  "TU_RED_WIFI"
@@ -54,7 +54,11 @@
 // ---------- Valores por defecto (después se editan desde la web y quedan guardados) ----------
 #define DEF_HUM_SP      75.0f   // % HR objetivo
 #define DEF_HUM_HIST     3.0f   // histéresis en % HR
-#define DEF_TEMP_SP     14.0f   // °C objetivo (refrigeración y alarma)
-#define DEF_TEMP_BANDA   3.0f   // ± °C antes de marcar alarma
-#define DEF_MIN_ON_S    120     // segundos mínimos encendido (humedad y frío)
+#define DEF_TEMP_SP     14.0f   // °C objetivo (refrigeración)
 #define DEF_MIN_OFF_S   180     // segundos mínimos apagado (protege compresores)
+// Humidificador (v1.0.39); 0 = esa función apagada
+#define DEF_HUM_PULSO_S   60    // pulso corto: segundos prendido por vez
+#define DEF_HUM_DESC_S   180    // descanso obligatorio entre pulsos (segundos)
+#define DEF_HUM_BLOQ_S   600    // bloqueo después del frío (segundos)
+#define DEF_HUM_PROM_MIN  30    // promedio lento: minutos con el promedio bajo el límite antes de empezar
+#define DEF_HUM_PISO      50    // válvula: % HR bajo el cual, aun con el bloqueo del frío, da un pulso de chequeo (0 = sin válvula)

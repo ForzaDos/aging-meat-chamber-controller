@@ -206,7 +206,6 @@ static void enviarEstado(AsyncWebServerRequest* r) {
     d["hum"]  = roundf(est.hum  * 10.0f) / 10.0f;
   }
   d["sensorOk"]    = est.sensorOk;
-  d["alarmaTemp"]  = est.alarmaTemp;
   d["releHum"]     = est.releHum;
   d["releDesh"]    = est.releDesh;
   d["releFrio"]    = est.releFrio;
@@ -239,13 +238,17 @@ static void enviarEstado(AsyncWebServerRequest* r) {
   d["tempHistSup"]     = cfg.tempHistSup;
   d["tempHistInf"]     = cfg.tempHistInf;
   d["tempHist"]        = cfg.tempHistSup;
-  d["tempBanda"]       = cfg.tempBanda;
   d["humEsperaS"]      = cfg.humEsperaS;
   d["deshEsperaS"]     = cfg.deshEsperaS;
   d["humOff"]          = cfg.humOff;
   d["deshOff"]         = cfg.deshOff;
-  d["minOnS"]          = cfg.minOnS;
-  d["minOnTempS"]      = cfg.minOnTempS;
+  d["humPulsoS"]       = cfg.humPulsoS;
+  d["humDescansoS"]    = cfg.humDescansoS;
+  d["humBloqueoS"]     = cfg.humBloqueoS;
+  d["humPromMin"]      = cfg.humPromMin;
+  d["humPisoV"]        = cfg.humPisoV;
+  d["humFase"]         = est.humFase;                    // 0 normal, 1 bloqueado por el frío, 2 descanso, 3 pulso, 4 tanda entre pulsos
+  if (isfinite(est.humProm)) { d["humProm"] = roundf(est.humProm * 10.0f) / 10.0f; d["humBajoMin"] = est.humBajoMin; }
   d["minOffS"]         = cfg.minOffS;
   d["manualMin"]       = cfg.manualMin;
   d["ventActivo"]      = cfg.ventActivo;
@@ -285,7 +288,6 @@ static void guardarConfig(AsyncWebServerRequest* r) {
   leer("tempHistSup", HIST_TEMP_MIN, HIST_TEMP_MAX, cfg.tempHistSup);
   leer("tempHistInf", 0.0f,          HIST_TEMP_MAX, cfg.tempHistInf);
   leer("tempSP",    TEMP_SP_MIN, TEMP_SP_MAX, cfg.tempSP);
-  leer("tempBanda", 1.0f, 10.0f, cfg.tempBanda);
 
   auto leerEntero = [&](const char* k, float lo, float hi, uint16_t& dst) {
     float v = dst; leer(k, lo, hi, v); dst = (uint16_t)v;
@@ -294,8 +296,11 @@ static void guardarConfig(AsyncWebServerRequest* r) {
   leerEntero("deshEsperaS",     0, ESPERA_MAX_S, cfg.deshEsperaS);
   if (tiene("humOff"))  cfg.humOff  = (texto("humOff")  == "1");
   if (tiene("deshOff")) cfg.deshOff = (texto("deshOff") == "1");
-  leerEntero("minOnS",          0, 600, cfg.minOnS);
-  leerEntero("minOnTempS",      0, 600, cfg.minOnTempS);
+  leerEntero("humPulsoS",       0, HUM_PULSO_MAX_S,  cfg.humPulsoS);
+  leerEntero("humDescansoS",    0, HUM_DESC_MAX_S,   cfg.humDescansoS);
+  leerEntero("humBloqueoS",     0, HUM_BLOQ_MAX_S,   cfg.humBloqueoS);
+  leerEntero("humPromMin",      0, HUM_PROM_MAX_MIN, cfg.humPromMin);
+  leerEntero("humPisoV",        0, HUM_PISO_MAX,     cfg.humPisoV);
   leerEntero("minOffS",         0, 600, cfg.minOffS);
   float m = cfg.manualMin; leer("manualMin", MANUAL_MIN_MIN, MANUAL_MIN_MAX, m);
   cfg.manualMin = (uint16_t)(m / 5.0f + 0.5f) * 5;                     // de a 5 minutos
@@ -337,7 +342,11 @@ static void enviarPerfiles(AsyncWebServerRequest* r) {
     o["humSP"] = p.humSP; o["humHistInf"] = p.humHistInf; o["humHistSup"] = p.humHistSup;
     o["tempSP"] = p.tempSP; o["tempHistInf"] = p.tempHistInf; o["tempHistSup"] = p.tempHistSup;
     o["humEsperaS"] = p.humEsperaS; o["deshEsperaS"] = p.deshEsperaS;
-    o["tempBanda"] = p.tempBanda;
+    o["humPulsoS"]    = p.v3 ? p.humPulsoS    : cfg.humPulsoS;       // un perfil anterior a la v1.0.39 no los trae: al cargarlo quedan los actuales
+    o["humDescansoS"] = p.v3 ? p.humDescansoS : cfg.humDescansoS;
+    o["humBloqueoS"]  = p.v3 ? p.humBloqueoS  : cfg.humBloqueoS;
+    o["humPromMin"]   = p.v3 ? p.humPromMin   : cfg.humPromMin;
+    o["humPisoV"]     = p.v4 ? p.humPisoV     : cfg.humPisoV;
     o["humOff"] = p.v2 ? p.humOff : false; o["deshOff"] = p.v2 ? p.deshOff : false;
     o["ventActivo"] = p.ventActivo; o["ventPeriodoH"] = p.ventPeriodoH; o["ventDuracionMin"] = p.ventDuracionMin; o["ventAnclaMin"] = p.ventAnclaMin;
   }
@@ -362,7 +371,10 @@ static void ordenPerfil(AsyncWebServerRequest* r) {
     auto num = [&](const char* k, float& dst) { if (r->hasParam(k, true)) { const float v = r->getParam(k, true)->value().toFloat(); if (isfinite(v)) dst = v; } };
     auto ent = [&](const char* k, uint16_t& dst) { float v = dst; num(k, v); dst = v < 0 ? 0 : v > 65535 ? 65535 : (uint16_t)v; };
     num("humSP", p.humSP); num("humHistInf", p.humHistInf); num("humHistSup", p.humHistSup);
-    num("tempSP", p.tempSP); num("tempHistInf", p.tempHistInf); num("tempHistSup", p.tempHistSup); num("tempBanda", p.tempBanda);
+    num("tempSP", p.tempSP); num("tempHistInf", p.tempHistInf); num("tempHistSup", p.tempHistSup);
+    if (!p.v3) { p.humPulsoS = cfg.humPulsoS; p.humDescansoS = cfg.humDescansoS; p.humBloqueoS = cfg.humBloqueoS; p.humPromMin = cfg.humPromMin; }
+    if (!p.v4) p.humPisoV = cfg.humPisoV;
+    ent("humPulsoS", p.humPulsoS); ent("humDescansoS", p.humDescansoS); ent("humBloqueoS", p.humBloqueoS); ent("humPromMin", p.humPromMin); ent("humPisoV", p.humPisoV);
     ent("humEsperaS", p.humEsperaS); ent("deshEsperaS", p.deshEsperaS);
     ent("ventDuracionMin", p.ventDuracionMin); ent("ventAnclaMin", p.ventAnclaMin);
     if (r->hasParam("ventPeriodoH", true)) p.ventPeriodoH = controlPeriodoValido(r->getParam("ventPeriodoH", true)->value().toInt());
